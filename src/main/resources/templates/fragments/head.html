@@ -1,0 +1,145 @@
+<head th:fragment="head(title)">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="_csrf" th:if="${_csrf != null}" th:content="${_csrf.token}">
+    <meta name="_csrf_header" th:if="${_csrf != null}" th:content="${_csrf.headerName}">
+    <title th:text="${title} + ' - BlueCatHotelDemo'">BlueCatHotelDemo</title>
+    <link rel="preconnect" href="https://fonts.gstatic.com">
+    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" th:href="@{/mazer/dist/assets/css/bootstrap.css}">
+    <link rel="stylesheet" th:href="@{/mazer/dist/assets/vendors/perfect-scrollbar/perfect-scrollbar.css}">
+    <link rel="stylesheet" th:href="@{/mazer/dist/assets/vendors/bootstrap-icons/bootstrap-icons.css}">
+    <link rel="stylesheet" th:href="@{/mazer/dist/assets/css/app.css}">
+    <style>
+        .brand-mark {
+            align-items: center;
+            color: #25396f;
+            display: inline-flex;
+            font-size: 1.35rem;
+            font-weight: 800;
+            gap: .65rem;
+            letter-spacing: 0;
+            line-height: 1;
+        }
+        .brand-mark img {
+            border-radius: .55rem;
+            height: 2.5rem;
+            object-fit: contain;
+            width: 2.5rem;
+        }
+        .auth-brand-logo {
+            border-radius: .8rem;
+            height: 4rem;
+            object-fit: contain;
+            width: 4rem;
+        }
+        .page-heading .btn i,
+        .table-actions .btn i {
+            line-height: 1;
+        }
+        .stat-card .stats-icon {
+            align-items: center;
+            display: flex;
+            justify-content: center;
+        }
+        .table-actions {
+            min-width: 6.25rem;
+            white-space: nowrap;
+        }
+        .floor-toolbar {
+            align-items: center;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: space-between;
+        }
+        .floor-tabs {
+            display: flex;
+            flex-wrap: wrap;
+            gap: .5rem;
+        }
+        .floor-item {
+            align-items: center;
+            display: inline-flex;
+            gap: .25rem;
+        }
+        .floor-tab {
+            align-items: center;
+            background: #fff;
+            border: 1px solid #dce7f1;
+            border-radius: .45rem;
+            color: #607080;
+            display: inline-flex;
+            font-weight: 700;
+            gap: .45rem;
+            min-height: 2.6rem;
+            padding: .55rem .85rem;
+        }
+        .floor-action {
+            align-items: center;
+            border: 1px solid #dce7f1;
+            border-radius: .45rem;
+            display: inline-flex;
+            height: 2.6rem;
+            justify-content: center;
+            width: 2.6rem;
+        }
+        .floor-placeholder {
+            background: #eef3ff;
+            border: 2px dashed #435ebe;
+            border-radius: .45rem;
+            min-height: 2.6rem;
+            min-width: 8rem;
+        }
+        .floor-item.dragging {
+            opacity: .45;
+        }
+        .floor-tab.active,
+        .floor-tab:hover {
+            background: #435ebe;
+            border-color: #435ebe;
+            color: #fff;
+        }
+        .floor-search {
+            min-width: min(22rem, 100%);
+        }
+        .room-grid {
+            display: grid;
+            gap: 1rem;
+            grid-template-columns: repeat(auto-fill, minmax(9rem, 1fr));
+        }
+        .room-tile {
+            border: 0;
+            border-radius: .5rem;
+            box-shadow: 0 .2rem .7rem rgba(25, 36, 70, .08);
+            color: #fff;
+            min-height: 8.5rem;
+            padding: 1rem;
+            text-align: left;
+        }
+        .room-number,
+        .room-type,
+        .room-status {
+            display: block;
+        }
+        .room-number {
+            font-size: 1.45rem;
+            font-weight: 800;
+            line-height: 1.1;
+        }
+        .room-type {
+            color: rgba(255, 255, 255, .85);
+            margin-top: .35rem;
+        }
+        .room-status {
+            font-weight: 800;
+            margin-top: 1rem;
+        }
+        .status-available { background: #3D9013; }
+        .status-monthly { background: #CD5C5C; }
+        .status-daily { background: #FE9A37; }
+        .status-occupied { background: #CD5C5C; }
+        .status-reserved { background: #5a78d6; }
+        .status-maintenance { background: #7a7f8a; }
+    </style>
+</head>

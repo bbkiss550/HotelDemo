@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="th">
+<head th:replace="~{fragments/head :: head('บันทึกห้องพัก')}"></head>
+<body>
+<div id="app">
+    <div th:replace="~{fragments/nav :: nav}"></div>
+    <div id="main">
+        <header class="mb-3">
+            <a href="#" class="burger-btn d-block d-xl-none"><i class="bi bi-justify fs-3"></i></a>
+        </header>
+        <div class="page-heading">
+            <h3>บันทึกห้องพัก</h3>
+        </div>
+        <div class="page-content">
+            <section class="section">
+                <div class="card">
+                    <div class="card-body">
+                        <form method="post" th:action="@{/rooms}" th:object="${room}">
+                            <input type="hidden" th:field="*{id}">
+                            <div class="row g-3">
+                                <div class="col-md-6"><label class="form-label">เลขห้อง</label><input class="form-control" th:field="*{roomNumber}"></div>
+                                <div class="col-md-4">
+                                    <label class="form-label">ชั้น</label>
+                                    <select class="form-select" name="floorId">
+                                        <option th:each="floor : ${floors}" th:value="${floor.id}" th:text="${floor.name}" th:selected="${room.floor != null and floor.id == room.floor.id}"></option>
+                                    </select>
+                                </div>
+                                <div class="col-12">
+                                    <label class="form-label">ประเภทห้อง</label>
+                                    <select class="form-select" name="roomTypeId">
+                                        <option th:each="type : ${roomTypes}" th:value="${type.id}" th:text="${type.name}" th:selected="${room.roomType != null and type.id == room.roomType.id}"></option>
+                                    </select>
+                                </div>
+                                <div class="col-12"><label class="form-label">สถานะ</label><select class="form-select" th:field="*{status}"><option th:each="s : ${statuses}" th:value="${s}" th:text="${s.label}"></option></select></div>
+                            </div>
+                            <div class="d-flex gap-2 mt-4">
+                                <button class="btn btn-primary" type="submit"><i class="bi bi-save me-1"></i>บันทึก</button>
+                                <a class="btn btn-light-secondary" th:href="@{/rooms}">ยกเลิก</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+<div th:replace="~{fragments/nav :: scripts}"></div>
+</body>
+</html>

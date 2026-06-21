@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="th">
+<head th:replace="~{fragments/head :: head('ผู้ใช้งาน')}"></head>
+<body>
+<div id="app">
+    <div th:replace="~{fragments/nav :: nav}"></div>
+    <div id="main">
+        <header class="mb-3">
+            <a href="#" class="burger-btn d-block d-xl-none"><i class="bi bi-justify fs-3"></i></a>
+        </header>
+        <div class="page-heading d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <h3>จัดการผู้ใช้งาน</h3>
+                <p class="text-subtitle text-muted mb-0">เพิ่ม แก้ไข และจัดการบัญชีสำหรับเข้าสู่ระบบ</p>
+            </div>
+            <a class="btn btn-primary" th:href="@{/users/new}"><i class="bi bi-person-plus me-1"></i>เพิ่มผู้ใช้</a>
+        </div>
+        <div class="page-content">
+            <section class="section">
+                <div class="alert alert-success" th:if="${message}" th:text="${message}"></div>
+                <div class="alert alert-danger" th:if="${error}" th:text="${error}"></div>
+                <div class="card">
+                    <div class="card-header">
+                        <form>
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                <input class="form-control" name="q" placeholder="ค้นหา username หรือชื่อ" th:value="${q}">
+                            </div>
+                        </form>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead>
+                                <tr>
+                                    <th>Username</th>
+                                    <th>ชื่อ</th>
+                                    <th>เพศ</th>
+                                    <th>วันเกิด</th>
+                                    <th class="table-actions"></th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="u : ${users}">
+                                    <td><span class="badge bg-light-primary" th:text="${u.username}"></span></td>
+                                    <td th:text="${u.fullName}"></td>
+                                    <td th:text="${u.gender != null ? u.gender.name : '-'}"></td>
+                                    <td th:text="${u.birthDate != null ? u.birthDate : '-'}"></td>
+                                    <td class="table-actions">
+                                        <div class="d-flex gap-2">
+                                            <a class="btn btn-sm btn-warning" th:href="@{/users/{id}/edit(id=${u.id})}" title="แก้ไข"><i class="bi bi-pencil-square"></i></a>
+                                            <form method="post" th:action="@{/users/{id}/delete(id=${u.id})}" onsubmit="return confirm('ยืนยันการลบผู้ใช้นี้?')">
+                                                <button class="btn btn-sm btn-danger" type="submit" title="ลบ"><i class="bi bi-trash"></i></button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+<div th:replace="~{fragments/nav :: scripts}"></div>
+</body>
+</html>

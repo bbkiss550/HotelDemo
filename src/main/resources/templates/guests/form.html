@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="th">
+<head th:replace="~{fragments/head :: head('บันทึกผู้เข้าพัก')}"></head>
+<body>
+<div id="app">
+    <div th:replace="~{fragments/nav :: nav}"></div>
+    <div id="main">
+        <header class="mb-3">
+            <a href="#" class="burger-btn d-block d-xl-none"><i class="bi bi-justify fs-3"></i></a>
+        </header>
+        <div class="page-heading">
+            <h3>บันทึกผู้เข้าพัก</h3>
+        </div>
+        <div class="page-content">
+            <section class="section">
+                <div class="card">
+                    <div class="card-body">
+                        <form method="post" th:action="@{/guests}" th:object="${guest}">
+                            <input type="hidden" th:field="*{id}">
+                            <div class="row g-3">
+                                <div class="col-md-6"><label class="form-label">ชื่อผู้พัก</label><input class="form-control" th:field="*{fullName}"></div>
+                                <div class="col-md-6"><label class="form-label">เบอร์โทร</label><input class="form-control" th:field="*{phone}"></div>
+                                <div class="col-md-6"><label class="form-label">ห้องที่พัก</label><select class="form-select" name="roomId"><option th:each="r : ${rooms}" th:value="${r.id}" th:text="${r.roomNumber}" th:selected="${guest.room != null and r.id == guest.room.id}"></option></select></div>
+                                <div class="col-md-3"><label class="form-label">วันที่เข้า</label><input class="form-control" type="date" th:field="*{checkInDate}"></div>
+                                <div class="col-md-3"><label class="form-label">วันที่ออก</label><input class="form-control" type="date" th:field="*{checkOutDate}"></div>
+                                <div class="col-12"><label class="form-label">หมายเหตุ</label><textarea class="form-control" rows="4" th:field="*{note}"></textarea></div>
+                            </div>
+                            <div class="d-flex gap-2 mt-4">
+                                <button class="btn btn-primary" type="submit"><i class="bi bi-save me-1"></i>บันทึก</button>
+                                <a class="btn btn-light-secondary" th:href="@{/guests}">ยกเลิก</a>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+<div th:replace="~{fragments/nav :: scripts}"></div>
+</body>
+</html>

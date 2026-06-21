@@ -1,0 +1,159 @@
+<!doctype html>
+<html lang="th">
+<head th:replace="~{fragments/head :: head('ข้อมูลสถานะห้องพัก')}"></head>
+<body>
+<div id="app">
+    <div th:replace="~{fragments/nav :: nav}"></div>
+    <div id="main">
+        <header class="mb-3">
+            <a href="#" class="burger-btn d-block d-xl-none"><i class="bi bi-justify fs-3"></i></a>
+        </header>
+        <div class="page-heading d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <h3>ข้อมูลสถานะห้องพัก</h3>
+                <p class="text-subtitle text-muted mb-0">เลือกห้องเพื่อบันทึกข้อมูลการเข้าพัก</p>
+            </div>
+        </div>
+        <div class="page-content">
+            <section class="section">
+                <div class="floor-toolbar mb-3">
+                    <div class="floor-tabs">
+                        <a th:each="floor : ${floors}"
+                           th:href="@{/guests(floorId=${floor.id}, q=${q})}"
+                           th:classappend="${selectedFloor != null and selectedFloor.id == floor.id} ? 'active' : ''"
+                           class="floor-tab">
+                            <i class="bi bi-building"></i>
+                            <span th:text="${floor.name}"></span>
+                        </a>
+                    </div>
+                    <form class="floor-search" th:if="${selectedFloor != null}">
+                        <input type="hidden" name="floorId" th:value="${selectedFloor.id}">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input class="form-control" name="q" placeholder="ค้นหาเลขห้อง" th:value="${q}">
+                        </div>
+                    </form>
+                </div>
+
+                <div class="room-grid" th:if="${selectedFloor != null}">
+                    <button class="room-tile guest-room-tile"
+                            th:each="room : ${rooms}"
+                            th:attr="data-bs-target=${'#guestCheckInModal' + room.id}"
+                            data-bs-toggle="modal"
+                            type="button"
+                            th:classappend="${room.status.name() == 'AVAILABLE'} ? ' status-available' : (${roomStayTypes[room.id] == 'MONTHLY'} ? ' status-monthly' : (${roomStayTypes[room.id] == 'DAILY'} ? ' status-daily' : (${room.status.name() == 'RESERVED'} ? ' status-reserved' : ' status-maintenance')))">
+                        <span class="room-number" th:text="${room.roomNumber}"></span>
+                        <span class="room-type" th:text="${room.roomType != null ? room.roomType.name : room.legacyRoomType}"></span>
+                        <span class="room-status" th:text="${room.status.label}"></span>
+                    </button>
+                </div>
+
+                <div class="alert alert-light-secondary mt-3" th:if="${selectedFloor != null and #lists.isEmpty(rooms)}">
+                    ไม่พบห้องในชั้นนี้
+                </div>
+            </section>
+        </div>
+
+        <div class="modal fade" th:each="room : ${rooms}" th:id="${'guestCheckInModal' + room.id}" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <form class="guest-stay-form" method="post" th:action="@{/guests}">
+                        <input type="hidden" name="roomId" th:value="${room.id}">
+                        <input type="hidden" name="floorId" th:value="${selectedFloor.id}">
+                        <div class="modal-header">
+                            <h5 class="modal-title">บันทึกการเข้าพัก ห้อง <span th:text="${room.roomNumber}"></span></h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body row g-3">
+                            <div class="col-md-6"><label class="form-label">ชื่อผู้พัก</label><input class="form-control" name="fullName" required></div>
+                            <div class="col-md-6"><label class="form-label">เบอร์โทร</label><input class="form-control" name="phone"></div>
+                            <div class="col-md-6"><label class="form-label">วันที่เข้า</label><input class="form-control" type="date" name="checkInDate"></div>
+                            <div class="col-md-6"><label class="form-label">วันที่ออก</label><input class="form-control" type="date" name="checkOutDate"></div>
+
+                            <div class="col-12">
+                                <label class="form-label d-block">รูปแบบการพัก</label>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input stay-type-radio" type="radio" th:name="stayType" value="DAILY" checked
+                                           th:attr="data-daily-price=${room.roomType != null ? room.roomType.nightlyPrice : room.nightlyPrice},data-monthly-price=${room.roomType != null ? room.roomType.monthlyPrice : room.monthlyPrice}">
+                                    <label class="form-check-label">รายวัน</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input stay-type-radio" type="radio" th:name="stayType" value="MONTHLY"
+                                           th:attr="data-daily-price=${room.roomType != null ? room.roomType.nightlyPrice : room.nightlyPrice},data-monthly-price=${room.roomType != null ? room.roomType.monthlyPrice : room.monthlyPrice}">
+                                    <label class="form-check-label">รายเดือน</label>
+                                </div>
+                            </div>
+
+                            <div class="col-md-6 monthly-fields d-none">
+                                <label class="form-label">จ่ายล่วงหน้า</label>
+                                <select class="form-select advance-months" name="advanceMonths">
+                                    <option th:each="month : ${#numbers.sequence(1,12)}" th:value="${month}" th:text="${month + ' เดือน'}"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 monthly-fields d-none">
+                                <label class="form-label">ค่าประกัน</label>
+                                <input class="form-control deposit-field" type="number" step="0.01" name="deposit" value="0">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label price-label">ราคาต่อวัน</label>
+                                <input class="form-control price-field" type="number" step="0.01" name="price" th:value="${room.roomType != null ? room.roomType.nightlyPrice : room.nightlyPrice}">
+                            </div>
+                            <div class="col-md-6 monthly-fields d-none">
+                                <label class="form-label">ราคารวมจ่ายแรกเข้า</label>
+                                <input class="form-control initial-payment-field" type="number" step="0.01" name="initialPayment" readonly>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">หมายเหตุ</label>
+                                <textarea class="form-control" rows="3" name="note"></textarea>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                            <button class="btn btn-primary" type="submit">บันทึกการเข้าพัก</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div th:replace="~{fragments/nav :: scripts}"></div>
+<script>
+    document.querySelectorAll('.guest-stay-form').forEach((form) => {
+        const priceField = form.querySelector('.price-field');
+        const priceLabel = form.querySelector('.price-label');
+        const depositField = form.querySelector('.deposit-field');
+        const initialPaymentField = form.querySelector('.initial-payment-field');
+        const monthlyFields = form.querySelectorAll('.monthly-fields');
+        const advanceMonths = form.querySelector('.advance-months');
+
+        const updatePrice = (resetBasePrice = false) => {
+            const selected = form.querySelector('.stay-type-radio:checked');
+            const isMonthly = selected.value === 'MONTHLY';
+            monthlyFields.forEach((field) => field.classList.toggle('d-none', !isMonthly));
+            const dailyPrice = Number(selected.dataset.dailyPrice || 0);
+            const monthlyPrice = Number(selected.dataset.monthlyPrice || 0);
+            const months = Number(advanceMonths?.value || 1);
+            const deposit = Number(depositField?.value || 0);
+            priceLabel.textContent = isMonthly ? 'ราคาต่อเดือน' : 'ราคาต่อวัน';
+            if (resetBasePrice || !priceField.dataset.customized) {
+                priceField.value = isMonthly ? monthlyPrice.toFixed(2) : dailyPrice.toFixed(2);
+                priceField.dataset.customized = '';
+            }
+            initialPaymentField.value = isMonthly
+                ? ((Number(priceField.value || 0) * months) + deposit).toFixed(2)
+                : Number(priceField.value || 0).toFixed(2);
+        };
+
+        form.querySelectorAll('.stay-type-radio').forEach((radio) => radio.addEventListener('change', () => updatePrice(true)));
+        advanceMonths?.addEventListener('change', updatePrice);
+        depositField?.addEventListener('input', updatePrice);
+        priceField?.addEventListener('input', () => {
+            priceField.dataset.customized = 'true';
+            updatePrice();
+        });
+        updatePrice(true);
+    });
+</script>
+</body>
+</html>

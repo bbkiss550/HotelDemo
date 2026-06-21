@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="th">
+<head th:replace="~{fragments/head :: head('ประเภทห้อง')}"></head>
+<body>
+<div id="app">
+    <div th:replace="~{fragments/nav :: nav}"></div>
+    <div id="main">
+        <header class="mb-3">
+            <a href="#" class="burger-btn d-block d-xl-none"><i class="bi bi-justify fs-3"></i></a>
+        </header>
+        <div class="page-heading d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <h3>ประเภทห้อง</h3>
+                <p class="text-subtitle text-muted mb-0">กำหนดชื่อประเภท ราคา และรายละเอียดห้องพัก</p>
+            </div>
+            <button class="btn btn-primary" data-bs-target="#roomTypeCreateModal" data-bs-toggle="modal" type="button">
+                <i class="bi bi-plus-lg me-1"></i>เพิ่มประเภทห้อง
+            </button>
+        </div>
+        <div class="page-content">
+            <section class="section">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead>
+                                <tr>
+                                    <th class="table-actions"></th>
+                                    <th>ประเภทห้อง</th>
+                                    <th>ราคาต่อคืน</th>
+                                    <th>ราคาต่อเดือน</th>
+                                    <th>รายละเอียด</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="type : ${roomTypes}">
+                                    <td class="table-actions">
+                                        <div class="d-flex gap-2">
+                                            <button class="btn btn-sm btn-warning" th:attr="data-bs-target=${'#roomTypeEditModal' + type.id}" data-bs-toggle="modal" title="แก้ไข" type="button">
+                                                <i class="bi bi-pencil-square"></i>
+                                            </button>
+                                            <form method="post" th:action="@{/room-types/{id}/delete(id=${type.id})}" onsubmit="return confirm('ลบได้เฉพาะประเภทห้องที่ยังไม่มีห้องใช้งาน ยืนยันหรือไม่?')">
+                                                <button class="btn btn-sm btn-danger" title="ลบ" type="submit"><i class="bi bi-trash"></i></button>
+                                            </form>
+                                        </div>
+                                    </td>
+                                    <td th:text="${type.name}"></td>
+                                    <td th:text="${type.nightlyPrice}"></td>
+                                    <td th:text="${type.monthlyPrice}"></td>
+                                    <td th:text="${type.detail}"></td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div class="modal fade" id="roomTypeCreateModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <form method="post" th:action="@{/room-types}" th:object="${roomType}">
+                        <div class="modal-header">
+                            <h5 class="modal-title">เพิ่มประเภทห้อง</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body row g-3">
+                            <div class="col-md-4"><label class="form-label">ชื่อประเภท</label><input class="form-control" th:field="*{name}" required></div>
+                            <div class="col-md-4"><label class="form-label">ราคาต่อคืน</label><input class="form-control" type="number" step="0.01" th:field="*{nightlyPrice}"></div>
+                            <div class="col-md-4"><label class="form-label">ราคาต่อเดือน</label><input class="form-control" type="number" step="0.01" th:field="*{monthlyPrice}"></div>
+                            <div class="col-12"><label class="form-label">รายละเอียดห้อง</label><textarea class="form-control" rows="4" th:field="*{detail}"></textarea></div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                            <button class="btn btn-primary" type="submit">บันทึก</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" th:each="type : ${roomTypes}" th:id="${'roomTypeEditModal' + type.id}" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <form method="post" th:action="@{/room-types}">
+                        <input type="hidden" name="id" th:value="${type.id}">
+                        <div class="modal-header">
+                            <h5 class="modal-title">แก้ไขประเภทห้อง</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body row g-3">
+                            <div class="col-md-4"><label class="form-label">ชื่อประเภท</label><input class="form-control" name="name" th:value="${type.name}" required></div>
+                            <div class="col-md-4"><label class="form-label">ราคาต่อคืน</label><input class="form-control" type="number" step="0.01" name="nightlyPrice" th:value="${type.nightlyPrice}"></div>
+                            <div class="col-md-4"><label class="form-label">ราคาต่อเดือน</label><input class="form-control" type="number" step="0.01" name="monthlyPrice" th:value="${type.monthlyPrice}"></div>
+                            <div class="col-12"><label class="form-label">รายละเอียดห้อง</label><textarea class="form-control" rows="4" name="detail" th:text="${type.detail}"></textarea></div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                            <button class="btn btn-primary" type="submit">บันทึก</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div th:replace="~{fragments/nav :: scripts}"></div>
+</body>
+</html>

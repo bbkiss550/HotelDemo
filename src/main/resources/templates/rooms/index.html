@@ -1,0 +1,263 @@
+<!doctype html>
+<html lang="th">
+<head th:replace="~{fragments/head :: head('จัดการห้องพัก')}"></head>
+<body>
+<div id="app">
+    <div th:replace="~{fragments/nav :: nav}"></div>
+    <div id="main">
+        <header class="mb-3">
+            <a href="#" class="burger-btn d-block d-xl-none"><i class="bi bi-justify fs-3"></i></a>
+        </header>
+        <div class="page-heading d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <h3>ผังห้องพัก</h3>
+                <p class="text-subtitle text-muted mb-0">แสดงห้องพักแบบแยกชั้นและแยกสีตามสถานะ</p>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <button class="btn btn-light-primary" data-bs-target="#floorCreateModal" data-bs-toggle="modal" type="button">
+                    <i class="bi bi-layers me-1"></i>เพิ่มชั้น
+                </button>
+                <button class="btn btn-primary" data-bs-target="#roomCreateModal" data-bs-toggle="modal" type="button" th:disabled="${selectedFloor == null}">
+                    <i class="bi bi-plus-lg me-1"></i>เพิ่มห้อง
+                </button>
+            </div>
+        </div>
+        <div class="page-content">
+            <section class="section">
+                <div class="floor-toolbar mb-3">
+                    <div class="floor-tabs" id="floorTabs">
+                        <div class="floor-item" draggable="true" th:each="floor : ${floors}" th:attr="data-floor-id=${floor.id}">
+                            <a th:href="@{/rooms(floorId=${floor.id}, q=${q})}"
+                               th:classappend="${selectedFloor != null and selectedFloor.id == floor.id} ? 'active' : ''"
+                               class="floor-tab">
+                                <i class="bi bi-grip-vertical"></i>
+                                <span th:text="${floor.name}"></span>
+                            </a>
+                            <button class="btn btn-light floor-action" data-bs-toggle="modal" th:attr="data-bs-target=${'#floorEditModal' + floor.id}" title="แก้ไขชั้น" type="button">
+                                <i class="bi bi-pencil-square"></i>
+                            </button>
+                            <form method="post" th:action="@{/rooms/floors/{id}/delete(id=${floor.id})}" onsubmit="return confirm('ยืนยันการลบชั้นนี้? ลบได้เฉพาะชั้นที่ไม่มีห้อง')">
+                                <button class="btn btn-light-danger floor-action" title="ลบชั้น" type="submit">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                    <form class="floor-search" th:if="${selectedFloor != null}">
+                        <input type="hidden" name="floorId" th:value="${selectedFloor.id}">
+                        <div class="input-group">
+                            <span class="input-group-text"><i class="bi bi-search"></i></span>
+                            <input class="form-control" name="q" placeholder="ค้นหาเลขห้อง" th:value="${q}">
+                        </div>
+                    </form>
+                </div>
+
+                <div class="alert alert-light-primary" th:if="${#lists.isEmpty(floors)}">
+                    ยังไม่มีข้อมูลชั้น กรุณาเพิ่มชั้นก่อนเพิ่มห้องพัก
+                </div>
+
+                <div class="room-grid" th:if="${selectedFloor != null}">
+                    <button class="room-tile"
+                            th:each="room : ${rooms}"
+                            th:attr="data-bs-target=${'#roomEditModal' + room.id}"
+                            data-bs-toggle="modal"
+                            type="button"
+                            th:classappend="${room.status.name() == 'AVAILABLE'} ? ' status-available' : (${roomStayTypes[room.id] == 'MONTHLY'} ? ' status-monthly' : (${roomStayTypes[room.id] == 'DAILY'} ? ' status-daily' : (${room.status.name() == 'RESERVED'} ? ' status-reserved' : ' status-maintenance')))">
+                        <span class="room-number" th:text="${room.roomNumber}"></span>
+                        <span class="room-type" th:text="${room.roomType != null ? room.roomType.name : room.legacyRoomType}"></span>
+                        <span class="room-status" th:text="${room.status.label}"></span>
+                    </button>
+                </div>
+
+                <div class="alert alert-light-secondary mt-3" th:if="${selectedFloor != null and #lists.isEmpty(rooms)}">
+                    ไม่พบห้องในชั้นนี้
+                </div>
+            </section>
+        </div>
+
+        <div class="modal fade" id="floorCreateModal" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form method="post" th:action="@{/rooms/floors}">
+                        <div class="modal-header">
+                            <h5 class="modal-title">เพิ่มชั้น</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body row g-3">
+                            <div class="col-12">
+                                <label class="form-label">ชื่อชั้น</label>
+                                <input class="form-control" name="name" placeholder="เช่น ชั้น 3" required>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">เลขชั้น</label>
+                                <input class="form-control" type="number" name="number" min="1">
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                            <button class="btn btn-primary" type="submit">บันทึก</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" th:each="floor : ${floors}" th:id="${'floorEditModal' + floor.id}" tabindex="-1">
+            <div class="modal-dialog">
+                <div class="modal-content">
+                    <form method="post" th:action="@{/rooms/floors/{id}(id=${floor.id})}">
+                        <div class="modal-header">
+                            <h5 class="modal-title">แก้ไขชั้น</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body row g-3">
+                            <div class="col-12">
+                                <label class="form-label">ชื่อชั้น</label>
+                                <input class="form-control" name="name" th:value="${floor.name}" required>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">เลขชั้น</label>
+                                <input class="form-control" type="number" name="number" min="1" th:value="${floor.number}">
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                            <button class="btn btn-primary" type="submit">บันทึก</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="roomCreateModal" tabindex="-1" th:if="${selectedFloor != null}">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <form method="post" th:action="@{/rooms}">
+                        <input type="hidden" name="floorId" th:value="${selectedFloor.id}">
+                        <div class="modal-header">
+                            <h5 class="modal-title">เพิ่มห้องพัก</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body row g-3">
+                            <div class="col-md-4"><label class="form-label">ชั้น</label><input class="form-control" th:value="${selectedFloor.name}" readonly></div>
+                            <div class="col-md-4"><label class="form-label">เลขห้อง</label><input class="form-control" name="roomNumber" required></div>
+                            <div class="col-md-4">
+                                <label class="form-label">ประเภทห้อง</label>
+                                <select class="form-select" name="roomTypeId" required>
+                                    <option th:each="type : ${roomTypes}" th:value="${type.id}" th:text="|${type.name} / ${type.nightlyPrice} ฿|"></option>
+                                </select>
+                            </div>
+                            <div class="col-12"><label class="form-label">สถานะ</label><select class="form-select" name="status"><option th:each="s : ${statuses}" th:value="${s}" th:text="${s.label}"></option></select></div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                            <button class="btn btn-primary" type="submit">บันทึก</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" th:each="room : ${rooms}" th:id="${'roomEditModal' + room.id}" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <form method="post" th:action="@{/rooms}">
+                        <input type="hidden" name="id" th:value="${room.id}">
+                        <div class="modal-header">
+                            <h5 class="modal-title">แก้ไขห้องพัก</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body row g-3">
+                            <div class="col-md-4">
+                                <label class="form-label">ชั้น</label>
+                                <select class="form-select" name="floorId">
+                                    <option th:each="floor : ${floors}" th:value="${floor.id}" th:text="${floor.name}" th:selected="${room.floor != null and floor.id == room.floor.id}"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-4"><label class="form-label">เลขห้อง</label><input class="form-control" name="roomNumber" th:value="${room.roomNumber}" required></div>
+                            <div class="col-md-4">
+                                <label class="form-label">ประเภทห้อง</label>
+                                <select class="form-select" name="roomTypeId" required>
+                                    <option th:each="type : ${roomTypes}" th:value="${type.id}" th:text="|${type.name} / ${type.nightlyPrice} ฿|" th:selected="${room.roomType != null and type.id == room.roomType.id}"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-6"><label class="form-label">ราคาต่อคืน</label><input class="form-control" th:value="${room.roomType != null ? room.roomType.nightlyPrice : room.nightlyPrice}" readonly></div>
+                            <div class="col-md-6"><label class="form-label">ราคาต่อเดือน</label><input class="form-control" th:value="${room.roomType != null ? room.roomType.monthlyPrice : room.monthlyPrice}" readonly></div>
+                            <div class="col-12"><label class="form-label">รายละเอียดประเภทห้อง</label><textarea class="form-control" rows="3" th:text="${room.roomType != null ? room.roomType.detail : ''}" readonly></textarea></div>
+                            <div class="col-12"><label class="form-label">สถานะ</label><select class="form-select" name="status"><option th:each="s : ${statuses}" th:value="${s}" th:text="${s.label}" th:selected="${s == room.status}"></option></select></div>
+                        </div>
+                        <div class="modal-footer justify-content-between">
+                            <button class="btn btn-danger" type="submit" th:formaction="@{/rooms/{id}/delete(id=${room.id})}" formmethod="post" onclick="return confirm('ยืนยันการลบห้องนี้?')">
+                                <i class="bi bi-trash me-1"></i>ลบ
+                            </button>
+                            <div class="ms-auto d-flex gap-2">
+                                <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                                <button class="btn btn-primary" type="submit">บันทึก</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div th:replace="~{fragments/nav :: scripts}"></div>
+<script>
+    (() => {
+        const tabs = document.getElementById('floorTabs');
+        if (!tabs) return;
+
+        const placeholder = document.createElement('div');
+        placeholder.className = 'floor-placeholder';
+        let dragged = null;
+
+        const getAfterElement = (container, x, y) => {
+            const items = [...container.querySelectorAll('.floor-item:not(.dragging)')];
+            return items.reduce((closest, child) => {
+                const box = child.getBoundingClientRect();
+                const offset = Math.abs(y - box.top - box.height / 2) + Math.abs(x - box.left - box.width / 2);
+                return offset < closest.offset ? { offset, element: child } : closest;
+            }, { offset: Number.POSITIVE_INFINITY, element: null }).element;
+        };
+
+        const saveOrder = () => {
+            const token = document.querySelector('meta[name="_csrf"]')?.content;
+            const header = document.querySelector('meta[name="_csrf_header"]')?.content;
+            const body = new URLSearchParams();
+            tabs.querySelectorAll('.floor-item').forEach(item => body.append('floorIds', item.dataset.floorId));
+            const headers = { 'Content-Type': 'application/x-www-form-urlencoded' };
+            if (token && header) headers[header] = token;
+            fetch('/rooms/floors/reorder', { method: 'POST', headers, body });
+        };
+
+        tabs.addEventListener('dragstart', event => {
+            dragged = event.target.closest('.floor-item');
+            if (!dragged) return;
+            dragged.classList.add('dragging');
+            event.dataTransfer.effectAllowed = 'move';
+        });
+
+        tabs.addEventListener('dragover', event => {
+            event.preventDefault();
+            const afterElement = getAfterElement(tabs, event.clientX, event.clientY);
+            if (afterElement == null) tabs.appendChild(placeholder);
+            else tabs.insertBefore(placeholder, afterElement);
+        });
+
+        tabs.addEventListener('drop', event => {
+            event.preventDefault();
+            if (!dragged || !placeholder.parentNode) return;
+            tabs.insertBefore(dragged, placeholder);
+            placeholder.remove();
+            saveOrder();
+        });
+
+        tabs.addEventListener('dragend', () => {
+            if (dragged) dragged.classList.remove('dragging');
+            placeholder.remove();
+            dragged = null;
+        });
+    })();
+</script>
+</body>
+</html>
