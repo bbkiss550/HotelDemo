@@ -48,13 +48,17 @@ public class DataSeeder {
                 admin.setFullName("ผู้ดูแลระบบ");
                 admin.setGender(other);
                 admin.setBirthDate(LocalDate.of(1990, 1, 1));
+                admin.setRole("ADMIN");
+                admin.setEnabled(true);
                 users.save(admin);
             } else {
                 users.findByUsername("admin").ifPresent(admin -> {
+                    admin.setRole(admin.getRole() == null ? "ADMIN" : admin.getRole());
+                    admin.setEnabled(admin.getEnabled() == null || admin.getEnabled());
                     if (admin.getGender() == null) {
                         admin.setGender(other);
-                        users.save(admin);
                     }
+                    users.save(admin);
                 });
             }
 
@@ -97,10 +101,12 @@ public class DataSeeder {
 
             seedMenu(menus, "bi-grid-fill", "Dashboard", "/", 10);
             seedMenu(menus, "bi-door-open-fill", "จัดการห้องพัก", "/rooms", 20);
-            seedMenu(menus, "bi-house-gear-fill", "ประเภทห้อง", "/room-types", 25);
-            seedMenu(menus, "bi-clipboard2-pulse-fill", "ข้อมูลสถานะห้องพัก", "/guests", 30);
+            seedMenu(menus, "bi-house-door-fill", "ประเภทห้อง", "/room-types", 25);
+            seedMenu(menus, "bi-clipboard-data", "ข้อมูลสถานะห้องพัก", "/guests", 30);
+            seedMenu(menus, "bi-calendar2-check-fill", "จองห้องพัก", "/bookings", 35);
             seedMenu(menus, "bi-credit-card-fill", "ชำระเงิน", "/payments", 40);
-            seedMenu(menus, "bi-person-gear", "ผู้ใช้งาน", "/users", 50);
+            seedMenu(menus, "bi-file-earmark-bar-graph-fill", "รายงาน", "/reports", 45);
+            seedMenu(menus, "bi-person-badge-fill", "ผู้ใช้งาน", "/users", 50);
         };
     }
 

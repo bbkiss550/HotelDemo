@@ -47,7 +47,7 @@ public class RoomController {
         Map<Long, String> roomStayTypes = roomList.stream()
                 .collect(Collectors.toMap(
                         com.hotel.model.Room::getId,
-                        room -> guests.findTopByRoomOrderByCheckInDateDescIdDesc(room)
+                        room -> guests.findTopByRoomAndActiveTrueOrderByCheckInDateDescIdDesc(room)
                                 .map(guest -> guest.getStayType().name())
                                 .orElse("")
                 ));

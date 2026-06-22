@@ -33,7 +33,8 @@ public class SecurityConfig {
         return username -> users.findByUsername(username)
                 .map(user -> User.withUsername(user.getUsername())
                         .password(user.getPassword())
-                        .roles("ADMIN")
+                        .roles(user.getRole() == null ? "ADMIN" : user.getRole())
+                        .disabled(Boolean.FALSE.equals(user.getEnabled()))
                         .build())
                 .orElseThrow(() -> new UsernameNotFoundException("User not found: " + username));
     }

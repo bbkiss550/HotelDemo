@@ -34,6 +34,12 @@ public class AppUser {
     @Column(name = "u_birth_date")
     private LocalDate birthDate;
 
+    @Column(name = "u_role")
+    private String role = "ADMIN";
+
+    @Column(name = "u_enabled")
+    private Boolean enabled = true;
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public String getUsername() { return username; }
@@ -46,4 +52,8 @@ public class AppUser {
     public void setGender(Gender gender) { this.gender = gender; }
     public LocalDate getBirthDate() { return birthDate; }
     public void setBirthDate(LocalDate birthDate) { this.birthDate = birthDate; }
+    public String getRole() { return role; }
+    public void setRole(String role) { this.role = role; }
+    public Boolean getEnabled() { return enabled; }
+    public void setEnabled(Boolean enabled) { this.enabled = enabled; }
 }

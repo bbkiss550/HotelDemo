@@ -72,6 +72,8 @@ public class UserController {
         user.setFullName(formUser.getFullName());
         user.setGender(genderId == null ? null : genders.findById(genderId).orElse(null));
         user.setBirthDate(formUser.getBirthDate());
+        user.setRole(formUser.getRole() == null || formUser.getRole().isBlank() ? "STAFF" : formUser.getRole());
+        user.setEnabled(formUser.getEnabled() == null || formUser.getEnabled());
         if (formUser.getPassword() != null && !formUser.getPassword().isBlank()) {
             user.setPassword(encoder.encode(formUser.getPassword()));
         }
@@ -100,5 +102,6 @@ public class UserController {
         user.setPassword("");
         model.addAttribute("user", user);
         model.addAttribute("genders", genders.findAll());
+        model.addAttribute("roles", java.util.List.of("ADMIN", "STAFF", "REPORT"));
     }
 }

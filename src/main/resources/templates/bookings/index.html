@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="th">
+<head th:replace="~{fragments/head :: head('จองห้องพัก')}"></head>
+<body>
+<div id="app">
+    <div th:replace="~{fragments/nav :: nav}"></div>
+    <div id="main">
+        <header class="mb-3"><a href="#" class="burger-btn d-block d-xl-none"><i class="bi bi-justify fs-3"></i></a></header>
+        <div class="page-heading d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div><h3>จองห้องพัก</h3><p class="text-subtitle text-muted mb-0">บันทึกการจองล่วงหน้าและมัดจำ</p></div>
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#bookingCreateModal"><i class="bi bi-plus-lg me-1"></i>เพิ่มการจอง</button>
+        </div>
+        <div class="page-content"><section class="section"><div class="card"><div class="card-body">
+            <div class="table-responsive"><table class="table table-hover mb-0">
+                <thead><tr><th>วันเข้า</th><th>วันออก</th><th>ห้อง</th><th>ลูกค้า</th><th>เบอร์โทร</th><th>ประเภท</th><th>มัดจำ</th><th>สถานะ</th><th></th></tr></thead>
+                <tbody>
+                <tr th:each="b : ${bookings}">
+                    <td th:text="${@thaiDate.format(b.checkInDate)}"></td><td th:text="${@thaiDate.format(b.checkOutDate)}"></td>
+                    <td><span class="badge bg-light-primary" th:text="${b.room.roomNumber}"></span></td>
+                    <td th:text="${b.customerName}"></td><td th:text="${b.phone}"></td><td th:text="${b.stayType.label}"></td>
+                    <td th:text="${#numbers.formatDecimal(b.depositAmount, 1, 'COMMA', 2, 'POINT')}"></td>
+                    <td><span class="badge bg-light-info" th:text="${b.status.label}"></span></td>
+                    <td><form th:if="${b.status.name() == 'CONFIRMED'}" method="post" th:action="@{/bookings/{id}/cancel(id=${b.id})}"><button class="btn btn-sm btn-light-danger" onclick="return confirm('ยกเลิกการจอง?')"><i class="bi bi-x-lg"></i></button></form></td>
+                </tr>
+                </tbody>
+            </table></div>
+        </div></div></section></div>
+        <div class="modal fade" id="bookingCreateModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content">
+            <form method="post" th:action="@{/bookings}" th:object="${booking}">
+                <div class="modal-header"><h5 class="modal-title">เพิ่มการจอง</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                <div class="modal-body row g-3">
+                    <div class="col-md-6"><label class="form-label">ชื่อลูกค้า</label><input class="form-control" th:field="*{customerName}" required></div>
+                    <div class="col-md-6"><label class="form-label">เบอร์โทร</label><input class="form-control" th:field="*{phone}"></div>
+                    <div class="col-md-4"><label class="form-label">ห้อง</label><select class="form-select" name="roomId" required><option th:each="r : ${rooms}" th:value="${r.id}" th:text="|${r.roomNumber} / ${r.status.label}|"></option></select></div>
+                    <div class="col-md-4"><label class="form-label">วันเข้า</label><input class="form-control" type="date" th:field="*{checkInDate}" required></div>
+                    <div class="col-md-4"><label class="form-label">วันออก</label><input class="form-control" type="date" th:field="*{checkOutDate}"></div>
+                    <div class="col-md-4"><label class="form-label">ประเภท</label><select class="form-select" th:field="*{stayType}"><option th:each="s : ${stayTypes}" th:value="${s}" th:text="${s.label}"></option></select></div>
+                    <div class="col-md-4"><label class="form-label">สถานะ</label><select class="form-select" th:field="*{status}"><option th:each="s : ${statuses}" th:value="${s}" th:text="${s.label}"></option></select></div>
+                    <div class="col-md-4"><label class="form-label">มัดจำ</label><input class="form-control" type="number" step="0.01" th:field="*{depositAmount}"></div>
+                    <div class="col-12"><label class="form-label">หมายเหตุ</label><textarea class="form-control" rows="3" th:field="*{note}"></textarea></div>
+                </div>
+                <div class="modal-footer"><button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">ยกเลิก</button><button class="btn btn-primary" type="submit">บันทึก</button></div>
+            </form>
+        </div></div></div>
+    </div>
+</div>
+<div th:replace="~{fragments/nav :: scripts}"></div>
+</body>
+</html>

@@ -19,4 +19,6 @@ public interface GuestRepository extends JpaRepository<Guest, Long> {
     List<Guest> search(String q);
 
     Optional<Guest> findTopByRoomOrderByCheckInDateDescIdDesc(Room room);
+    Optional<Guest> findTopByRoomAndActiveTrueOrderByCheckInDateDescIdDesc(Room room);
+    List<Guest> findByActiveTrueOrderByCheckInDateDescIdDesc();
 }

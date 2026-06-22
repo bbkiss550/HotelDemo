@@ -33,19 +33,15 @@
                             <table class="table table-hover mb-0">
                                 <thead>
                                 <tr>
+                                    <th class="table-actions"></th>
                                     <th>Username</th>
                                     <th>ชื่อ</th>
                                     <th>เพศ</th>
                                     <th>วันเกิด</th>
-                                    <th class="table-actions"></th>
                                 </tr>
                                 </thead>
                                 <tbody>
                                 <tr th:each="u : ${users}">
-                                    <td><span class="badge bg-light-primary" th:text="${u.username}"></span></td>
-                                    <td th:text="${u.fullName}"></td>
-                                    <td th:text="${u.gender != null ? u.gender.name : '-'}"></td>
-                                    <td th:text="${u.birthDate != null ? u.birthDate : '-'}"></td>
                                     <td class="table-actions">
                                         <div class="d-flex gap-2">
                                             <a class="btn btn-sm btn-warning" th:href="@{/users/{id}/edit(id=${u.id})}" title="แก้ไข"><i class="bi bi-pencil-square"></i></a>
@@ -54,6 +50,10 @@
                                             </form>
                                         </div>
                                     </td>
+                                    <td><span class="badge bg-light-primary" th:text="${u.username}"></span></td>
+                                    <td th:text="${u.fullName}"></td>
+                                    <td th:text="${u.gender != null ? u.gender.name : '-'}"></td>
+                                    <td th:text="${@thaiDate.format(u.birthDate)}"></td>
                                 </tr>
                                 </tbody>
                             </table>

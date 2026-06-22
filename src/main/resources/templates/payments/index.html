@@ -5,40 +5,35 @@
 <div id="app">
     <div th:replace="~{fragments/nav :: nav}"></div>
     <div id="main">
-        <header class="mb-3">
-            <a href="#" class="burger-btn d-block d-xl-none"><i class="bi bi-justify fs-3"></i></a>
-        </header>
+        <header class="mb-3"><a href="#" class="burger-btn d-block d-xl-none"><i class="bi bi-justify fs-3"></i></a></header>
         <div class="page-heading d-flex flex-wrap justify-content-between align-items-center gap-3">
-            <div>
-                <h3>รายการชำระเงิน</h3>
-                <p class="text-subtitle text-muted mb-0">ติดตามยอดชำระและสถานะการจ่ายเงิน</p>
-            </div>
+            <div><h3>รายการชำระเงิน</h3><p class="text-subtitle text-muted mb-0">บันทึกยอดชำระและพิมพ์ใบเสร็จ</p></div>
             <a class="btn btn-primary" th:href="@{/payments/new}"><i class="bi bi-plus-lg me-1"></i>เพิ่มรายการ</a>
         </div>
         <div class="page-content">
             <section class="section">
-                <div class="card">
-                    <div class="card-body">
-                        <div class="table-responsive">
-                            <table class="table table-hover mb-0">
-                                <thead>
-                                <tr><th>ห้อง</th><th>ยอดชำระ</th><th>วันที่ชำระ</th><th>สถานะ</th><th class="table-actions"></th></tr>
-                                </thead>
-                                <tbody>
-                                <tr th:each="p : ${payments}">
-                                    <td><span class="badge bg-light-primary" th:text="${p.room.roomNumber}"></span></td>
-                                    <td th:text="${p.amount}"></td>
-                                    <td th:text="${p.paymentDate}"></td>
-                                    <td><span class="badge bg-light-success" th:text="${p.status.label}"></span></td>
-                                    <td class="table-actions">
-                                        <a class="btn btn-sm btn-warning" th:href="@{/payments/{id}/edit(id=${p.id})}" title="แก้ไข"><i class="bi bi-pencil-square"></i></a>
-                                    </td>
-                                </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                <div class="card"><div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover mb-0">
+                            <thead><tr><th class="table-actions"></th><th>วันที่</th><th>ห้อง</th><th>ผู้พัก</th><th>ประเภท</th><th>วิธีชำระ</th><th>ยอด</th><th>สถานะ</th></tr></thead>
+                            <tbody>
+                            <tr th:each="p : ${payments}">
+                                <td class="table-actions">
+                                    <a class="btn btn-sm btn-warning" th:href="@{/payments/{id}/edit(id=${p.id})}" title="แก้ไข"><i class="bi bi-pencil-square"></i></a>
+                                    <a class="btn btn-sm btn-light-primary" th:if="${receiptsByPaymentId[p.id] != null}" th:href="@{/receipts/{id}(id=${receiptsByPaymentId[p.id].id})}" title="ใบเสร็จ"><i class="bi bi-receipt"></i></a>
+                                </td>
+                                <td th:text="${@thaiDate.format(p.paymentDate)}"></td>
+                                <td><span class="badge bg-light-primary" th:text="${p.room != null ? p.room.roomNumber : '-'}"></span></td>
+                                <td th:text="${p.guest != null ? p.guest.fullName : '-'}"></td>
+                                <td th:text="${p.paymentType}"></td>
+                                <td th:text="${p.paymentMethod}"></td>
+                                <td th:text="${#numbers.formatDecimal(p.amount, 1, 'COMMA', 2, 'POINT')}"></td>
+                                <td><span class="badge bg-light-success" th:text="${p.status.label}"></span></td>
+                            </tr>
+                            </tbody>
+                        </table>
                     </div>
-                </div>
+                </div></div>
             </section>
         </div>
     </div>
