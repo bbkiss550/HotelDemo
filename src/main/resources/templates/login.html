@@ -5,42 +5,243 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Login - BlueCatHotelDemo</title>
     <link rel="preconnect" href="https://fonts.gstatic.com">
-    <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@300;400;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" th:href="@{/mazer/dist/assets/css/bootstrap.css}">
     <link rel="stylesheet" th:href="@{/mazer/dist/assets/vendors/bootstrap-icons/bootstrap-icons.css}">
     <link rel="stylesheet" th:href="@{/mazer/dist/assets/css/app.css}">
-    <link rel="stylesheet" th:href="@{/mazer/dist/assets/css/pages/auth.css}">
+    <style>
+        :root {
+            --login-ink: #172033;
+            --login-muted: #6f7d91;
+            --login-line: #dce5ef;
+            --login-primary: #1f5f8b;
+            --login-primary-strong: #174a70;
+            --login-green: #3d9013;
+            --login-warm: #fe9a37;
+        }
+
+        html,
+        body {
+            background: #f4f7fb;
+            color: var(--login-ink);
+            font-family: "Inter", "Noto Sans Thai", system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+            letter-spacing: 0;
+            min-height: 100%;
+        }
+
+        body {
+            margin: 0;
+        }
+
+        .login-shell {
+            display: grid;
+            grid-template-columns: minmax(24rem, 31rem) minmax(0, 1fr);
+            min-height: 100vh;
+        }
+
+        .login-panel {
+            align-items: center;
+            background: #fff;
+            border-right: 1px solid var(--login-line);
+            display: flex;
+            justify-content: center;
+            padding: 3rem;
+        }
+
+        .login-form-wrap {
+            max-width: 26rem;
+            margin: auto;
+            width: 100%;
+        }
+
+        .login-brand {
+            align-items: center;
+            display: flex;
+            justify-content: center;
+            margin-bottom: 2.75rem;
+        }
+
+        .login-brand img {
+            height: 9rem;
+            object-fit: contain;
+            width: 9rem;
+        }
+
+        .login-title {
+            color: var(--login-ink);
+            font-size: 2.15rem;
+            font-weight: 800;
+            line-height: 1.15;
+            margin: 0;
+        }
+
+        .login-alert {
+            border-radius: .7rem;
+            font-weight: 700;
+            margin: 1.5rem 0 1rem;
+        }
+
+        .login-field {
+            margin-bottom: 1rem;
+        }
+
+        .login-field label {
+            color: #526176;
+            font-size: .84rem;
+            font-weight: 800;
+            margin-bottom: .45rem;
+        }
+
+        .login-input {
+            align-items: center;
+            background: #f8fafc;
+            border: 1px solid var(--login-line);
+            border-radius: .7rem;
+            display: flex;
+            min-height: 3.35rem;
+            overflow: hidden;
+            transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+        }
+
+        .login-input:focus-within {
+            background: #fff;
+            border-color: #9fc4d9;
+            box-shadow: 0 0 0 .22rem rgba(31, 95, 139, .12);
+        }
+
+        .login-input i {
+            color: var(--login-primary);
+            flex: 0 0 auto;
+            font-size: 1.05rem;
+            padding-left: 1rem;
+        }
+
+        .login-input input {
+            background: transparent;
+            border: 0;
+            color: var(--login-ink);
+            flex: 1 1 auto;
+            font-size: 1rem;
+            font-weight: 700;
+            min-width: 0;
+            outline: 0;
+            padding: .9rem 1rem;
+        }
+
+        .login-input input::placeholder {
+            color: #9aa7b6;
+            font-weight: 600;
+        }
+
+        .login-submit {
+            align-items: center;
+            background: var(--login-primary);
+            border: 0;
+            border-radius: .7rem;
+            box-shadow: 0 .8rem 1.7rem rgba(31, 95, 139, .24);
+            color: #fff;
+            display: inline-flex;
+            font-size: 1rem;
+            font-weight: 800;
+            gap: .55rem;
+            justify-content: center;
+            margin-top: .5rem;
+            min-height: 3.25rem;
+            padding: .85rem 1rem;
+            width: 100%;
+        }
+
+        .login-submit:hover,
+        .login-submit:focus {
+            background: var(--login-primary-strong);
+            color: #fff;
+        }
+
+        .login-visual {
+            background:
+                linear-gradient(90deg, rgba(12, 33, 48, .78), rgba(12, 33, 48, .35)),
+                url("/mazer/dist/assets/images/bg/4853433.jpg") center / cover no-repeat;
+            min-height: 100vh;
+        }
+
+        @media (max-width: 991px) {
+            .login-shell {
+                grid-template-columns: 1fr;
+            }
+
+            .login-panel {
+                border-right: 0;
+                min-height: 100vh;
+                padding: 2rem;
+            }
+
+            .login-visual {
+                display: none;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .login-panel {
+                padding: 1.25rem;
+            }
+
+            .login-brand {
+                margin-bottom: 2rem;
+            }
+
+            .login-brand img {
+                height: 7rem;
+                width: 7rem;
+            }
+
+            .login-title {
+                font-size: 1.85rem;
+            }
+        }
+    </style>
 </head>
 <body>
-<div id="auth">
-    <div class="row h-100">
-        <div class="col-lg-5 col-12">
-            <div id="auth-left">
-                <div class="mb-5">
-                    <div class="d-inline-flex align-items-center gap-3">
-                        <img class="auth-brand-logo" th:src="@{/mazer/dist/assets/images/logo/logo-web.png}" alt="BlueCatHotelDemo logo">
-                        <h4 class="mb-0">BlueCatHotelDemo</h4>
+<main class="login-shell">
+    <section class="login-panel">
+        <div class="login-form-wrap">
+            <div class="login-brand">
+                <img th:src="@{/mazer/dist/assets/images/logo/logo-web.png}" alt="BlueCatHotelDemo logo">
+            </div>
+
+            <h2 class="login-title">เข้าสู่ระบบ</h2>
+
+            <div class="alert alert-danger login-alert" th:if="${param.error}">
+                ชื่อผู้ใช้งานหรือรหัสผ่านไม่ถูกต้อง
+            </div>
+            <div class="alert alert-success login-alert" th:if="${param.logout}">
+                ออกจากระบบเรียบร้อยแล้ว
+            </div>
+
+            <form method="post" th:action="@{/login}">
+                <input type="hidden" th:if="${_csrf != null}" th:name="${_csrf.parameterName}" th:value="${_csrf.token}">
+                <div class="login-field">
+                    <label for="username">ผู้ใช้งาน</label>
+                    <div class="login-input">
+                        <i class="bi bi-person"></i>
+                        <input id="username" name="username" placeholder="admin" autocomplete="username" autofocus>
                     </div>
                 </div>
-                <h1 class="auth-title">เข้าสู่ระบบ</h1>
-                <p class="auth-subtitle mb-5">ระบบจัดการห้องพัก ผู้เข้าพัก และการชำระเงิน</p>
-                <form method="post" th:action="@{/login}">
-                    <div class="form-group position-relative has-icon-left mb-4">
-                        <input class="form-control form-control-xl" name="username" placeholder="ผู้ใช้งาน" autofocus>
-                        <div class="form-control-icon"><i class="bi bi-person"></i></div>
+                <div class="login-field">
+                    <label for="password">รหัสผ่าน</label>
+                    <div class="login-input">
+                        <i class="bi bi-shield-lock"></i>
+                        <input id="password" name="password" type="password" placeholder="รหัสผ่าน" autocomplete="current-password">
                     </div>
-                    <div class="form-group position-relative has-icon-left mb-4">
-                        <input class="form-control form-control-xl" name="password" type="password" placeholder="รหัสผ่าน">
-                        <div class="form-control-icon"><i class="bi bi-shield-lock"></i></div>
-                    </div>
-                    <button class="btn btn-primary btn-block btn-lg shadow-lg mt-4" type="submit">เข้าสู่ระบบ</button>
-                </form>
-            </div>
+                </div>
+                <button class="login-submit" type="submit">
+                    <i class="bi bi-box-arrow-in-right"></i>
+                    เข้าสู่ระบบ
+                </button>
+            </form>
         </div>
-        <div class="col-lg-7 d-none d-lg-block">
-            <div id="auth-right"></div>
-        </div>
-    </div>
-</div>
+    </section>
+
+    <section class="login-visual" aria-hidden="true"></section>
+</main>
 </body>
 </html>

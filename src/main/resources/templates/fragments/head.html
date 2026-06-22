@@ -59,6 +59,10 @@
             z-index: 900;
         }
 
+        .topbar-spacer {
+            flex: 1 1 auto;
+        }
+
         .topbar-title {
             color: var(--hotel-ink);
             font-size: 1rem;
@@ -142,24 +146,19 @@
             align-items: center;
             color: var(--hotel-ink);
             display: inline-flex;
-            font-size: 1.08rem;
-            font-weight: 800;
-            gap: .65rem;
-            letter-spacing: 0;
-            line-height: 1;
+            justify-content: center;
+            width: 100%;
         }
 
         .brand-mark img,
         .auth-brand-logo {
-            border: 1px solid var(--hotel-line);
-            border-radius: .75rem;
-            box-shadow: 0 .5rem 1.3rem rgba(31, 95, 139, .14);
             object-fit: contain;
         }
 
-        .brand-mark img {
-            height: 2.45rem;
-            width: 2.45rem;
+        .sidebar-wrapper .sidebar-header .brand-mark img {
+            height: 10rem;
+            max-height: none;
+            width: 10rem;
         }
 
         .auth-brand-logo {

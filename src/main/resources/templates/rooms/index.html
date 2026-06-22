@@ -143,10 +143,14 @@
                             <div class="col-md-4"><label class="form-label">เลขห้อง</label><input class="form-control" name="roomNumber" required></div>
                             <div class="col-md-4">
                                 <label class="form-label">ประเภทห้อง</label>
-                                <select class="form-select" name="roomTypeId" required>
-                                    <option th:each="type : ${roomTypes}" th:value="${type.id}" th:text="|${type.name} / ${type.nightlyPrice} ฿|"></option>
+                                <select class="form-select room-type-select" name="roomTypeId" required>
+                                    <option th:each="type : ${roomTypes}"
+                                            th:value="${type.id}"
+                                            th:text="${type.name}"
+                                            th:attr="data-detail=${type.detail},data-nightly-price=${type.nightlyPrice},data-monthly-price=${type.monthlyPrice}"></option>
                                 </select>
                             </div>
+                            <div class="col-12"><label class="form-label">รายละเอียดประเภทห้อง</label><textarea class="form-control room-type-detail" rows="3" readonly></textarea></div>
                             <div class="col-12"><label class="form-label">สถานะ</label><select class="form-select" name="status"><option th:each="s : ${statuses}" th:value="${s}" th:text="${s.label}"></option></select></div>
                         </div>
                         <div class="modal-footer">
@@ -177,13 +181,17 @@
                             <div class="col-md-4"><label class="form-label">เลขห้อง</label><input class="form-control" name="roomNumber" th:value="${room.roomNumber}" required></div>
                             <div class="col-md-4">
                                 <label class="form-label">ประเภทห้อง</label>
-                                <select class="form-select" name="roomTypeId" required>
-                                    <option th:each="type : ${roomTypes}" th:value="${type.id}" th:text="|${type.name} / ${type.nightlyPrice} ฿|" th:selected="${room.roomType != null and type.id == room.roomType.id}"></option>
+                                <select class="form-select room-type-select" name="roomTypeId" required>
+                                    <option th:each="type : ${roomTypes}"
+                                            th:value="${type.id}"
+                                            th:text="${type.name}"
+                                            th:selected="${room.roomType != null and type.id == room.roomType.id}"
+                                            th:attr="data-detail=${type.detail},data-nightly-price=${type.nightlyPrice},data-monthly-price=${type.monthlyPrice}"></option>
                                 </select>
                             </div>
-                            <div class="col-md-6"><label class="form-label">ราคาต่อคืน</label><input class="form-control" th:value="${room.roomType != null ? room.roomType.nightlyPrice : room.nightlyPrice}" readonly></div>
-                            <div class="col-md-6"><label class="form-label">ราคาต่อเดือน</label><input class="form-control" th:value="${room.roomType != null ? room.roomType.monthlyPrice : room.monthlyPrice}" readonly></div>
-                            <div class="col-12"><label class="form-label">รายละเอียดประเภทห้อง</label><textarea class="form-control" rows="3" th:text="${room.roomType != null ? room.roomType.detail : ''}" readonly></textarea></div>
+                            <div class="col-md-6"><label class="form-label">ราคาต่อคืน</label><input class="form-control room-type-nightly-price" th:value="${room.roomType != null ? room.roomType.nightlyPrice : room.nightlyPrice}" readonly></div>
+                            <div class="col-md-6"><label class="form-label">ราคาต่อเดือน</label><input class="form-control room-type-monthly-price" th:value="${room.roomType != null ? room.roomType.monthlyPrice : room.monthlyPrice}" readonly></div>
+                            <div class="col-12"><label class="form-label">รายละเอียดประเภทห้อง</label><textarea class="form-control room-type-detail" rows="3" th:text="${room.roomType != null ? room.roomType.detail : ''}" readonly></textarea></div>
                             <div class="col-12"><label class="form-label">สถานะ</label><select class="form-select" name="status"><option th:each="s : ${statuses}" th:value="${s}" th:text="${s.label}" th:selected="${s == room.status}"></option></select></div>
                         </div>
                         <div class="modal-footer justify-content-between">
@@ -204,6 +212,25 @@
 <div th:replace="~{fragments/nav :: scripts}"></div>
 <script>
     (() => {
+        const updateRoomTypeDetail = select => {
+            const option = select.selectedOptions[0];
+            const modalBody = select.closest('.modal-body');
+            if (!option || !modalBody) return;
+
+            const detail = modalBody.querySelector('.room-type-detail');
+            const nightlyPrice = modalBody.querySelector('.room-type-nightly-price');
+            const monthlyPrice = modalBody.querySelector('.room-type-monthly-price');
+
+            if (detail) detail.value = option.dataset.detail || '';
+            if (nightlyPrice) nightlyPrice.value = option.dataset.nightlyPrice || '';
+            if (monthlyPrice) monthlyPrice.value = option.dataset.monthlyPrice || '';
+        };
+
+        document.querySelectorAll('.room-type-select').forEach(select => {
+            updateRoomTypeDetail(select);
+            select.addEventListener('change', () => updateRoomTypeDetail(select));
+        });
+
         const tabs = document.getElementById('floorTabs');
         if (!tabs) return;
 
