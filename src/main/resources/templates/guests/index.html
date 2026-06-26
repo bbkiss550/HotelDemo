@@ -14,19 +14,19 @@
             <section class="section">
                 <div class="floor-toolbar mb-3">
                     <div class="floor-tabs">
-                        <a th:each="floor : ${floors}" th:href="@{/guests(floorId=${floor.id}, q=${q})}" th:classappend="${selectedFloor != null and selectedFloor.id == floor.id} ? 'active' : ''" class="floor-tab">
+                        <a th:each="floor : ${floors}" href="#" th:attr="data-floor-id=${floor.id}" th:classappend="${selectedFloor != null and selectedFloor.id == floor.id} ? 'active' : ''" class="floor-tab">
                             <i class="bi bi-building"></i><span th:text="${floor.name}"></span>
                         </a>
                     </div>
                     <form class="floor-search" th:if="${selectedFloor != null}">
-                        <input type="hidden" name="floorId" th:value="${selectedFloor.id}">
                         <div class="input-group"><span class="input-group-text"><i class="bi bi-search"></i></span><input class="form-control" name="q" placeholder="ค้นหาเลขห้อง" th:value="${q}"></div>
                     </form>
                 </div>
 
-                <div class="room-grid" th:if="${selectedFloor != null}">
+                <div class="room-grid floor-room-panel" th:each="floor : ${floors}" th:attr="data-floor-id=${floor.id}" th:classappend="${selectedFloor == null or selectedFloor.id != floor.id} ? ' d-none' : ''">
                     <button class="room-tile guest-room-tile"
                             th:each="room : ${rooms}"
+                            th:if="${room.floor != null and room.floor.id == floor.id}"
                             th:attr="data-bs-target=${'#guestRoomModal' + room.id}"
                             data-bs-toggle="modal"
                             type="button"
@@ -35,6 +35,14 @@
                         <span class="room-type" th:text="${room.roomType != null ? room.roomType.name : room.legacyRoomType}"></span>
                         <span class="room-status" th:text="${room.status.label}"></span>
                     </button>
+                </div>
+
+                <div class="alert alert-light-secondary mt-3 floor-empty-panel"
+                     th:each="floor : ${floors}"
+                     th:attr="data-floor-id=${floor.id}"
+                     th:classappend="${selectedFloor == null or selectedFloor.id != floor.id} ? ' d-none' : ''"
+                     th:if="${rooms.?[floor != null and floor.id == #vars.floor.id].isEmpty()}">
+                    ไม่พบห้องในชั้นนี้
                 </div>
             </section>
         </div>
@@ -45,31 +53,68 @@
                     <div th:if="${room.status.name() == 'AVAILABLE'}">
                         <form class="guest-stay-form" method="post" th:action="@{/guests}">
                             <input type="hidden" name="roomId" th:value="${room.id}">
-                            <input type="hidden" name="floorId" th:value="${selectedFloor.id}">
-                            <div class="modal-header"><h5 class="modal-title">บันทึกเข้าพัก ห้อง <span th:text="${room.roomNumber}"></span></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                            <input type="hidden" name="floorId" th:value="${room.floor != null ? room.floor.id : null}">
+                            <div class="modal-header"><h5 class="modal-title">บันทึกเข้าพัก <span class="modal-room-number" th:text="${room.roomNumber}"></span></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                             <div class="modal-body row g-3">
-                                <div class="col-md-6"><label class="form-label">ชื่อผู้พัก</label><input class="form-control" name="fullName" required></div>
-                                <div class="col-md-6"><label class="form-label">เบอร์โทร</label><input class="form-control" name="phone"></div>
-                                <div class="col-md-6"><label class="form-label">เลขบัตรประชาชน</label><input class="form-control" name="idCard"></div>
-                                <div class="col-md-6"><label class="form-label">วันที่เข้า</label><input class="form-control" type="date" name="checkInDate"></div>
-                                <div class="col-md-6"><label class="form-label">วันที่ออก</label><input class="form-control" type="date" name="checkOutDate"></div>
-                                <div class="col-md-6"><label class="form-label">ที่อยู่</label><input class="form-control" name="address"></div>
+                                <div class="col-12"><label class="form-label">ชื่อผู้พัก</label><input class="form-control" name="fullName" required></div>
+                                <div class="col-md-4">
+                                    <label class="form-label d-flex justify-content-between gap-2">
+                                        <span>เบอร์โทร</span>
+                                        <span class="text-muted phone-counter">0/10</span>
+                                    </label>
+                                    <input class="form-control phone-field" name="phone" inputmode="numeric" maxlength="10" pattern="[0-9]{10}">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label d-flex justify-content-between gap-2">
+                                        <span>เลขบัตรประชาชน</span>
+                                        <span class="text-muted id-card-counter">0/13</span>
+                                    </label>
+                                    <input class="form-control id-card-field" name="idCard" inputmode="numeric" maxlength="13" pattern="[0-9]{13}">
+                                </div>
+                                <div class="col-md-4"><label class="form-label">สัญชาติ</label><input class="form-control" name="nationality" value="ไทย"></div>
                                 <div class="col-12">
                                     <label class="form-label d-block">รูปแบบการพัก</label>
-                                    <div class="form-check form-check-inline"><input class="form-check-input stay-type-radio" type="radio" name="stayType" value="DAILY" checked th:attr="data-daily-price=${room.roomType != null ? room.roomType.nightlyPrice : room.nightlyPrice},data-monthly-price=${room.roomType != null ? room.roomType.monthlyPrice : room.monthlyPrice}"><label class="form-check-label">รายวัน</label></div>
-                                    <div class="form-check form-check-inline"><input class="form-check-input stay-type-radio" type="radio" name="stayType" value="MONTHLY" th:attr="data-daily-price=${room.roomType != null ? room.roomType.nightlyPrice : room.nightlyPrice},data-monthly-price=${room.roomType != null ? room.roomType.monthlyPrice : room.monthlyPrice}"><label class="form-check-label">รายเดือน</label></div>
+                                    <div class="stay-type-choices">
+                                        <label class="stay-type-choice">
+                                            <input class="stay-type-radio" type="radio" name="stayType" value="DAILY" checked th:attr="data-daily-price=${room.roomType != null ? room.roomType.nightlyPrice : room.nightlyPrice},data-monthly-price=${room.roomType != null ? room.roomType.monthlyPrice : room.monthlyPrice}">
+                                            <span class="stay-type-card"><i class="bi bi-sun"></i><span>รายวัน</span></span>
+                                        </label>
+                                        <label class="stay-type-choice">
+                                            <input class="stay-type-radio" type="radio" name="stayType" value="MONTHLY" th:attr="data-daily-price=${room.roomType != null ? room.roomType.nightlyPrice : room.nightlyPrice},data-monthly-price=${room.roomType != null ? room.roomType.monthlyPrice : room.monthlyPrice}">
+                                            <span class="stay-type-card"><i class="bi bi-calendar3"></i><span>รายเดือน</span></span>
+                                        </label>
+                                    </div>
                                 </div>
-                                <div class="col-md-4 monthly-fields d-none"><label class="form-label">จ่ายล่วงหน้า</label><select class="form-select advance-months" name="advanceMonths"><option th:each="month : ${#numbers.sequence(1,12)}" th:value="${month}" th:text="${month + ' เดือน'}"></option></select></div>
-                                <div class="col-md-4 monthly-fields d-none"><label class="form-label">ค่าประกัน</label><input class="form-control deposit-field" type="number" step="0.01" name="deposit" value="0"></div>
-                                <div class="col-md-4"><label class="form-label price-label">ราคาต่อวัน</label><input class="form-control price-field" type="number" step="0.01" name="price" th:value="${room.roomType != null ? room.roomType.nightlyPrice : room.nightlyPrice}"></div>
-                                <div class="col-md-6"><label class="form-label">รวมจ่ายแรกเข้า</label><input class="form-control initial-payment-field" type="number" step="0.01" name="initialPayment" readonly></div>
+                                <div class="col-12 daily-fields">
+                                    <label class="form-label">วันที่เข้าพัก / วันที่ออก</label>
+                                    <div class="date-range-field">
+                                        <div class="date-box">
+                                            <i class="bi bi-calendar-check"></i>
+                                            <input class="daily-control hotel-calendar-value" type="hidden" name="checkInDate" data-default-today="true">
+                                            <input class="form-control hotel-calendar-input" type="text" readonly data-calendar-for="checkInDate">
+                                        </div>
+                                        <div class="date-box">
+                                            <i class="bi bi-calendar-x"></i>
+                                            <input class="daily-control hotel-calendar-value" type="hidden" name="checkOutDate" data-default-today="true">
+                                            <input class="form-control hotel-calendar-input" type="text" readonly data-calendar-for="checkOutDate">
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-3 daily-fields"><label class="form-label">จำนวนวัน</label><input class="form-control daily-days-field daily-control" type="number" value="1" readonly></div>
+                                <div class="col-md-3 daily-fields"><label class="form-label">ราคาต่อวัน</label><input class="form-control price-field daily-control" type="number" step="0.01" name="price" th:value="${room.roomType != null ? room.roomType.nightlyPrice : room.nightlyPrice}"></div>
+                                <div class="col-md-3 daily-fields"><label class="form-label">ค่าประกัน</label><input class="form-control deposit-field daily-control" type="number" step="0.01" name="deposit" value="0"></div>
+                                <div class="col-md-3 daily-fields"><label class="form-label">รวมชำระ</label><input class="form-control initial-payment-field daily-control" type="number" step="0.01" name="initialPayment" readonly></div>
+                                <div class="col-md-3 monthly-fields d-none"><label class="form-label">จ่ายล่วงหน้า</label><select class="form-select advance-months monthly-control" name="advanceMonths" disabled><option th:each="month : ${#numbers.sequence(1,12)}" th:value="${month}" th:text="${month + ' เดือน'}"></option></select></div>
+                                <div class="col-md-3 monthly-fields d-none"><label class="form-label">ค่าประกัน</label><input class="form-control deposit-field monthly-control" type="number" step="0.01" name="deposit" value="0" disabled></div>
+                                <div class="col-md-3 monthly-fields d-none"><label class="form-label">ราคาต่อเดือน</label><input class="form-control price-field monthly-control" type="number" step="0.01" name="price" th:value="${room.roomType != null ? room.roomType.monthlyPrice : room.monthlyPrice}" disabled></div>
+                                <div class="col-md-3 monthly-fields d-none"><label class="form-label">รวมจ่ายแรกเข้า</label><input class="form-control initial-payment-field monthly-control" type="number" step="0.01" name="initialPayment" readonly disabled></div>
                                 <div class="col-12"><label class="form-label">หมายเหตุ</label><textarea class="form-control" rows="3" name="note"></textarea></div>
                             </div>
                             <div class="modal-footer"><button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">ยกเลิก</button><button class="btn btn-primary" type="submit">บันทึกเข้าพัก</button></div>
                         </form>
                     </div>
                     <div th:unless="${room.status.name() == 'AVAILABLE'}" th:with="guest=${activeGuests[room.id]}">
-                        <div class="modal-header"><h5 class="modal-title">ห้อง <span th:text="${room.roomNumber}"></span></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+                        <div class="modal-header"><h5 class="modal-title">ห้อง <span class="modal-room-number" th:text="${room.roomNumber}"></span></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                         <div class="modal-body" th:if="${guest != null}">
                             <div class="row g-3">
                                 <div class="col-md-6"><strong>ผู้พัก</strong><div th:text="${guest.fullName}"></div></div>
@@ -82,7 +127,7 @@
                         <div class="modal-body" th:if="${guest == null}">ไม่มีข้อมูลผู้พักที่ยัง active สำหรับห้องนี้</div>
                         <div class="modal-footer justify-content-between">
                             <form th:if="${guest != null}" method="post" th:action="@{/guests/{id}/checkout(id=${guest.id})}">
-                                <input type="hidden" name="floorId" th:value="${selectedFloor.id}">
+                                <input type="hidden" name="floorId" th:value="${room.floor != null ? room.floor.id : null}">
                                 <button class="btn btn-danger" type="submit" onclick="return confirm('ยืนยันเช็กเอาต์?')"><i class="bi bi-box-arrow-right me-1"></i>เช็กเอาต์</button>
                             </form>
                             <div class="ms-auto d-flex gap-2">
@@ -99,29 +144,196 @@
 </div>
 <div th:replace="~{fragments/nav :: scripts}"></div>
 <script>
+const showGuestWarningToast = (message) => {
+    window.showAlert?.('warning', message);
+};
+
 document.querySelectorAll('.guest-stay-form').forEach((form) => {
-    const priceField = form.querySelector('.price-field');
-    const priceLabel = form.querySelector('.price-label');
-    const depositField = form.querySelector('.deposit-field');
-    const initialPaymentField = form.querySelector('.initial-payment-field');
+    const thaiMonths = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+    const thaiWeekdays = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
+    const pad = value => String(value).padStart(2, '0');
+    const toIsoDate = date => `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`;
+    const formatDisplayDate = date => `${pad(date.getDate())}/${pad(date.getMonth() + 1)}/${date.getFullYear() + 543}`;
+    const parseIsoDate = value => {
+        const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value || '');
+        return match ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])) : null;
+    };
+    const sameDate = (a, b) => a && b && a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+    const addDays = (date, days) => {
+        const next = new Date(date);
+        next.setDate(next.getDate() + days);
+        return next;
+    };
+    const createCalendar = (hiddenInput, displayInput) => {
+        if (!hiddenInput.value && hiddenInput.dataset.defaultToday === 'true') {
+            hiddenInput.value = toIsoDate(hiddenInput.name === 'checkOutDate' ? addDays(new Date(), 1) : new Date());
+        }
+        let selectedDate = parseIsoDate(hiddenInput.value) || new Date();
+        let viewDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+        displayInput.value = formatDisplayDate(selectedDate);
+
+        const popup = document.createElement('div');
+        popup.className = 'hotel-calendar-popup d-none';
+        displayInput.closest('.date-box').appendChild(popup);
+
+        const selectDate = date => {
+            selectedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+            hiddenInput.value = toIsoDate(selectedDate);
+            displayInput.value = formatDisplayDate(selectedDate);
+            hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
+            popup.classList.add('d-none');
+            render();
+        };
+        hiddenInput.setCalendarDate = selectDate;
+
+        const render = () => {
+            const start = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1);
+            start.setDate(start.getDate() - start.getDay());
+            const today = new Date();
+            popup.innerHTML = `
+                <div class="hotel-calendar-header">
+                    <button class="hotel-calendar-nav" type="button" data-nav="-1">‹</button>
+                    <div class="hotel-calendar-title">${thaiMonths[viewDate.getMonth()]} ${viewDate.getFullYear() + 543}</div>
+                    <button class="hotel-calendar-nav" type="button" data-nav="1">›</button>
+                </div>
+                <div class="hotel-calendar-weekdays">${thaiWeekdays.map(day => `<span>${day}</span>`).join('')}</div>
+                <div class="hotel-calendar-grid"></div>
+                <div class="hotel-calendar-footer"><button class="hotel-calendar-today" type="button">วันนี้</button></div>
+            `;
+            const grid = popup.querySelector('.hotel-calendar-grid');
+            for (let index = 0; index < 42; index++) {
+                const date = new Date(start);
+                date.setDate(start.getDate() + index);
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'hotel-calendar-day';
+                if (date.getMonth() !== viewDate.getMonth()) button.classList.add('is-muted');
+                if (date.getDay() === 0) button.classList.add('is-weekend');
+                if (sameDate(date, selectedDate)) button.classList.add('is-selected');
+                button.textContent = date.getDate();
+                button.addEventListener('click', () => selectDate(date));
+                grid.appendChild(button);
+            }
+            popup.querySelectorAll('[data-nav]').forEach(button => {
+                button.addEventListener('click', () => {
+                    viewDate.setMonth(viewDate.getMonth() + Number(button.dataset.nav));
+                    render();
+                });
+            });
+            popup.querySelector('.hotel-calendar-today').addEventListener('click', () => {
+                const now = new Date();
+                viewDate = new Date(now.getFullYear(), now.getMonth(), 1);
+                selectDate(now);
+            });
+        };
+
+        displayInput.addEventListener('click', () => {
+            document.querySelectorAll('.hotel-calendar-popup').forEach(item => {
+                if (item !== popup) item.classList.add('d-none');
+            });
+            popup.classList.toggle('d-none');
+        });
+        render();
+    };
+    form.querySelectorAll('.hotel-calendar-input').forEach(displayInput => {
+        const hiddenInput = form.querySelector(`.hotel-calendar-value[name="${displayInput.dataset.calendarFor}"]`);
+        if (hiddenInput) createCalendar(hiddenInput, displayInput);
+    });
+    document.addEventListener('click', event => {
+        if (!event.target.closest('.date-box')) {
+            document.querySelectorAll('.hotel-calendar-popup').forEach(item => item.classList.add('d-none'));
+        }
+    });
+
+    form.querySelectorAll('.phone-field, .id-card-field').forEach((input) => {
+        input.addEventListener('input', () => {
+            input.value = input.value.replace(/\D/g, '').slice(0, Number(input.maxLength) || undefined);
+        });
+    });
+    const phoneField = form.querySelector('.phone-field');
+    const phoneCounter = form.querySelector('.phone-counter');
+    const updatePhoneCounter = () => {
+        if (phoneCounter && phoneField) phoneCounter.textContent = `${phoneField.value.length}/10`;
+    };
+    phoneField?.addEventListener('input', updatePhoneCounter);
+    updatePhoneCounter();
+
+    const idCardField = form.querySelector('.id-card-field');
+    const idCardCounter = form.querySelector('.id-card-counter');
+    const updateIdCardCounter = () => {
+        if (idCardCounter && idCardField) idCardCounter.textContent = `${idCardField.value.length}/13`;
+    };
+    idCardField?.addEventListener('input', updateIdCardCounter);
+    updateIdCardCounter();
+
+    const dailyFields = form.querySelectorAll('.daily-fields');
+    const dailyControls = form.querySelectorAll('.daily-control');
     const monthlyFields = form.querySelectorAll('.monthly-fields');
+    const monthlyControls = form.querySelectorAll('.monthly-control');
     const advanceMonths = form.querySelector('.advance-months');
+    const dailyDaysField = form.querySelector('.daily-days-field');
+    const getDateRange = () => ({
+        checkIn: parseIsoDate(form.querySelector('[name="checkInDate"]')?.value),
+        checkOut: parseIsoDate(form.querySelector('[name="checkOutDate"]')?.value)
+    });
+    const validateDateRange = (showWarning = false) => {
+        const { checkIn, checkOut } = getDateRange();
+        const invalid = checkIn && checkOut && checkOut < checkIn;
+        if (invalid && showWarning) {
+            showGuestWarningToast('วันที่ออกห้ามน้อยกว่าวันที่เข้าพัก');
+            form.querySelector('[name="checkOutDate"]')?.setCalendarDate?.(addDays(new Date(), 1));
+        }
+        return !invalid;
+    };
+    const calculateDailyDays = () => {
+        const { checkIn, checkOut } = getDateRange();
+        if (!checkIn || !checkOut) return 1;
+        const millisecondsPerDay = 24 * 60 * 60 * 1000;
+        return Math.max(1, Math.round((checkOut - checkIn) / millisecondsPerDay));
+    };
     const updatePrice = (resetBasePrice = false) => {
         const selected = form.querySelector('.stay-type-radio:checked');
         const isMonthly = selected.value === 'MONTHLY';
+        const priceField = form.querySelector(isMonthly ? '.monthly-control.price-field' : '.daily-control.price-field');
+        const depositField = form.querySelector(isMonthly ? '.monthly-control.deposit-field' : '.daily-control.deposit-field');
+        const initialPaymentField = form.querySelector(isMonthly ? '.monthly-control.initial-payment-field' : '.daily-control.initial-payment-field');
+        dailyFields.forEach((field) => field.classList.toggle('d-none', isMonthly));
         monthlyFields.forEach((field) => field.classList.toggle('d-none', !isMonthly));
+        dailyControls.forEach((field) => field.disabled = isMonthly);
+        monthlyControls.forEach((field) => field.disabled = !isMonthly);
         const base = Number(isMonthly ? selected.dataset.monthlyPrice || 0 : selected.dataset.dailyPrice || 0);
         const months = Number(advanceMonths?.value || 1);
         const deposit = Number(depositField?.value || 0);
-        priceLabel.textContent = isMonthly ? 'ราคาต่อเดือน' : 'ราคาต่อวัน';
+        const dailyDays = calculateDailyDays();
+        if (dailyDaysField) dailyDaysField.value = dailyDays;
         if (resetBasePrice || !priceField.dataset.customized) priceField.value = base.toFixed(2);
-        initialPaymentField.value = isMonthly ? ((Number(priceField.value || 0) * months) + deposit).toFixed(2) : Number(priceField.value || 0).toFixed(2);
+        initialPaymentField.value = isMonthly ? ((Number(priceField.value || 0) * months) + deposit).toFixed(2) : ((Number(priceField.value || 0) * dailyDays) + deposit).toFixed(2);
     };
     form.querySelectorAll('.stay-type-radio').forEach((radio) => radio.addEventListener('change', () => updatePrice(true)));
     advanceMonths?.addEventListener('change', updatePrice);
-    depositField?.addEventListener('input', updatePrice);
-    priceField?.addEventListener('input', () => { priceField.dataset.customized = 'true'; updatePrice(); });
+    form.querySelectorAll('[name="checkInDate"], [name="checkOutDate"]').forEach((field) => field.addEventListener('change', () => {
+        validateDateRange(true);
+        updatePrice();
+    }));
+    form.querySelectorAll('.deposit-field').forEach((field) => field.addEventListener('input', updatePrice));
+    form.querySelectorAll('.price-field').forEach((field) => field.addEventListener('input', () => { field.dataset.customized = 'true'; updatePrice(); }));
+    form.addEventListener('submit', (event) => {
+        if (!validateDateRange(true)) {
+            event.preventDefault();
+        }
+    });
     updatePrice(true);
+});
+
+document.querySelectorAll('.floor-tab[data-floor-id]').forEach((tab) => {
+    tab.addEventListener('click', (event) => {
+        event.preventDefault();
+        const floorId = tab.dataset.floorId;
+        document.querySelectorAll('.floor-tab[data-floor-id]').forEach((item) => item.classList.toggle('active', item === tab));
+        document.querySelectorAll('.floor-room-panel, .floor-empty-panel').forEach((panel) => {
+            panel.classList.toggle('d-none', panel.dataset.floorId !== floorId);
+        });
+    });
 });
 </script>
 </body>

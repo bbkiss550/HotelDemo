@@ -12,6 +12,7 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 @RequestMapping("/rooms")
@@ -34,16 +35,14 @@ public class RoomController {
         var selectedFloor = floorId == null
                 ? floorList.stream().findFirst().orElse(null)
                 : floors.findById(floorId).orElse(floorList.stream().findFirst().orElse(null));
+        var roomList = q.isBlank()
+                ? rooms.findAllByOrderByRoomNumber()
+                : rooms.findByRoomNumberContainingIgnoreCaseOrderByRoomNumber(q);
 
         model.addAttribute("q", q);
         model.addAttribute("floors", floorList);
         model.addAttribute("roomTypes", roomTypes.findAllByOrderByNameAsc());
         model.addAttribute("selectedFloor", selectedFloor);
-        var roomList = selectedFloor == null
-                ? java.util.List.<com.hotel.model.Room>of()
-                : q.isBlank()
-                        ? rooms.findByFloorOrderByRoomNumber(selectedFloor)
-                        : rooms.findByFloorAndRoomNumberContainingIgnoreCaseOrderByRoomNumber(selectedFloor, q);
         Map<Long, String> roomStayTypes = roomList.stream()
                 .collect(Collectors.toMap(
                         com.hotel.model.Room::getId,
@@ -77,18 +76,26 @@ public class RoomController {
     }
 
     @PostMapping
-    String save(@ModelAttribute Room room, @RequestParam Long floorId, @RequestParam Long roomTypeId) {
-        room.setFloor(floors.findById(floorId).orElseThrow());
+    String save(@ModelAttribute Room room, @RequestParam Long floorId, @RequestParam Long roomTypeId, RedirectAttributes redirect) {
+        Room savedRoom = room.getId() == null ? room : rooms.findById(room.getId()).orElseThrow();
+        boolean isNew = savedRoom.getId() == null;
+        savedRoom.setRoomNumber(room.getRoomNumber());
+        savedRoom.setFloor(floors.findById(floorId).orElseThrow());
         var roomType = roomTypes.findById(roomTypeId).orElseThrow();
-        room.setRoomType(roomType);
-        room.setNightlyPrice(roomType.getNightlyPrice());
-        room.setMonthlyPrice(roomType.getMonthlyPrice());
-        rooms.save(room);
+        savedRoom.setRoomType(roomType);
+        savedRoom.setNightlyPrice(roomType.getNightlyPrice());
+        savedRoom.setMonthlyPrice(roomType.getMonthlyPrice());
+        if (savedRoom.getStatus() == null) {
+            savedRoom.setStatus(RoomStatus.AVAILABLE);
+        }
+        rooms.save(savedRoom);
+        redirect.addFlashAttribute("message", (isNew ? "บันทึกห้อง " : "แก้ไขห้อง ") + savedRoom.getRoomNumber() + " เรียบร้อย");
+        redirect.addFlashAttribute("flashType", isNew ? "success" : "edit");
         return "redirect:/rooms?floorId=" + floorId;
     }
 
     @PostMapping("/floors")
-    String saveFloor(@RequestParam String name, @RequestParam(required = false) Integer number) {
+    String saveFloor(@RequestParam String name, @RequestParam(required = false) Integer number, RedirectAttributes redirect) {
         var floor = number == null ? new com.hotel.model.Floor() : floors.findByNumber(number).orElseGet(com.hotel.model.Floor::new);
         floor.setName(name);
         floor.setNumber(number);
@@ -96,23 +103,33 @@ public class RoomController {
             floor.setSortOrder((floors.findAllByOrderBySortOrderAscNumberAscNameAsc().size() + 1) * 10);
         }
         floors.save(floor);
+        redirect.addFlashAttribute("message", "บันทึกชั้น " + floor.getName() + " เรียบร้อย");
+        redirect.addFlashAttribute("flashType", "success");
         return "redirect:/rooms?floorId=" + floor.getId();
     }
 
     @PostMapping("/floors/{id}")
-    String updateFloor(@PathVariable Long id, @RequestParam String name, @RequestParam(required = false) Integer number) {
+    String updateFloor(@PathVariable Long id, @RequestParam String name, @RequestParam(required = false) Integer number, RedirectAttributes redirect) {
         var floor = floors.findById(id).orElseThrow();
         floor.setName(name);
         floor.setNumber(number);
         floors.save(floor);
+        redirect.addFlashAttribute("message", "แก้ไขชั้น " + floor.getName() + " เรียบร้อย");
+        redirect.addFlashAttribute("flashType", "edit");
         return "redirect:/rooms?floorId=" + floor.getId();
     }
 
     @PostMapping("/floors/{id}/delete")
-    String deleteFloor(@PathVariable Long id) {
+    String deleteFloor(@PathVariable Long id, RedirectAttributes redirect) {
         var floor = floors.findById(id).orElseThrow();
         if (rooms.countByFloor(floor) == 0) {
+            String floorName = floor.getName();
             floors.delete(floor);
+            redirect.addFlashAttribute("message", "ลบชั้น " + floorName + " เรียบร้อย");
+            redirect.addFlashAttribute("flashType", "delete");
+        } else {
+            redirect.addFlashAttribute("error", "ลบชั้นไม่ได้ เพราะยังมีห้องอยู่ในชั้นนี้");
+            redirect.addFlashAttribute("flashType", "warning");
         }
         return "redirect:/rooms";
     }
@@ -129,8 +146,11 @@ public class RoomController {
     }
 
     @PostMapping("/{id}/delete")
-    String delete(@PathVariable Long id) {
+    String delete(@PathVariable Long id, RedirectAttributes redirect) {
+        String roomNumber = rooms.findById(id).map(Room::getRoomNumber).orElse("");
         rooms.deleteById(id);
+        redirect.addFlashAttribute("message", "ลบห้อง " + roomNumber + " เรียบร้อย");
+        redirect.addFlashAttribute("flashType", "delete");
         return "redirect:/rooms";
     }
 }

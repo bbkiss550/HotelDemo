@@ -10,11 +10,13 @@ import com.hotel.repository.RoomRepository;
 import com.hotel.service.AuditService;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 import java.util.HashMap;
 import java.util.Map;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 @RequestMapping("/guests")
@@ -40,11 +42,9 @@ public class GuestController {
                 ? floorList.stream().findFirst().orElse(null)
                 : floors.findById(floorId).orElse(floorList.stream().findFirst().orElse(null));
 
-        var roomList = selectedFloor == null
-                ? java.util.List.<com.hotel.model.Room>of()
-                : q.isBlank()
-                        ? rooms.findByFloorOrderByRoomNumber(selectedFloor)
-                        : rooms.findByFloorAndRoomNumberContainingIgnoreCaseOrderByRoomNumber(selectedFloor, q);
+        var roomList = q.isBlank()
+                ? rooms.findAllByOrderByRoomNumber()
+                : rooms.findByRoomNumberContainingIgnoreCaseOrderByRoomNumber(q);
         Map<Long, Guest> activeGuests = new HashMap<>();
         for (var room : roomList) {
             guests.findTopByRoomAndActiveTrueOrderByCheckInDateDescIdDesc(room)
@@ -61,7 +61,7 @@ public class GuestController {
     }
 
     @PostMapping
-    String save(@ModelAttribute Guest guest, @RequestParam Long roomId, @RequestParam(required = false) Long floorId) {
+    String save(@ModelAttribute Guest guest, @RequestParam Long roomId, @RequestParam(required = false) Long floorId, RedirectAttributes redirect) {
         var room = rooms.findById(roomId).orElseThrow();
         guest.setRoom(room);
         guest.setActive(true);
@@ -73,11 +73,13 @@ public class GuestController {
         room.setStatus(guest.getStayType() == StayType.MONTHLY ? RoomStatus.MONTHLY_OCCUPIED : RoomStatus.DAILY_OCCUPIED);
         rooms.save(room);
         audit.record("CHECK_IN", "Room " + room.getRoomNumber() + " guest " + guest.getFullName());
+        redirect.addFlashAttribute("message", "บันทึกเข้าพักห้อง " + room.getRoomNumber() + " เรียบร้อย");
+        redirect.addFlashAttribute("flashType", "success");
         return floorId == null ? "redirect:/guests" : "redirect:/guests?floorId=" + floorId;
     }
 
     @PostMapping("/{id}/checkout")
-    String checkout(@PathVariable Long id, @RequestParam(required = false) Long floorId) {
+    String checkout(@PathVariable Long id, @RequestParam(required = false) Long floorId, RedirectAttributes redirect) {
         var guest = guests.findById(id).orElseThrow();
         guest.setActive(false);
         if (guest.getCheckOutDate() == null) {
@@ -88,6 +90,8 @@ public class GuestController {
         room.setStatus(RoomStatus.AVAILABLE);
         rooms.save(room);
         audit.record("CHECK_OUT", "Room " + room.getRoomNumber() + " guest " + guest.getFullName());
+        redirect.addFlashAttribute("message", "เช็กเอาต์ห้อง " + room.getRoomNumber() + " เรียบร้อย");
+        redirect.addFlashAttribute("flashType", "delete");
         return floorId == null ? "redirect:/guests" : "redirect:/guests?floorId=" + floorId;
     }
 
@@ -102,8 +106,13 @@ public class GuestController {
     private void calculateGuestAmounts(Guest guest) {
         if (guest.getStayType() == StayType.DAILY) {
             guest.setAdvanceMonths(null);
-            guest.setDeposit(BigDecimal.ZERO);
-            guest.setInitialPayment(guest.getPrice() == null ? BigDecimal.ZERO : guest.getPrice());
+            BigDecimal price = guest.getPrice() == null ? BigDecimal.ZERO : guest.getPrice();
+            BigDecimal deposit = guest.getDeposit() == null ? BigDecimal.ZERO : guest.getDeposit();
+            long days = 1;
+            if (guest.getCheckInDate() != null && guest.getCheckOutDate() != null) {
+                days = Math.max(1, ChronoUnit.DAYS.between(guest.getCheckInDate(), guest.getCheckOutDate()));
+            }
+            guest.setInitialPayment(price.multiply(BigDecimal.valueOf(days)).add(deposit));
         } else {
             BigDecimal price = guest.getPrice() == null ? BigDecimal.ZERO : guest.getPrice();
             BigDecimal deposit = guest.getDeposit() == null ? BigDecimal.ZERO : guest.getDeposit();

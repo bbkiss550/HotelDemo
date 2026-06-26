@@ -10,7 +10,7 @@
         </header>
         <div class="page-heading d-flex flex-wrap justify-content-between align-items-center gap-3">
             <div>
-                <h3>ผังห้องพัก</h3>
+                <h3>จัดการห้องพัก</h3>
                 <p class="text-subtitle text-muted mb-0">แสดงห้องพักแบบแยกชั้นและแยกสีตามสถานะ</p>
             </div>
             <div class="d-flex flex-wrap gap-2">
@@ -27,7 +27,8 @@
                 <div class="floor-toolbar mb-3">
                     <div class="floor-tabs" id="floorTabs">
                         <div class="floor-item" draggable="true" th:each="floor : ${floors}" th:attr="data-floor-id=${floor.id}">
-                            <a th:href="@{/rooms(floorId=${floor.id}, q=${q})}"
+                            <a href="#"
+                               th:attr="data-floor-id=${floor.id},data-floor-name=${floor.name}"
                                th:classappend="${selectedFloor != null and selectedFloor.id == floor.id} ? 'active' : ''"
                                class="floor-tab">
                                 <i class="bi bi-grip-vertical"></i>
@@ -44,7 +45,6 @@
                         </div>
                     </div>
                     <form class="floor-search" th:if="${selectedFloor != null}">
-                        <input type="hidden" name="floorId" th:value="${selectedFloor.id}">
                         <div class="input-group">
                             <span class="input-group-text"><i class="bi bi-search"></i></span>
                             <input class="form-control" name="q" placeholder="ค้นหาเลขห้อง" th:value="${q}">
@@ -56,9 +56,10 @@
                     ยังไม่มีข้อมูลชั้น กรุณาเพิ่มชั้นก่อนเพิ่มห้องพัก
                 </div>
 
-                <div class="room-grid" th:if="${selectedFloor != null}">
+                <div class="room-grid floor-room-panel" th:each="floor : ${floors}" th:attr="data-floor-id=${floor.id}" th:classappend="${selectedFloor == null or selectedFloor.id != floor.id} ? ' d-none' : ''">
                     <button class="room-tile"
                             th:each="room : ${rooms}"
+                            th:if="${room.floor != null and room.floor.id == floor.id}"
                             th:attr="data-bs-target=${'#roomEditModal' + room.id}"
                             data-bs-toggle="modal"
                             type="button"
@@ -69,7 +70,11 @@
                     </button>
                 </div>
 
-                <div class="alert alert-light-secondary mt-3" th:if="${selectedFloor != null and #lists.isEmpty(rooms)}">
+                <div class="alert alert-light-secondary mt-3 floor-empty-panel"
+                     th:each="floor : ${floors}"
+                     th:attr="data-floor-id=${floor.id}"
+                     th:classappend="${selectedFloor == null or selectedFloor.id != floor.id} ? ' d-none' : ''"
+                     th:if="${rooms.?[floor != null and floor.id == #vars.floor.id].isEmpty()}">
                     ไม่พบห้องในชั้นนี้
                 </div>
             </section>
@@ -133,13 +138,13 @@
             <div class="modal-dialog modal-lg">
                 <div class="modal-content">
                     <form method="post" th:action="@{/rooms}">
-                        <input type="hidden" name="floorId" th:value="${selectedFloor.id}">
+                        <input type="hidden" name="floorId" th:value="${selectedFloor.id}" id="roomCreateFloorId">
                         <div class="modal-header">
                             <h5 class="modal-title">เพิ่มห้องพัก</h5>
                             <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                         </div>
                         <div class="modal-body row g-3">
-                            <div class="col-md-4"><label class="form-label">ชั้น</label><input class="form-control" th:value="${selectedFloor.name}" readonly></div>
+                            <div class="col-md-4"><label class="form-label">ชั้น</label><input class="form-control" id="roomCreateFloorName" th:value="${selectedFloor.name}" readonly></div>
                             <div class="col-md-4"><label class="form-label">เลขห้อง</label><input class="form-control" name="roomNumber" required></div>
                             <div class="col-md-4">
                                 <label class="form-label">ประเภทห้อง</label>
@@ -151,7 +156,6 @@
                                 </select>
                             </div>
                             <div class="col-12"><label class="form-label">รายละเอียดประเภทห้อง</label><textarea class="form-control room-type-detail" rows="3" readonly></textarea></div>
-                            <div class="col-12"><label class="form-label">สถานะ</label><select class="form-select" name="status"><option th:each="s : ${statuses}" th:value="${s}" th:text="${s.label}"></option></select></div>
                         </div>
                         <div class="modal-footer">
                             <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">ยกเลิก</button>
@@ -189,10 +193,9 @@
                                             th:attr="data-detail=${type.detail},data-nightly-price=${type.nightlyPrice},data-monthly-price=${type.monthlyPrice}"></option>
                                 </select>
                             </div>
-                            <div class="col-md-6"><label class="form-label">ราคาต่อคืน</label><input class="form-control room-type-nightly-price" th:value="${room.roomType != null ? room.roomType.nightlyPrice : room.nightlyPrice}" readonly></div>
-                            <div class="col-md-6"><label class="form-label">ราคาต่อเดือน</label><input class="form-control room-type-monthly-price" th:value="${room.roomType != null ? room.roomType.monthlyPrice : room.monthlyPrice}" readonly></div>
+                            <div class="col-md-6"><label class="form-label">ราคาต่อคืน</label><input class="form-control money-field room-type-nightly-price" th:value="${#numbers.formatDecimal(room.roomType != null ? room.roomType.nightlyPrice : room.nightlyPrice, 1, 'COMMA', 2, 'POINT')}" readonly></div>
+                            <div class="col-md-6"><label class="form-label">ราคาต่อเดือน</label><input class="form-control money-field room-type-monthly-price" th:value="${#numbers.formatDecimal(room.roomType != null ? room.roomType.monthlyPrice : room.monthlyPrice, 1, 'COMMA', 2, 'POINT')}" readonly></div>
                             <div class="col-12"><label class="form-label">รายละเอียดประเภทห้อง</label><textarea class="form-control room-type-detail" rows="3" th:text="${room.roomType != null ? room.roomType.detail : ''}" readonly></textarea></div>
-                            <div class="col-12"><label class="form-label">สถานะ</label><select class="form-select" name="status"><option th:each="s : ${statuses}" th:value="${s}" th:text="${s.label}" th:selected="${s == room.status}"></option></select></div>
                         </div>
                         <div class="modal-footer justify-content-between">
                             <button class="btn btn-danger" type="submit" th:formaction="@{/rooms/{id}/delete(id=${room.id})}" formmethod="post" onclick="return confirm('ยืนยันการลบห้องนี้?')">
@@ -222,8 +225,12 @@
             const monthlyPrice = modalBody.querySelector('.room-type-monthly-price');
 
             if (detail) detail.value = option.dataset.detail || '';
-            if (nightlyPrice) nightlyPrice.value = option.dataset.nightlyPrice || '';
-            if (monthlyPrice) monthlyPrice.value = option.dataset.monthlyPrice || '';
+            const formatMoney = value => {
+                const number = Number(value || 0);
+                return Number.isFinite(number) ? number.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '';
+            };
+            if (nightlyPrice) nightlyPrice.value = option.dataset.nightlyPrice ? formatMoney(option.dataset.nightlyPrice) : '';
+            if (monthlyPrice) monthlyPrice.value = option.dataset.monthlyPrice ? formatMoney(option.dataset.monthlyPrice) : '';
         };
 
         document.querySelectorAll('.room-type-select').forEach(select => {
@@ -233,6 +240,24 @@
 
         const tabs = document.getElementById('floorTabs');
         if (!tabs) return;
+
+        const roomCreateFloorId = document.getElementById('roomCreateFloorId');
+        const roomCreateFloorName = document.getElementById('roomCreateFloorName');
+        const activateFloor = tab => {
+            const floorId = tab.dataset.floorId;
+            tabs.querySelectorAll('.floor-tab').forEach(item => item.classList.toggle('active', item === tab));
+            document.querySelectorAll('.floor-room-panel, .floor-empty-panel').forEach(panel => {
+                panel.classList.toggle('d-none', panel.dataset.floorId !== floorId);
+            });
+            if (roomCreateFloorId) roomCreateFloorId.value = floorId;
+            if (roomCreateFloorName) roomCreateFloorName.value = tab.dataset.floorName || tab.textContent.trim();
+        };
+        tabs.querySelectorAll('.floor-tab').forEach(tab => {
+            tab.addEventListener('click', event => {
+                event.preventDefault();
+                activateFloor(tab);
+            });
+        });
 
         const placeholder = document.createElement('div');
         placeholder.className = 'floor-placeholder';

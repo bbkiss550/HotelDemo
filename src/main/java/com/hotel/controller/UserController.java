@@ -2,7 +2,6 @@ package com.hotel.controller;
 
 import com.hotel.model.AppUser;
 import com.hotel.repository.AppUserRepository;
-import com.hotel.repository.GenderRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
@@ -19,12 +18,10 @@ import java.security.Principal;
 @RequestMapping("/users")
 public class UserController {
     private final AppUserRepository users;
-    private final GenderRepository genders;
     private final PasswordEncoder encoder;
 
-    public UserController(AppUserRepository users, GenderRepository genders, PasswordEncoder encoder) {
+    public UserController(AppUserRepository users, PasswordEncoder encoder) {
         this.users = users;
-        this.genders = genders;
         this.encoder = encoder;
     }
 
@@ -32,53 +29,41 @@ public class UserController {
     String index(@RequestParam(defaultValue = "") String q, Model model) {
         model.addAttribute("q", q);
         model.addAttribute("users", q.isBlank() ? users.findAll() : users.search(q));
+        model.addAttribute("roles", java.util.List.of("ADMIN", "STAFF", "REPORT"));
         return "users/index";
     }
 
-    @GetMapping("/new")
-    String create(Model model) {
-        formData(model, new AppUser());
-        return "users/form";
-    }
-
-    @GetMapping("/{id}/edit")
-    String edit(@PathVariable Long id, Model model) {
-        formData(model, users.findById(id).orElseThrow());
-        return "users/form";
-    }
-
     @PostMapping
-    String save(@ModelAttribute AppUser formUser, @RequestParam(required = false) Long genderId, RedirectAttributes redirect, Model model) {
+    String save(@ModelAttribute AppUser formUser, @RequestParam(defaultValue = "false") boolean enabled, RedirectAttributes redirect, Model model) {
         boolean creating = formUser.getId() == null;
         AppUser user = creating ? new AppUser() : users.findById(formUser.getId()).orElseThrow();
 
         if (creating && users.existsByUsername(formUser.getUsername())) {
-            model.addAttribute("error", "username นี้ถูกใช้งานแล้ว");
-            formData(model, formUser);
-            return "users/form";
+            redirect.addFlashAttribute("error", "username นี้ถูกใช้งานแล้ว");
+            redirect.addFlashAttribute("flashType", "warning");
+            return "redirect:/users";
         }
         if (!creating && !user.getUsername().equals(formUser.getUsername()) && users.existsByUsername(formUser.getUsername())) {
-            model.addAttribute("error", "username นี้ถูกใช้งานแล้ว");
-            formData(model, formUser);
-            return "users/form";
+            redirect.addFlashAttribute("error", "username นี้ถูกใช้งานแล้ว");
+            redirect.addFlashAttribute("flashType", "warning");
+            return "redirect:/users";
         }
         if (creating && (formUser.getPassword() == null || formUser.getPassword().isBlank())) {
-            model.addAttribute("error", "กรุณากรอกรหัสผ่าน");
-            formData(model, formUser);
-            return "users/form";
+            redirect.addFlashAttribute("error", "กรุณากรอกรหัสผ่าน");
+            redirect.addFlashAttribute("flashType", "warning");
+            return "redirect:/users";
         }
 
         user.setUsername(formUser.getUsername());
         user.setFullName(formUser.getFullName());
-        user.setGender(genderId == null ? null : genders.findById(genderId).orElse(null));
-        user.setBirthDate(formUser.getBirthDate());
         user.setRole(formUser.getRole() == null || formUser.getRole().isBlank() ? "STAFF" : formUser.getRole());
-        user.setEnabled(formUser.getEnabled() == null || formUser.getEnabled());
+        user.setEnabled(enabled);
         if (formUser.getPassword() != null && !formUser.getPassword().isBlank()) {
             user.setPassword(encoder.encode(formUser.getPassword()));
         }
         users.save(user);
         redirect.addFlashAttribute("message", "บันทึกข้อมูลผู้ใช้แล้ว");
+        redirect.addFlashAttribute("flashType", creating ? "success" : "edit");
         return "redirect:/users";
     }
 
@@ -87,21 +72,18 @@ public class UserController {
         AppUser user = users.findById(id).orElseThrow();
         if (users.count() <= 1) {
             redirect.addFlashAttribute("error", "ไม่สามารถลบผู้ใช้คนสุดท้ายของระบบได้");
+            redirect.addFlashAttribute("flashType", "warning");
             return "redirect:/users";
         }
         if (principal != null && user.getUsername().equals(principal.getName())) {
             redirect.addFlashAttribute("error", "ไม่สามารถลบบัญชีที่กำลังใช้งานอยู่ได้");
+            redirect.addFlashAttribute("flashType", "warning");
             return "redirect:/users";
         }
         users.delete(user);
         redirect.addFlashAttribute("message", "ลบผู้ใช้แล้ว");
+        redirect.addFlashAttribute("flashType", "delete");
         return "redirect:/users";
     }
 
-    private void formData(Model model, AppUser user) {
-        user.setPassword("");
-        model.addAttribute("user", user);
-        model.addAttribute("genders", genders.findAll());
-        model.addAttribute("roles", java.util.List.of("ADMIN", "STAFF", "REPORT"));
-    }
 }

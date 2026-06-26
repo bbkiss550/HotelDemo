@@ -42,6 +42,73 @@
 </div>
 
 <div th:fragment="scripts">
+    <div class="hotel-toast-container" id="hotelToastContainer" role="region" aria-live="polite" aria-atomic="false"></div>
+    <div id="serverFlashToast"
+         th:if="${message != null or error != null}"
+         th:data-type="${error != null ? 'warning' : (flashType != null ? flashType : 'success')}"
+         th:data-message="${error != null ? error : message}"
+         hidden></div>
+    <script>
+        (function () {
+            const alertConfig = {
+                create: { className: 'hotel-toast-create', icon: 'bi-check-circle' },
+                success: { className: 'hotel-toast-success', icon: 'bi-check-circle' },
+                update: { className: 'hotel-toast-update', icon: 'bi-pencil-square' },
+                edit: { className: 'hotel-toast-edit', icon: 'bi-pencil-square' },
+                delete: { className: 'hotel-toast-delete', icon: 'bi-trash3' },
+                danger: { className: 'hotel-toast-danger', icon: 'bi-trash3' },
+                warning: { className: 'hotel-toast-warning', icon: 'bi-exclamation-triangle' }
+            };
+            let alertSequence = 0;
+
+            const normalizeAlertType = (type) => alertConfig[type] ? type : 'warning';
+            const dismissToastElement = (toast) => {
+                if (!toast || !toast.isConnected || toast.classList.contains('is-hiding')) return;
+                toast.classList.add('is-hiding');
+                window.setTimeout(() => toast.remove(), 900);
+            };
+
+            window.dismissAlert = function (id) {
+                dismissToastElement(document.getElementById(id));
+            };
+
+            window.showAlert = function (type, message, duration = 3000) {
+                const container = document.getElementById('hotelToastContainer');
+                if (!container || !message) return null;
+
+                const normalizedType = normalizeAlertType(type);
+                const config = alertConfig[normalizedType];
+                const id = `hotel-toast-${Date.now()}-${++alertSequence}`;
+                const toast = document.createElement('div');
+                toast.id = id;
+                toast.className = `hotel-toast-item ${config.className}`;
+                toast.setAttribute('role', 'alert');
+                toast.setAttribute('aria-live', 'polite');
+                toast.innerHTML = `
+                    <i class="bi ${config.icon}" aria-hidden="true"></i>
+                    <span class="hotel-toast-message"></span>
+                    <button class="hotel-toast-close" type="button" aria-label="ปิดการแจ้งเตือน">&times;</button>
+                `;
+                toast.querySelector('.hotel-toast-message').textContent = message;
+                container.prepend(toast);
+
+                let removeTimer = null;
+                const dismiss = () => {
+                    window.clearTimeout(removeTimer);
+                    dismissToastElement(toast);
+                };
+
+                toast.querySelector('.hotel-toast-close').addEventListener('click', dismiss);
+                removeTimer = window.setTimeout(dismiss, Number(duration) || 3000);
+                return id;
+            };
+
+            const serverFlashToast = document.getElementById('serverFlashToast');
+            if (serverFlashToast) {
+                window.showAlert(serverFlashToast.dataset.type, serverFlashToast.dataset.message);
+            }
+        })();
+    </script>
     <script th:src="@{/mazer/dist/assets/vendors/perfect-scrollbar/perfect-scrollbar.min.js}"></script>
     <script th:src="@{/mazer/dist/assets/js/bootstrap.bundle.min.js}"></script>
     <script th:src="@{/mazer/dist/assets/js/main.js}"></script>
@@ -52,5 +119,92 @@
                 link.closest('.sidebar-item')?.classList.add('active');
             }
         });
+
+        (function () {
+            const monthNames = [
+                'มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน',
+                'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'
+            ];
+            const currentBeYear = new Date().getFullYear() + 543;
+            const makeOption = (value, label) => {
+                const option = document.createElement('option');
+                option.value = value;
+                option.textContent = label;
+                return option;
+            };
+            const parseIsoDate = value => {
+                const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value || '');
+                return match ? { day: Number(match[3]), month: Number(match[2]), year: Number(match[1]) + 543 } : null;
+            };
+            const pad = value => String(value).padStart(2, '0');
+
+            document.querySelectorAll('input[type="date"]').forEach(input => {
+                if (input.dataset.nativeDate === 'true') return;
+                if (input.dataset.thaiDateReady === 'true') return;
+                input.dataset.thaiDateReady = 'true';
+
+                if (!input.value && input.dataset.defaultToday === 'true') {
+                    const today = new Date();
+                    input.value = `${today.getFullYear()}-${pad(today.getMonth() + 1)}-${pad(today.getDate())}`;
+                }
+
+                const initial = parseIsoDate(input.value);
+                const required = input.required;
+                input.required = false;
+                input.type = 'hidden';
+
+                const wrapper = document.createElement('div');
+                wrapper.className = 'thai-date-picker';
+
+                const daySelect = document.createElement('select');
+                daySelect.className = 'form-select';
+                daySelect.appendChild(makeOption('', 'วัน'));
+                for (let day = 1; day <= 31; day++) daySelect.appendChild(makeOption(day, day));
+
+                const monthSelect = document.createElement('select');
+                monthSelect.className = 'form-select';
+                monthSelect.appendChild(makeOption('', 'เดือน'));
+                monthNames.forEach((name, index) => monthSelect.appendChild(makeOption(index + 1, name)));
+
+                const yearSelect = document.createElement('select');
+                yearSelect.className = 'form-select';
+                yearSelect.appendChild(makeOption('', 'ปี พ.ศ.'));
+                for (let year = currentBeYear + 20; year >= currentBeYear - 130; year--) {
+                    yearSelect.appendChild(makeOption(year, year));
+                }
+
+                if (required) {
+                    daySelect.required = true;
+                    monthSelect.required = true;
+                    yearSelect.required = true;
+                }
+                if (initial) {
+                    daySelect.value = initial.day;
+                    monthSelect.value = initial.month;
+                    yearSelect.value = initial.year;
+                }
+
+                const syncOriginalInput = () => {
+                    const day = Number(daySelect.value);
+                    const month = Number(monthSelect.value);
+                    const beYear = Number(yearSelect.value);
+                    if (!day || !month || !beYear) {
+                        input.value = '';
+                        return;
+                    }
+                    const adYear = beYear - 543;
+                    const maxDay = new Date(adYear, month, 0).getDate();
+                    if (day > maxDay) daySelect.value = maxDay;
+                    input.value = `${adYear}-${pad(month)}-${pad(daySelect.value)}`;
+                };
+
+                [daySelect, monthSelect, yearSelect].forEach(select => {
+                    select.addEventListener('change', syncOriginalInput);
+                    wrapper.appendChild(select);
+                });
+                input.insertAdjacentElement('afterend', wrapper);
+                syncOriginalInput();
+            });
+        })();
     </script>
 </div>

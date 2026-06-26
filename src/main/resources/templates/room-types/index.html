@@ -45,8 +45,8 @@
                                         </div>
                                     </td>
                                     <td th:text="${type.name}"></td>
-                                    <td th:text="${type.nightlyPrice}"></td>
-                                    <td th:text="${type.monthlyPrice}"></td>
+                                    <td th:text="${#numbers.formatDecimal(type.nightlyPrice, 1, 'COMMA', 2, 'POINT')}"></td>
+                                    <td th:text="${#numbers.formatDecimal(type.monthlyPrice, 1, 'COMMA', 2, 'POINT')}"></td>
                                     <td th:text="${type.detail}"></td>
                                 </tr>
                                 </tbody>

@@ -21,6 +21,9 @@ public class Guest {
     @Column(name = "g_id_card")
     private String idCard;
 
+    @Column(name = "g_nationality")
+    private String nationality;
+
     @Column(name = "g_address", length = 1000)
     private String address;
 
@@ -67,6 +70,8 @@ public class Guest {
     public void setPhone(String phone) { this.phone = phone; }
     public String getIdCard() { return idCard; }
     public void setIdCard(String idCard) { this.idCard = idCard; }
+    public String getNationality() { return nationality; }
+    public void setNationality(String nationality) { this.nationality = nationality; }
     public String getAddress() { return address; }
     public void setAddress(String address) { this.address = address; }
     public Room getRoom() { return room; }

@@ -13,12 +13,10 @@
                 <h3>จัดการผู้ใช้งาน</h3>
                 <p class="text-subtitle text-muted mb-0">เพิ่ม แก้ไข และจัดการบัญชีสำหรับเข้าสู่ระบบ</p>
             </div>
-            <a class="btn btn-primary" th:href="@{/users/new}"><i class="bi bi-person-plus me-1"></i>เพิ่มผู้ใช้</a>
+            <button class="btn btn-primary" data-bs-target="#userCreateModal" data-bs-toggle="modal" type="button"><i class="bi bi-person-plus me-1"></i>เพิ่มผู้ใช้</button>
         </div>
         <div class="page-content">
             <section class="section">
-                <div class="alert alert-success" th:if="${message}" th:text="${message}"></div>
-                <div class="alert alert-danger" th:if="${error}" th:text="${error}"></div>
                 <div class="card">
                     <div class="card-header">
                         <form>
@@ -36,15 +34,15 @@
                                     <th class="table-actions"></th>
                                     <th>Username</th>
                                     <th>ชื่อ</th>
-                                    <th>เพศ</th>
-                                    <th>วันเกิด</th>
+                                    <th>Role</th>
+                                    <th>สถานะ</th>
                                 </tr>
                                 </thead>
                                 <tbody>
                                 <tr th:each="u : ${users}">
                                     <td class="table-actions">
                                         <div class="d-flex gap-2">
-                                            <a class="btn btn-sm btn-warning" th:href="@{/users/{id}/edit(id=${u.id})}" title="แก้ไข"><i class="bi bi-pencil-square"></i></a>
+                                            <button class="btn btn-sm btn-warning" th:attr="data-bs-target=${'#userEditModal' + u.id}" data-bs-toggle="modal" title="แก้ไข" type="button"><i class="bi bi-pencil-square"></i></button>
                                             <form method="post" th:action="@{/users/{id}/delete(id=${u.id})}" onsubmit="return confirm('ยืนยันการลบผู้ใช้นี้?')">
                                                 <button class="btn btn-sm btn-danger" type="submit" title="ลบ"><i class="bi bi-trash"></i></button>
                                             </form>
@@ -52,8 +50,11 @@
                                     </td>
                                     <td><span class="badge bg-light-primary" th:text="${u.username}"></span></td>
                                     <td th:text="${u.fullName}"></td>
-                                    <td th:text="${u.gender != null ? u.gender.name : '-'}"></td>
-                                    <td th:text="${@thaiDate.format(u.birthDate)}"></td>
+                                    <td><span class="badge bg-light-info" th:text="${u.role}"></span></td>
+                                    <td>
+                                        <span class="badge bg-light-success" th:if="${u.enabled}">ใช้งาน</span>
+                                        <span class="badge bg-light-danger" th:unless="${u.enabled}">ไม่ใช้งาน</span>
+                                    </td>
                                 </tr>
                                 </tbody>
                             </table>
@@ -61,6 +62,101 @@
                     </div>
                 </div>
             </section>
+        </div>
+
+        <div class="modal fade" id="userCreateModal" tabindex="-1">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <form method="post" th:action="@{/users}">
+                        <div class="modal-header">
+                            <h5 class="modal-title">เพิ่มผู้ใช้</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body row g-3">
+                            <div class="col-md-6"><label class="form-label">Username</label><input class="form-control" name="username" required></div>
+                            <div class="col-md-6"><label class="form-label">Password</label><input class="form-control" type="password" name="password" placeholder="กรอกรหัสผ่าน" required></div>
+                            <div class="col-md-6"><label class="form-label">ชื่อ</label><input class="form-control" name="fullName"></div>
+                            <div class="col-md-6">
+                                <label class="form-label">Role</label>
+                                <select class="form-select" name="role">
+                                    <option th:each="role : ${roles}" th:value="${role}" th:text="${role}" th:selected="${role == 'STAFF'}"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Active User</label>
+                                <div class="picture-radio-group">
+                                    <label class="picture-radio picture-radio-active">
+                                        <input type="radio" name="enabled" value="true" checked>
+                                        <span class="picture-radio-card">
+                                            <i class="bi bi-person-check"></i>
+                                            <span>ใช้งาน</span>
+                                        </span>
+                                    </label>
+                                    <label class="picture-radio picture-radio-inactive">
+                                        <input type="radio" name="enabled" value="false">
+                                        <span class="picture-radio-card">
+                                            <i class="bi bi-person-x"></i>
+                                            <span>ไม่ใช้งาน</span>
+                                        </span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                            <button class="btn btn-primary" type="submit"><i class="bi bi-save me-1"></i>บันทึก</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" th:each="u : ${users}" th:id="${'userEditModal' + u.id}" tabindex="-1">
+            <div class="modal-dialog modal-xl">
+                <div class="modal-content">
+                    <form method="post" th:action="@{/users}">
+                        <input type="hidden" name="id" th:value="${u.id}">
+                        <div class="modal-header">
+                            <h5 class="modal-title">แก้ไขผู้ใช้</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body row g-3">
+                            <div class="col-md-6"><label class="form-label">Username</label><input class="form-control" name="username" th:value="${u.username}" required></div>
+                            <div class="col-md-6"><label class="form-label">Password</label><input class="form-control" type="password" name="password" placeholder="ปล่อยว่างถ้าไม่เปลี่ยนรหัส"></div>
+                            <div class="col-md-6"><label class="form-label">ชื่อ</label><input class="form-control" name="fullName" th:value="${u.fullName}"></div>
+                            <div class="col-md-6">
+                                <label class="form-label">Role</label>
+                                <select class="form-select" name="role">
+                                    <option th:each="role : ${roles}" th:value="${role}" th:text="${role}" th:selected="${role == u.role}"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">Active User</label>
+                                <div class="picture-radio-group">
+                                    <label class="picture-radio picture-radio-active">
+                                        <input type="radio" name="enabled" value="true" th:checked="${u.enabled}">
+                                        <span class="picture-radio-card">
+                                            <i class="bi bi-person-check"></i>
+                                            <span>ใช้งาน</span>
+                                        </span>
+                                    </label>
+                                    <label class="picture-radio picture-radio-inactive">
+                                        <input type="radio" name="enabled" value="false" th:checked="${u.enabled == false}">
+                                        <span class="picture-radio-card">
+                                            <i class="bi bi-person-x"></i>
+                                            <span>ไม่ใช้งาน</span>
+                                        </span>
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                            <button class="btn btn-primary" type="submit"><i class="bi bi-save me-1"></i>บันทึก</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
         </div>
     </div>
 </div>

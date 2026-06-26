@@ -18,9 +18,19 @@ public class Booking {
     @Column(name = "b_phone")
     private String phone;
 
-    @ManyToOne(optional = false)
+    @Column(name = "b_id_card")
+    private String idCard;
+
+    @Column(name = "b_nationality")
+    private String nationality;
+
+    @ManyToOne
     @JoinColumn(name = "`ID_room`", referencedColumnName = "`ID_room`")
     private Room room;
+
+    @ManyToOne
+    @JoinColumn(name = "`ID_room_type`", referencedColumnName = "`ID_room_type`")
+    private RoomType roomType;
 
     @Column(name = "b_booking_date")
     private LocalDate bookingDate = LocalDate.now();
@@ -51,8 +61,14 @@ public class Booking {
     public void setCustomerName(String customerName) { this.customerName = customerName; }
     public String getPhone() { return phone; }
     public void setPhone(String phone) { this.phone = phone; }
+    public String getIdCard() { return idCard; }
+    public void setIdCard(String idCard) { this.idCard = idCard; }
+    public String getNationality() { return nationality; }
+    public void setNationality(String nationality) { this.nationality = nationality; }
     public Room getRoom() { return room; }
     public void setRoom(Room room) { this.room = room; }
+    public RoomType getRoomType() { return roomType; }
+    public void setRoomType(RoomType roomType) { this.roomType = roomType; }
     public LocalDate getBookingDate() { return bookingDate; }
     public void setBookingDate(LocalDate bookingDate) { this.bookingDate = bookingDate; }
     public LocalDate getCheckInDate() { return checkInDate; }

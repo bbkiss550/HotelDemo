@@ -13,6 +13,7 @@ import java.time.LocalDate;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 @Controller
 @RequestMapping("/payments")
@@ -68,7 +69,8 @@ public class PaymentController {
     }
 
     @PostMapping
-    String save(@ModelAttribute Payment payment, @RequestParam(required = false) Long guestId, @RequestParam Long roomId) {
+    String save(@ModelAttribute Payment payment, @RequestParam(required = false) Long guestId, @RequestParam Long roomId, RedirectAttributes redirect) {
+        boolean isNew = payment.getId() == null;
         payment.setRoom(rooms.findById(roomId).orElseThrow());
         if (guestId != null) {
             payment.setGuest(guests.findById(guestId).orElse(null));
@@ -85,6 +87,8 @@ public class PaymentController {
             receiptService.createForPaidPayment(payment);
         }
         audit.record("PAYMENT", "Room " + payment.getRoom().getRoomNumber() + " amount " + payment.getAmount());
+        redirect.addFlashAttribute("message", (isNew ? "บันทึกการชำระเงิน" : "แก้ไขการชำระเงิน") + "เรียบร้อย");
+        redirect.addFlashAttribute("flashType", isNew ? "success" : "edit");
         return "redirect:/payments";
     }
 
