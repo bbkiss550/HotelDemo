@@ -22,6 +22,7 @@
     <link rel="stylesheet" th:href="@{/mazer/dist/assets/css/bootstrap.css}">
     <link rel="stylesheet" th:href="@{/mazer/dist/assets/vendors/perfect-scrollbar/perfect-scrollbar.css}">
     <link rel="stylesheet" th:href="@{/mazer/dist/assets/vendors/bootstrap-icons/bootstrap-icons.css}">
+    <link rel="stylesheet" th:href="@{/mazer/dist/assets/vendors/choices.js/choices.min.css}">
     <link rel="stylesheet" th:href="@{/mazer/dist/assets/vendors/sweetalert2/sweetalert2.min.css}">
     <link rel="stylesheet" th:href="@{/mazer/dist/assets/css/app.css}">
     <style>
@@ -64,17 +65,29 @@
             display: flex;
             gap: 1rem;
             justify-content: space-between;
-            left: 300px;
+            left: 0;
             min-height: 4.25rem;
             padding: .75rem 1.75rem;
             position: fixed;
             right: 0;
             top: 0;
-            z-index: 900;
+            z-index: 1100;
         }
 
         .topbar-spacer {
             flex: 1 1 auto;
+        }
+
+        .topbar-system-name {
+            color: var(--hotel-ink);
+            display: block;
+            font-size: 1.05rem;
+            font-weight: 900;
+            line-height: 1.2;
+            max-width: min(28rem, 40vw);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .topbar-title {
@@ -127,9 +140,52 @@
         .sidebar-collapse-btn {
             align-items: center;
             border-radius: 999px;
+            display: inline-flex;
             justify-content: center;
             min-height: 2.55rem;
+            padding: 0;
             width: 2.75rem;
+        }
+
+        .sidebar-collapse-btn i {
+            align-items: center;
+            display: inline-flex;
+            height: 1.25rem;
+            justify-content: center;
+            line-height: 1;
+            margin: 0;
+            width: 1.25rem;
+        }
+
+        #sidebar,
+        .sidebar-wrapper,
+        #main,
+        .app-topbar,
+        .sidebar-wrapper .sidebar-header,
+        .sidebar-wrapper .menu,
+        .brand-mark,
+        .sidebar-wrapper .sidebar-header .brand-mark img,
+        .sidebar-wrapper .menu .sidebar-link,
+        .sidebar-wrapper .menu .sidebar-link span,
+        .sidebar-wrapper .menu .sidebar-title,
+        .sidebar-collapse-btn i {
+            transition:
+                width .3s cubic-bezier(.2, .8, .2, 1),
+                margin .3s cubic-bezier(.2, .8, .2, 1),
+                padding .3s cubic-bezier(.2, .8, .2, 1),
+                left .3s cubic-bezier(.2, .8, .2, 1),
+                opacity .2s ease,
+                transform .3s cubic-bezier(.2, .8, .2, 1),
+                max-width .3s cubic-bezier(.2, .8, .2, 1),
+                max-height .3s cubic-bezier(.2, .8, .2, 1);
+        }
+
+        .sidebar-wrapper .menu .sidebar-link span,
+        .sidebar-wrapper .menu .sidebar-title {
+            max-width: 14rem;
+            opacity: 1;
+            overflow: hidden;
+            white-space: nowrap;
         }
 
         .theme-toggle-btn .theme-dark-icon,
@@ -144,6 +200,12 @@
         .sidebar-wrapper {
             border-right: 1px solid var(--hotel-line);
             box-shadow: .5rem 0 2rem rgba(23, 32, 51, .04);
+            padding-top: 4.25rem;
+        }
+
+        .sidebar-wrapper .sidebar-header {
+            min-height: 1rem;
+            padding: .75rem 1rem 0;
         }
 
         .sidebar-wrapper .menu .sidebar-title {
@@ -177,6 +239,16 @@
 
         .sidebar-wrapper .menu .submenu .submenu-link {
             padding-left: .75rem;
+        }
+
+        .sidebar-wrapper .menu .has-sub > .sidebar-link::after,
+        .sidebar-wrapper .menu .submenu-item.has-sub > .submenu-link::after {
+            transition: transform .38s cubic-bezier(.2, .8, .2, 1);
+        }
+
+        .sidebar-wrapper .menu .has-sub.active > .sidebar-link::after,
+        .sidebar-wrapper .menu .submenu-item.has-sub.active > .submenu-link::after {
+            transform: rotate(180deg);
         }
 
         .sidebar-wrapper .menu .sidebar-item.active > .sidebar-link,
@@ -240,7 +312,7 @@
             }
 
             body.hotel-sidebar-collapsed .app-topbar {
-                left: 5.25rem;
+                left: 0;
             }
 
             body.hotel-sidebar-collapsed .sidebar-wrapper .sidebar-header {
@@ -256,11 +328,17 @@
             }
 
             body.hotel-sidebar-collapsed .brand-mark span {
-                display: block;
                 max-width: 3.4rem;
+                opacity: 0;
                 overflow: hidden;
                 text-overflow: ellipsis;
+                transform: translateX(-.4rem);
                 white-space: nowrap;
+            }
+
+            body.hotel-sidebar-collapsed .sidebar-wrapper .sidebar-header .brand-mark img {
+                height: 3.75rem;
+                width: 3.75rem;
             }
 
             body.hotel-sidebar-collapsed .sidebar-wrapper .menu {
@@ -269,7 +347,16 @@
             }
 
             body.hotel-sidebar-collapsed .sidebar-wrapper .menu .sidebar-title,
-            body.hotel-sidebar-collapsed .sidebar-wrapper .menu .sidebar-link span,
+            body.hotel-sidebar-collapsed .sidebar-wrapper .menu .sidebar-link span {
+                margin-left: 0;
+                max-height: 0;
+                max-width: 0;
+                opacity: 0;
+                padding: 0;
+                pointer-events: none;
+                transform: translateX(-.45rem);
+            }
+
             body.hotel-sidebar-collapsed .sidebar-wrapper .menu .submenu {
                 display: none !important;
             }
@@ -300,6 +387,59 @@
             body.hotel-sidebar-collapsed .sidebar-collapse-btn i {
                 transform: rotate(180deg);
             }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            #sidebar,
+            .sidebar-wrapper,
+            #main,
+            .app-topbar,
+            .sidebar-wrapper .sidebar-header,
+            .sidebar-wrapper .menu,
+            .brand-mark,
+            .sidebar-wrapper .sidebar-header .brand-mark img,
+            .sidebar-wrapper .menu .sidebar-link,
+            .sidebar-wrapper .menu .sidebar-link span,
+            .sidebar-wrapper .menu .sidebar-title,
+            .sidebar-collapse-btn i {
+                transition: none;
+            }
+        }
+
+        body.hotel-sidebar-transitioning .sidebar-wrapper {
+            transition: width .5s cubic-bezier(.22, 1, .36, 1) !important;
+        }
+
+        body.hotel-sidebar-transitioning #main {
+            transition: margin-left .5s cubic-bezier(.22, 1, .36, 1) !important;
+        }
+
+        body.hotel-sidebar-transitioning .app-topbar {
+            transition: left .5s cubic-bezier(.22, 1, .36, 1) !important;
+        }
+
+        body.hotel-sidebar-transitioning .sidebar-wrapper .sidebar-header,
+        body.hotel-sidebar-transitioning .sidebar-wrapper .menu,
+        body.hotel-sidebar-transitioning .brand-mark,
+        body.hotel-sidebar-transitioning .sidebar-wrapper .menu .sidebar-link,
+        body.hotel-sidebar-transitioning .sidebar-wrapper .menu .sidebar-link span {
+            transition:
+                margin .5s cubic-bezier(.22, 1, .36, 1),
+                padding .5s cubic-bezier(.22, 1, .36, 1),
+                opacity .3s ease,
+                transform .5s cubic-bezier(.22, 1, .36, 1),
+                max-width .5s cubic-bezier(.22, 1, .36, 1),
+                max-height .5s cubic-bezier(.22, 1, .36, 1) !important;
+        }
+
+        body.hotel-sidebar-transitioning .sidebar-collapse-btn {
+            animation: hotel-sidebar-toggle-pulse .5s cubic-bezier(.22, 1, .36, 1);
+        }
+
+        @keyframes hotel-sidebar-toggle-pulse {
+            0% { transform: scale(1); }
+            45% { transform: scale(.88); }
+            100% { transform: scale(1); }
         }
 
         .auth-brand-logo {
@@ -571,12 +711,15 @@
         }
 
         .date-range-field .date-box i {
+            align-items: center;
             color: var(--hotel-primary);
+            display: flex;
+            height: 100%;
             left: .85rem;
             pointer-events: none;
             position: absolute;
-            top: 50%;
-            transform: translateY(-50%);
+            top: 0;
+            transform: none;
             z-index: 1;
         }
 
@@ -613,6 +756,50 @@
             position: absolute;
             top: 100%;
             z-index: 1065;
+        }
+
+        #unassignedBookingSearch {
+            isolation: isolate;
+            position: relative;
+            z-index: 2;
+        }
+
+        #unassignedBookingSearch + .table-responsive {
+            position: relative;
+            z-index: 1;
+        }
+
+        .unassigned-booking-modal {
+            height: 90vh;
+            max-height: 90vh;
+        }
+
+        .unassigned-booking-modal .modal-content {
+            height: 100%;
+        }
+
+        #unassignedBookingModal {
+            z-index: 1210;
+        }
+
+        .unassigned-booking-backdrop {
+            z-index: 1205;
+        }
+
+        .unassigned-booking-select-wrap .choices {
+            margin-bottom: 0;
+        }
+
+        .unassigned-booking-select-wrap .choices__inner {
+            background: #fff;
+            border-color: #dce4ef;
+            border-radius: .45rem;
+            min-height: 2.7rem;
+            padding: .34rem .55rem;
+        }
+
+        .unassigned-booking-select-wrap .choices__list--dropdown {
+            z-index: 1075;
         }
 
         .hotel-calendar-header,
@@ -751,6 +938,14 @@
             box-shadow: 0 1.2rem 3rem rgba(23, 32, 51, .22);
         }
 
+        .modal {
+            z-index: 1200;
+        }
+
+        .modal-backdrop {
+            z-index: 1190;
+        }
+
         .modal-body.row {
             margin-left: 0;
             margin-right: 0;
@@ -787,6 +982,60 @@
             border-radius: 999px;
             font-weight: 800;
             padding: .42rem .65rem;
+        }
+
+        .booking-status {
+            border: 1px solid transparent;
+            min-width: 6.5rem;
+            text-align: center;
+        }
+
+        .booking-status-pending {
+            background: #fff3cd;
+            border-color: #f1ce62;
+            color: #765600;
+        }
+
+        .booking-status-confirmed {
+            background: #dcf5e7;
+            border-color: #86d7aa;
+            color: #176b3a;
+        }
+
+        .booking-status-checked_in {
+            background: #dff1ff;
+            border-color: #8dc9ee;
+            color: #0d5f8f;
+        }
+
+        .booking-status-cancelled {
+            background: #fde5e5;
+            border-color: #efaaaa;
+            color: #a42d2d;
+        }
+
+        .hotel-dark-mode .booking-status-pending {
+            background: rgba(241, 206, 98, .16);
+            border-color: rgba(241, 206, 98, .45);
+            color: #f8da78;
+        }
+
+        .hotel-dark-mode .booking-status-confirmed {
+            background: rgba(74, 190, 125, .16);
+            border-color: rgba(74, 190, 125, .45);
+            color: #83dbaa;
+        }
+
+        .hotel-dark-mode .booking-status-checked_in {
+            background: rgba(83, 177, 232, .16);
+            border-color: rgba(83, 177, 232, .45);
+            color: #8fd3fa;
+        }
+
+        .hotel-dark-mode .booking-status-cancelled {
+            background: rgba(224, 92, 103, .16);
+            border-color: rgba(224, 92, 103, .45);
+            color: #f29aa2;
         }
 
         .page-heading .btn i,
@@ -1510,6 +1759,16 @@
             width: 35%;
         }
 
+        .hotel-loading-blocker {
+            cursor: wait;
+            display: none;
+            inset: 0;
+            pointer-events: auto;
+            position: fixed;
+            touch-action: none;
+            z-index: 2299;
+        }
+
         .hotel-loading-panel {
             align-items: center;
             background: rgba(23, 32, 51, .78);
@@ -1538,6 +1797,10 @@
         body.hotel-is-loading .hotel-loading-bar,
         body.hotel-is-loading .hotel-loading-panel {
             opacity: 1;
+        }
+
+        body.hotel-is-loading .hotel-loading-blocker {
+            display: block;
         }
 
         body.hotel-is-loading .hotel-loading-panel {
@@ -1714,6 +1977,10 @@
         .hotel-dark-mode .app-topbar {
             background: rgba(23, 34, 51, .92);
             box-shadow: 0 .6rem 1.8rem rgba(0, 0, 0, .24);
+        }
+
+        .hotel-dark-mode .topbar-system-name {
+            color: var(--hotel-ink);
         }
 
         .hotel-dark-mode .sidebar-wrapper {

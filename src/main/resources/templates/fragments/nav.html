@@ -2,10 +2,7 @@
     <div id="sidebar" class="active">
         <div class="sidebar-wrapper active">
             <div class="sidebar-header">
-                <div class="d-flex justify-content-between">
-                    <a class="brand-mark text-decoration-none" th:href="@{/}">
-                        <span th:text="${systemName}">BlueCatHotelDemo</span>
-                    </a>
+                <div class="d-flex justify-content-end">
                     <div class="toggler">
                         <a href="#" class="sidebar-hide d-xl-none d-block"><i class="bi bi-x bi-middle"></i></a>
                     </div>
@@ -13,7 +10,6 @@
             </div>
             <div class="sidebar-menu">
                 <ul class="menu">
-                    <li class="sidebar-title">Menu</li>
                     <li th:each="menu : ${sidebarMenus}"
                         th:class="${'sidebar-item' + (menu.hasChildren() ? ' has-sub' : '')}">
                         <a class="sidebar-link"
@@ -50,6 +46,7 @@
         <button class="btn btn-outline-secondary sidebar-collapse-btn d-none d-xl-inline-flex" type="button" id="hotelSidebarToggle" aria-label="ย่อหรือขยายแถบเมนู">
             <i class="bi bi-layout-sidebar-inset" aria-hidden="true"></i>
         </button>
+        <a class="topbar-system-name text-decoration-none" th:href="@{/}" th:text="${systemName}">BlueCatHotelDemo</a>
         <div class="topbar-spacer" aria-hidden="true"></div>
         <div class="topbar-actions">
             <button class="btn btn-outline-secondary theme-toggle-btn" type="button" id="hotelThemeToggle" aria-label="Toggle dark mode">
@@ -72,6 +69,7 @@
 
 <div th:fragment="scripts">
     <div class="hotel-loading-bar" aria-hidden="true"></div>
+    <div class="hotel-loading-blocker" aria-hidden="true"></div>
     <div class="hotel-loading-panel" role="status" aria-live="polite">
         <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
         <span>กำลังโหลด...</span>
@@ -105,8 +103,15 @@
                 setSidebarCollapsed(false);
             }
 
+            let sidebarTransitionTimer;
             sidebarToggle?.addEventListener('click', () => {
+                window.clearTimeout(sidebarTransitionTimer);
+                document.body.classList.add('hotel-sidebar-transitioning');
+                document.body.offsetWidth;
                 setSidebarCollapsed(!document.body.classList.contains('hotel-sidebar-collapsed'));
+                sidebarTransitionTimer = window.setTimeout(() => {
+                    document.body.classList.remove('hotel-sidebar-transitioning');
+                }, 540);
             });
 
             document.querySelectorAll('.sidebar-item > .sidebar-link').forEach((link) => {
@@ -160,6 +165,14 @@
                     if (loadingCount === 0) hideLoading();
                 }
             };
+            const blockWhileLoading = event => {
+                if (!document.body.classList.contains('hotel-is-loading')) return;
+                event.preventDefault();
+                event.stopImmediatePropagation();
+            };
+            ['click', 'submit', 'keydown', 'pointerdown', 'touchstart'].forEach(type => {
+                document.addEventListener(type, blockWhileLoading, true);
+            });
 
             if (!window.fetch.__hotelLoadingWrapped) {
                 const originalFetch = window.fetch.bind(window);
@@ -292,12 +305,14 @@
 
             const serverFlashToast = document.getElementById('serverFlashToast');
             if (serverFlashToast) {
+                serverFlashToast.dataset.shown = 'true';
                 window.showAlert(serverFlashToast.dataset.type, serverFlashToast.dataset.message);
             }
         })();
     </script>
     <script th:src="@{/mazer/dist/assets/vendors/perfect-scrollbar/perfect-scrollbar.min.js}"></script>
     <script th:src="@{/mazer/dist/assets/js/bootstrap.bundle.min.js}"></script>
+    <script th:src="@{/mazer/dist/assets/js/hotel-toast.js}"></script>
     <script>
         function slideToggle(t, e, o) {
             if (t.style.display === 'none' || window.getComputedStyle(t).display === 'none') slideDown(t, e, o);
@@ -305,33 +320,45 @@
         }
 
         function slideUp(t, e, o) {
-            const duration = e || 300;
+            const duration = e || 380;
             t.style.height = `${t.scrollHeight}px`;
             t.style.overflow = 'hidden';
-            t.style.transition = `height ${duration}ms ease`;
+            t.style.opacity = '1';
+            t.style.transform = 'translateY(0)';
+            t.style.transition = `height ${duration}ms cubic-bezier(.2,.8,.2,1), opacity ${duration * .7}ms ease, transform ${duration}ms cubic-bezier(.2,.8,.2,1)`;
             t.offsetHeight;
             t.style.height = '0px';
+            t.style.opacity = '0';
+            t.style.transform = 'translateY(-.45rem)';
             window.setTimeout(() => {
                 t.style.display = 'none';
                 t.style.height = '';
                 t.style.overflow = '';
+                t.style.opacity = '';
+                t.style.transform = '';
                 t.style.transition = '';
                 if (typeof o === 'function') o();
             }, duration);
         }
 
         function slideDown(t, e, o) {
-            const duration = e || 300;
+            const duration = e || 380;
             t.style.display = 'block';
             t.style.height = '0px';
             t.style.overflow = 'hidden';
-            t.style.transition = `height ${duration}ms ease`;
+            t.style.opacity = '0';
+            t.style.transform = 'translateY(-.45rem)';
+            t.style.transition = `height ${duration}ms cubic-bezier(.2,.8,.2,1), opacity ${duration * .7}ms ease, transform ${duration}ms cubic-bezier(.2,.8,.2,1)`;
             const targetHeight = t.scrollHeight;
             t.offsetHeight;
             t.style.height = `${targetHeight}px`;
+            t.style.opacity = '1';
+            t.style.transform = 'translateY(0)';
             window.setTimeout(() => {
                 t.style.height = '';
                 t.style.overflow = '';
+                t.style.opacity = '';
+                t.style.transform = '';
                 t.style.transition = '';
                 if (typeof o === 'function') o();
             }, duration);
@@ -385,11 +412,11 @@
             if (isVisible && !wasCollapsed) {
                 item.classList.remove('active');
                 submenu.classList.remove('active');
-                slideUp(submenu, 260);
+                slideUp(submenu, 380);
             } else {
                 item.classList.add('active');
                 submenu.classList.add('active');
-                slideDown(submenu, 260);
+                slideDown(submenu, 380);
             }
         }, true);
 
@@ -402,10 +429,10 @@
 
                 if (submenu.classList.contains('active')) {
                     submenu.classList.remove('active');
-                    slideUp(submenu, 260);
+                    slideUp(submenu, 380);
                 } else {
                     submenu.classList.add('active');
-                    slideDown(submenu, 260);
+                    slideDown(submenu, 380);
                 }
             });
         });

@@ -46,11 +46,115 @@
             </section>
         </div>
 
+        <div class="modal fade" id="unassignedBookingModal" tabindex="-1">
+            <div class="modal-dialog modal-xl modal-dialog-scrollable unassigned-booking-modal">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">รายการจองที่ยังไม่ระบุห้อง</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <form id="unassignedBookingSearch" class="row g-2 align-items-end mb-4">
+                            <div class="col-md-2">
+                                <label class="form-label">ชื่อผู้พัก</label>
+                                <input class="form-control" name="customerName" placeholder="ชื่อผู้พัก">
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">เบอร์โทร</label>
+                                <input class="form-control" name="phone" inputmode="numeric" maxlength="10" placeholder="เบอร์โทร">
+                            </div>
+                            <div class="col-md-3">
+                                <label class="form-label">วันที่เข้าพัก</label>
+                                <div class="date-range-field search-date-field">
+                                    <div class="date-box">
+                                        <i class="bi bi-calendar-check"></i>
+                                        <input class="hotel-calendar-value" type="hidden" name="checkInDate" data-allow-clear="true">
+                                        <input class="form-control hotel-calendar-input" type="text" readonly data-calendar-for="checkInDate">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">ประเภทห้อง</label>
+                                <select class="form-select" name="roomTypeId">
+                                    <option value="">ทั้งหมด</option>
+                                    <option th:each="rt : ${roomTypes}" th:value="${rt.id}" th:text="${rt.name}"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-2">
+                                <label class="form-label">รูปแบบการพัก</label>
+                                <select class="form-select" name="stayType">
+                                    <option value="">ทั้งหมด</option>
+                                    <option th:each="st : ${stayTypes}" th:value="${st.name()}" th:text="${st.label}"></option>
+                                </select>
+                            </div>
+                            <div class="col-md-1 d-flex">
+                                <button class="btn btn-light-secondary flex-fill" type="reset">ล้าง</button>
+                            </div>
+                        </form>
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead>
+                                <tr>
+                                    <th>เลขที่การจอง</th>
+                                    <th>วันเข้า</th>
+                                    <th>วันออก</th>
+                                    <th>ประเภทห้อง</th>
+                                    <th>ผู้พัก</th>
+                                    <th>เบอร์โทร</th>
+                                    <th>รูปแบบ</th>
+                                    <th class="text-end">มัดจำ</th>
+                                    <th class="text-end unassigned-booking-action-col">เข้าพัก</th>
+                                </tr>
+                                </thead>
+                                <tbody id="unassignedBookingRows">
+                                <tr class="unassigned-booking-row"
+                                    th:each="b : ${unassignedBookings}"
+                                    th:attr="data-customer-name=${#strings.toLowerCase(b.customerName)},
+                                             data-customer-display=${b.customerName},
+                                             data-phone=${b.phone},
+                                             data-id-card=${b.idCard},
+                                             data-nationality=${b.nationality != null ? b.nationality : 'ไทย'},
+                                             data-check-in-date=${b.checkInDate},
+                                             data-check-out-date=${b.checkOutDate},
+                                             data-room-type-id=${b.roomType != null ? b.roomType.id : ''},
+                                             data-stay-type=${b.stayType.name()},
+                                             data-deposit-amount=${b.depositAmount != null ? b.depositAmount : 0},
+                                             data-note=${b.note},
+                                             data-daily-price=${b.roomType != null ? b.roomType.nightlyPrice : 0},
+                                             data-monthly-price=${b.roomType != null ? b.roomType.monthlyPrice : 0}">
+                                    <td><span class="badge bg-light-secondary" th:text="${b.bookingNumber != null ? b.bookingNumber : '-'}"></span></td>
+                                    <td th:text="${@thaiDate.format(b.checkInDate)}"></td>
+                                    <td th:text="${b.checkOutDate != null ? @thaiDate.format(b.checkOutDate) : '-'}"></td>
+                                    <td><span class="badge bg-light-primary" th:text="${b.roomType != null ? b.roomType.name : '-'}"></span></td>
+                                    <td th:text="${b.customerName}"></td>
+                                    <td th:text="${b.phone != null ? b.phone : '-'}"></td>
+                                    <td th:text="${b.stayType.label}"></td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(b.depositAmount != null ? b.depositAmount : 0, 1, 'COMMA', 2, 'POINT')}"></td>
+                                    <td class="text-end unassigned-booking-action-col">
+                                        <button class="btn btn-sm btn-primary choose-unassigned-booking" type="button" th:value="${b.id}">
+                                            <i class="bi bi-door-open me-1"></i>เข้าพัก
+                                        </button>
+                                    </td>
+                                </tr>
+                                <tr id="unassignedBookingEmpty" th:classappend="${!unassignedBookings.isEmpty()} ? ' d-none' : ''">
+                                    <td colspan="9" class="text-center text-muted py-4">ไม่พบรายการจองที่ยังไม่ระบุห้อง</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">ปิด</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="modal fade" th:each="room : ${rooms}" th:id="${'guestRoomModal' + room.id}" tabindex="-1">
             <div class="modal-dialog modal-lg">
                 <div class="modal-content">
                     <div th:if="${room.status.name() == 'AVAILABLE' or room.status.name() == 'RESERVED'}" th:with="booking=${reservedBookings[room.id]}">
-                        <form class="guest-stay-form" method="post" th:action="@{/guests}">
+                        <form class="guest-stay-form" method="post" th:action="@{/guests}" th:attr="data-room-type-id=${room.roomType != null ? room.roomType.id : ''}">
                             <input type="hidden" name="roomId" th:value="${room.id}">
                             <input type="hidden" name="bookingId" th:value="${booking != null ? booking.id : null}">
                             <input class="booking-deposit-amount" type="hidden" name="bookingDepositAmount" th:value="${booking != null and booking.depositAmount != null ? booking.depositAmount : 0}">
@@ -61,6 +165,15 @@
                                     <div class="alert alert-light-primary mb-0">
                                         <strong th:text="|เลขที่การจอง ${booking.bookingNumber != null ? booking.bookingNumber : '-'}|"></strong>
                                         <div>ระบบจะหักมัดจำค่าจอง <span th:text="${#numbers.formatDecimal(booking.depositAmount != null ? booking.depositAmount : 0, 1, 'COMMA', 2, 'POINT')}"></span> บาท จากยอดชำระแรกเข้า</div>
+                                    </div>
+                                </div>
+                                <div class="col-12 unassigned-booking-select-wrap" th:if="${booking == null}">
+                                    <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+                                        <label class="form-label mb-0">เลือกรายการจอง</label>
+                                        <button class="btn btn-sm btn-outline-primary open-unassigned-booking-list" type="button" data-bs-toggle="modal" data-bs-target="#unassignedBookingModal">
+                                            <i class="bi bi-calendar2-check me-1"></i>รายการจอง
+                                            <span class="badge bg-primary ms-1" th:text="${unassignedBookings.size()}">0</span>
+                                        </button>
                                     </div>
                                 </div>
                                 <div class="col-12"><label class="form-label">ชื่อผู้พัก</label><input class="form-control" name="fullName" th:value="${booking != null ? booking.customerName : ''}" required></div>
@@ -262,6 +375,139 @@ const showGuestWarningToast = (message) => {
     window.showAlert?.('warning', message);
 };
 
+const searchThaiMonths = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+const searchThaiWeekdays = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
+const searchPad = value => String(value).padStart(2, '0');
+const searchToIsoDate = date => `${date.getFullYear()}-${searchPad(date.getMonth() + 1)}-${searchPad(date.getDate())}`;
+const searchFormatDate = date => `${searchPad(date.getDate())}/${searchPad(date.getMonth() + 1)}/${date.getFullYear() + 543}`;
+const initUnassignedBookingCalendar = () => {
+    const hiddenInput = unassignedBookingSearch?.querySelector('.hotel-calendar-value[name="checkInDate"]');
+    const displayInput = unassignedBookingSearch?.querySelector('.hotel-calendar-input[data-calendar-for="checkInDate"]');
+    if (!hiddenInput || !displayInput) return;
+    let selectedDate = new Date();
+    let viewDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+    hiddenInput.value = searchToIsoDate(selectedDate);
+    displayInput.value = searchFormatDate(selectedDate);
+    const popup = document.createElement('div');
+    popup.className = 'hotel-calendar-popup d-none';
+    displayInput.closest('.date-box').appendChild(popup);
+
+    const selectDate = date => {
+        selectedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        hiddenInput.value = searchToIsoDate(selectedDate);
+        displayInput.value = searchFormatDate(selectedDate);
+        hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
+        popup.classList.add('d-none');
+        render();
+    };
+    hiddenInput.setCalendarDate = selectDate;
+    hiddenInput.clearCalendarDate = () => {
+        selectedDate = null;
+        hiddenInput.value = '';
+        displayInput.value = '';
+        hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
+        popup.classList.add('d-none');
+        render();
+    };
+    const render = () => {
+        const start = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1);
+        start.setDate(start.getDate() - start.getDay());
+        popup.innerHTML = `
+            <div class="hotel-calendar-header">
+                <button class="hotel-calendar-nav" type="button" data-nav="-1">‹</button>
+                <div class="hotel-calendar-title">${searchThaiMonths[viewDate.getMonth()]} ${viewDate.getFullYear() + 543}</div>
+                <button class="hotel-calendar-nav" type="button" data-nav="1">›</button>
+            </div>
+            <div class="hotel-calendar-weekdays">${searchThaiWeekdays.map(day => `<span>${day}</span>`).join('')}</div>
+            <div class="hotel-calendar-grid"></div>
+            <div class="hotel-calendar-footer">
+                <button class="hotel-calendar-clear" type="button">ล้างวันที่</button>
+                <button class="hotel-calendar-today" type="button">วันนี้</button>
+            </div>`;
+        const grid = popup.querySelector('.hotel-calendar-grid');
+        for (let index = 0; index < 42; index++) {
+            const date = new Date(start);
+            date.setDate(start.getDate() + index);
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'hotel-calendar-day';
+            if (date.getMonth() !== viewDate.getMonth()) button.classList.add('is-muted');
+            if (date.getDay() === 0) button.classList.add('is-weekend');
+            if (selectedDate && searchToIsoDate(date) === searchToIsoDate(selectedDate)) button.classList.add('is-selected');
+            button.textContent = date.getDate();
+            button.addEventListener('click', () => selectDate(date));
+            grid.appendChild(button);
+        }
+        popup.querySelectorAll('[data-nav]').forEach(button => button.addEventListener('click', () => {
+            viewDate.setMonth(viewDate.getMonth() + Number(button.dataset.nav));
+            render();
+        }));
+        popup.querySelector('.hotel-calendar-today').addEventListener('click', () => selectDate(new Date()));
+        popup.querySelector('.hotel-calendar-clear').addEventListener('click', hiddenInput.clearCalendarDate);
+    };
+    displayInput.addEventListener('click', () => {
+        document.querySelectorAll('.hotel-calendar-popup').forEach(item => {
+            if (item !== popup) item.classList.add('d-none');
+        });
+        popup.classList.toggle('d-none');
+    });
+    render();
+};
+
+const unassignedBookingSearch = document.getElementById('unassignedBookingSearch');
+const filterUnassignedBookings = () => {
+    if (!unassignedBookingSearch) return;
+    const formData = new FormData(unassignedBookingSearch);
+    const customerName = String(formData.get('customerName') || '').trim().toLowerCase();
+    const phone = String(formData.get('phone') || '').trim();
+    const checkInDate = String(formData.get('checkInDate') || '');
+    const roomTypeId = String(formData.get('roomTypeId') || '');
+    const stayType = String(formData.get('stayType') || '');
+    let visibleRows = 0;
+    document.querySelectorAll('.unassigned-booking-row').forEach(row => {
+        const visible = (!customerName || String(row.dataset.customerName || '').includes(customerName))
+            && (!phone || String(row.dataset.phone || '').includes(phone))
+            && (!checkInDate || row.dataset.checkInDate === checkInDate)
+            && (!roomTypeId || row.dataset.roomTypeId === roomTypeId)
+            && (!stayType || row.dataset.stayType === stayType);
+        row.classList.toggle('d-none', !visible);
+        if (visible) visibleRows++;
+    });
+    document.getElementById('unassignedBookingEmpty')?.classList.toggle('d-none', visibleRows > 0);
+};
+unassignedBookingSearch?.addEventListener('input', filterUnassignedBookings);
+unassignedBookingSearch?.addEventListener('change', filterUnassignedBookings);
+unassignedBookingSearch?.addEventListener('reset', () => setTimeout(() => {
+    const today = new Date();
+    unassignedBookingSearch.querySelector('.hotel-calendar-value')?.setCalendarDate?.(today);
+    filterUnassignedBookings();
+}));
+initUnassignedBookingCalendar();
+filterUnassignedBookings();
+
+let activeGuestStayForm = null;
+
+const setUnassignedBookingPickerMode = (form) => {
+    activeGuestStayForm = form;
+    const roomTypeId = form?.dataset.roomTypeId || '';
+    document.querySelectorAll('.unassigned-booking-row').forEach(row => {
+        const matchesRoomType = !roomTypeId || !row.dataset.roomTypeId || row.dataset.roomTypeId === roomTypeId;
+        row.classList.toggle('booking-room-type-mismatch', !matchesRoomType);
+        row.querySelector('.choose-unassigned-booking')?.toggleAttribute('disabled', !matchesRoomType);
+    });
+};
+
+document.getElementById('unassignedBookingModal')?.addEventListener('shown.bs.modal', () => {
+    const backdrops = document.querySelectorAll('.modal-backdrop');
+    backdrops[backdrops.length - 1]?.classList.add('unassigned-booking-backdrop');
+});
+
+document.getElementById('unassignedBookingModal')?.addEventListener('hidden.bs.modal', () => {
+    if (document.querySelector('.modal.show')) {
+        document.body.classList.add('modal-open');
+    }
+});
+
 document.querySelectorAll('.guest-stay-form').forEach((form) => {
     const thaiMonths = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
     const thaiWeekdays = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
@@ -438,6 +684,55 @@ document.querySelectorAll('.guest-stay-form').forEach((form) => {
         grossPaymentField.value = formatMoneyValue(grossPayment);
         initialPaymentField.value = formatMoneyValue(Math.max(0, grossPayment - bookingDeposit));
     };
+    const setFieldValue = (selector, value) => {
+        const field = form.querySelector(selector);
+        if (field) field.value = value || '';
+    };
+    const setCalendarField = (name, value) => {
+        const field = form.querySelector(`[name="${name}"]`);
+        const date = parseIsoDate(value);
+        if (field && date) {
+            field.setCalendarDate?.(date);
+        }
+    };
+    const applyUnassignedBooking = (bookingId, data) => {
+        const bookingIdField = form.querySelector('[name="bookingId"]');
+        const bookingDepositHidden = form.querySelector('.booking-deposit-amount');
+        if (!bookingId) {
+            if (bookingIdField) bookingIdField.value = '';
+            if (bookingDepositHidden) bookingDepositHidden.value = '0';
+            return;
+        }
+        const stayType = data.stayType || 'DAILY';
+        if (bookingIdField) bookingIdField.value = bookingId;
+        if (bookingDepositHidden) bookingDepositHidden.value = data.depositAmount || '0';
+        setFieldValue('[name="fullName"]', data.customerDisplay || data.customerName);
+        setFieldValue('[name="phone"]', data.phone);
+        setFieldValue('[name="idCard"]', data.idCard);
+        setFieldValue('[name="nationality"]', data.nationality || 'ไทย');
+        setFieldValue('[name="note"]', data.note);
+        setCalendarField('checkInDate', data.checkInDate);
+        if (data.checkOutDate) setCalendarField('checkOutDate', data.checkOutDate);
+        form.querySelectorAll('.stay-type-radio').forEach(radio => {
+            radio.checked = radio.value === stayType;
+            radio.dataset.dailyPrice = data.dailyPrice || radio.dataset.dailyPrice;
+            radio.dataset.monthlyPrice = data.monthlyPrice || radio.dataset.monthlyPrice;
+        });
+        form.querySelectorAll('.booking-deposit-display').forEach(field => {
+            field.value = formatMoneyValue(parseMoney(data.depositAmount));
+        });
+        form.querySelectorAll('.price-field').forEach(field => {
+            if (field.classList.contains('daily-control')) field.value = formatMoneyValue(parseMoney(data.dailyPrice));
+            if (field.classList.contains('monthly-control')) field.value = formatMoneyValue(parseMoney(data.monthlyPrice));
+            delete field.dataset.customized;
+        });
+        updatePhoneCounter();
+        updateIdCardCounter();
+        updatePrice(false);
+    };
+    form.applyUnassignedBookingRow = (row) => {
+        applyUnassignedBooking(row.querySelector('.choose-unassigned-booking')?.value, row.dataset);
+    };
     form.querySelectorAll('.stay-type-radio').forEach((radio) => radio.addEventListener('change', () => updatePrice(true)));
     advanceMonths?.addEventListener('change', updatePrice);
     form.querySelectorAll('[name="checkInDate"], [name="checkOutDate"]').forEach((field) => field.addEventListener('change', () => {
@@ -481,6 +776,30 @@ document.querySelectorAll('.guest-stay-form').forEach((form) => {
         }
     });
     updatePrice(true);
+});
+
+document.querySelectorAll('.open-unassigned-booking-list').forEach(button => {
+    button.addEventListener('click', () => {
+        const form = button.closest('.guest-stay-form');
+        setUnassignedBookingPickerMode(form);
+    });
+});
+
+document.querySelectorAll('.choose-unassigned-booking').forEach(button => {
+    button.addEventListener('click', () => {
+        const row = button.closest('.unassigned-booking-row');
+        if (!activeGuestStayForm || !row) {
+            showGuestWarningToast('กรุณาเปิดจากห้องว่างก่อนเลือกรายการจอง');
+            return;
+        }
+        const roomTypeId = activeGuestStayForm.dataset.roomTypeId || '';
+        if (roomTypeId && row.dataset.roomTypeId && row.dataset.roomTypeId !== roomTypeId) {
+            showGuestWarningToast('รายการจองไม่ตรงกับประเภทห้องนี้');
+            return;
+        }
+        activeGuestStayForm.applyUnassignedBookingRow?.(row);
+        bootstrap.Modal.getInstance(document.getElementById('unassignedBookingModal'))?.hide();
+    });
 });
 
 document.querySelectorAll('.checkout-refund-panel').forEach((panel) => {

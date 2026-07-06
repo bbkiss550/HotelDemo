@@ -11,6 +11,16 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
     long countByStatus(PaymentStatus status);
     List<Payment> findAllByOrderByPaymentDateDescIdDesc();
+    @Query("""
+            select p from Payment p
+            left join p.reciept r
+            order by
+              case when r.recieptNo is null then 1 else 0 end,
+              r.recieptNo desc,
+              p.paymentDate desc,
+              p.id desc
+            """)
+    List<Payment> findAllOrderByReceiptNoDesc();
     List<Payment> findByGuestIdOrderByPaymentDateDescIdDesc(Long guestId);
     @Query("""
             select coalesce(sum(p.amount), 0) from Payment p

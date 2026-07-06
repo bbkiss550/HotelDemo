@@ -1,7 +1,12 @@
 package com.hotel.controller;
 
 import com.hotel.model.Payment;
+import com.hotel.model.StayType;
 import com.hotel.repository.PaymentRepository;
+import java.math.BigDecimal;
+import java.time.temporal.ChronoUnit;
+import java.util.ArrayList;
+import java.util.List;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,6 +29,7 @@ public class ReceiptController {
         model.addAttribute("receiptNo", payment.getReciept() != null ? payment.getReciept().getRecieptNo() : null);
         model.addAttribute("receiptTypeName", payment.getReciept() != null && payment.getReciept().getType() != null ? payment.getReciept().getType().getName() : "-");
         model.addAttribute("billNumber", monthlyRentBillNumber(payment));
+        model.addAttribute("receiptItems", receiptItems(payment));
         return "receipts/detail";
     }
 
@@ -38,5 +44,38 @@ public class ReceiptController {
         }
         String value = remark.substring(marker + 1).split("\\s|-", 2)[0].trim();
         return value.isBlank() ? "-" : value;
+    }
+
+    private List<ReceiptLine> receiptItems(Payment payment) {
+        if (payment == null || payment.getGuest() == null || payment.getGuest().getStayType() != StayType.DAILY) {
+            return List.of(new ReceiptLine(payment != null && payment.getReciept() != null && payment.getReciept().getType() != null ? payment.getReciept().getType().getName() : "-", BigDecimal.ONE, payment == null ? BigDecimal.ZERO : payment.getAmount(), payment == null ? BigDecimal.ZERO : payment.getAmount()));
+        }
+        var guest = payment.getGuest();
+        BigDecimal price = guest.getPrice() == null ? BigDecimal.ZERO : guest.getPrice();
+        BigDecimal deposit = guest.getDeposit() == null ? BigDecimal.ZERO : guest.getDeposit();
+        long days = 1;
+        if (guest.getCheckInDate() != null && guest.getCheckOutDate() != null) {
+            days = Math.max(1, ChronoUnit.DAYS.between(guest.getCheckInDate(), guest.getCheckOutDate()));
+        }
+        BigDecimal roomAmount = price.multiply(BigDecimal.valueOf(days));
+        BigDecimal paidAmount = payment.getAmount() == null ? BigDecimal.ZERO : payment.getAmount();
+        BigDecimal bookingDeposit = roomAmount.add(deposit).subtract(paidAmount).max(BigDecimal.ZERO);
+        List<ReceiptLine> items = new ArrayList<>();
+        if (roomAmount.compareTo(BigDecimal.ZERO) > 0) {
+            items.add(new ReceiptLine("ค่าห้องรายวัน", BigDecimal.valueOf(days), price, roomAmount));
+        }
+        if (deposit.compareTo(BigDecimal.ZERO) > 0) {
+            items.add(new ReceiptLine("ค่าประกัน", BigDecimal.ONE, deposit, deposit));
+        }
+        if (bookingDeposit.compareTo(BigDecimal.ZERO) > 0) {
+            items.add(new ReceiptLine("หักมัดจำจอง", BigDecimal.ONE, bookingDeposit.negate(), bookingDeposit.negate()));
+        }
+        if (items.isEmpty()) {
+            items.add(new ReceiptLine("ค่าบริการของลูกค้ารายวัน", BigDecimal.ONE, paidAmount, paidAmount));
+        }
+        return items;
+    }
+
+    public record ReceiptLine(String label, BigDecimal units, BigDecimal unitPrice, BigDecimal amount) {
     }
 }

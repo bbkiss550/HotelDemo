@@ -5,6 +5,7 @@ import com.hotel.model.PaymentStatus;
 import com.hotel.model.MonthlyRentBill;
 import com.hotel.model.MonthlyRentBillStatus;
 import com.hotel.model.RecieptType;
+import com.hotel.model.StayType;
 import com.hotel.repository.BillStatusRepository;
 import com.hotel.repository.GuestRepository;
 import com.hotel.repository.MonthlyRentBillRepository;
@@ -17,7 +18,9 @@ import com.hotel.service.RecieptRecordService;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.YearMonth;
+import java.time.temporal.ChronoUnit;
 import java.util.AbstractMap;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
@@ -64,7 +67,7 @@ public class PaymentController {
         YearMonth selectedPeriod = normalizePeriod(month, year);
         Integer selectedMonth = month == null || month < 1 || month > 12 ? null : selectedPeriod.getMonthValue();
         Integer selectedYear = year == null || year < 2000 ? null : selectedPeriod.getYear();
-        var paymentList = payments.findAllByOrderByPaymentDateDescIdDesc();
+        var paymentList = payments.findAllOrderByReceiptNoDesc();
         Map<Long, String> paymentBillNumbers = paymentList.stream()
                 .collect(Collectors.toMap(Payment::getId, this::monthlyRentBillNumber, (left, right) -> left));
         Map<Long, MonthlyRentBill> paymentBills = paymentList.stream()
@@ -73,6 +76,8 @@ public class PaymentController {
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (left, right) -> left));
         Map<Long, MonthlyRentBillSlipItem> paymentBillItems = paymentBills.entrySet().stream()
                 .collect(Collectors.toMap(Map.Entry::getKey, entry -> new MonthlyRentBillSlipItem(entry.getValue()), (left, right) -> left));
+        Map<Long, List<ReceiptLine>> paymentReceiptItems = paymentList.stream()
+                .collect(Collectors.toMap(Payment::getId, this::receiptItems, (left, right) -> left));
         Map<Long, String> paymentReceiptNumbers = paymentList.stream()
                 .collect(Collectors.toMap(Payment::getId, payment -> payment.getReciept() != null
                         ? payment.getReciept().getRecieptNo()
@@ -94,6 +99,7 @@ public class PaymentController {
         model.addAttribute("paymentBillNumbers", paymentBillNumbers);
         model.addAttribute("paymentBills", paymentBills);
         model.addAttribute("paymentBillItems", paymentBillItems);
+        model.addAttribute("paymentReceiptItems", paymentReceiptItems);
         model.addAttribute("paymentReceiptNumbers", paymentReceiptNumbers);
         model.addAttribute("paymentReceiptTypeNames", paymentReceiptTypeNames(paymentList));
         model.addAttribute("rooms", rooms.findAllByOrderByRoomNumber());
@@ -345,5 +351,44 @@ public class PaymentController {
     }
 
     public record MonthlyRentBillSlipItem(MonthlyRentBill bill) {
+    }
+
+    private List<ReceiptLine> receiptItems(Payment payment) {
+        if (payment == null || payment.getGuest() == null || payment.getGuest().getStayType() != StayType.DAILY) {
+            return List.of(new ReceiptLine(paymentReceiptTypeName(payment), BigDecimal.ONE, payment == null ? BigDecimal.ZERO : payment.getAmount(), payment == null ? BigDecimal.ZERO : payment.getAmount()));
+        }
+        var guest = payment.getGuest();
+        BigDecimal price = money(guest.getPrice());
+        BigDecimal deposit = money(guest.getDeposit());
+        long days = 1;
+        if (guest.getCheckInDate() != null && guest.getCheckOutDate() != null) {
+            days = Math.max(1, ChronoUnit.DAYS.between(guest.getCheckInDate(), guest.getCheckOutDate()));
+        }
+        BigDecimal roomAmount = price.multiply(BigDecimal.valueOf(days));
+        BigDecimal paidAmount = money(payment.getAmount());
+        BigDecimal bookingDeposit = roomAmount.add(deposit).subtract(paidAmount).max(BigDecimal.ZERO);
+        List<ReceiptLine> items = new ArrayList<>();
+        if (roomAmount.compareTo(BigDecimal.ZERO) > 0) {
+            items.add(new ReceiptLine("ค่าห้องรายวัน", BigDecimal.valueOf(days), price, roomAmount));
+        }
+        if (deposit.compareTo(BigDecimal.ZERO) > 0) {
+            items.add(new ReceiptLine("ค่าประกัน", BigDecimal.ONE, deposit, deposit));
+        }
+        if (bookingDeposit.compareTo(BigDecimal.ZERO) > 0) {
+            items.add(new ReceiptLine("หักมัดจำจอง", BigDecimal.ONE, bookingDeposit.negate(), bookingDeposit.negate()));
+        }
+        if (items.isEmpty()) {
+            items.add(new ReceiptLine("ค่าบริการของลูกค้ารายวัน", BigDecimal.ONE, paidAmount, paidAmount));
+        }
+        return items;
+    }
+
+    private String paymentReceiptTypeName(Payment payment) {
+        return payment != null && payment.getReciept() != null && payment.getReciept().getType() != null
+                ? payment.getReciept().getType().getName()
+                : "-";
+    }
+
+    public record ReceiptLine(String label, BigDecimal units, BigDecimal unitPrice, BigDecimal amount) {
     }
 }

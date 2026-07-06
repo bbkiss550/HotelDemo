@@ -16,6 +16,7 @@ import com.hotel.repository.FloorRepository;
 import com.hotel.repository.GuestRepository;
 import com.hotel.repository.PaymentRepository;
 import com.hotel.repository.RoomRepository;
+import com.hotel.repository.RoomTypeRepository;
 import com.hotel.service.AdvanceBalanceService;
 import com.hotel.service.AppSettingService;
 import com.hotel.service.AuditService;
@@ -39,6 +40,7 @@ public class GuestController {
     private final GuestRepository guests;
     private final BookingRepository bookings;
     private final RoomRepository rooms;
+    private final RoomTypeRepository roomTypes;
     private final FloorRepository floors;
     private final PaymentRepository payments;
     private final AdvanceLedgerRepository advanceLedgers;
@@ -48,10 +50,11 @@ public class GuestController {
     private final DepositRefundRepository depositRefunds;
     private final AuditService audit;
 
-    public GuestController(GuestRepository guests, BookingRepository bookings, RoomRepository rooms, FloorRepository floors, PaymentRepository payments, AdvanceLedgerRepository advanceLedgers, AdvanceBalanceService advanceBalanceService, AppSettingService settings, RecieptRecordService recieptRecordService, DepositRefundRepository depositRefunds, AuditService audit) {
+    public GuestController(GuestRepository guests, BookingRepository bookings, RoomRepository rooms, RoomTypeRepository roomTypes, FloorRepository floors, PaymentRepository payments, AdvanceLedgerRepository advanceLedgers, AdvanceBalanceService advanceBalanceService, AppSettingService settings, RecieptRecordService recieptRecordService, DepositRefundRepository depositRefunds, AuditService audit) {
         this.guests = guests;
         this.bookings = bookings;
         this.rooms = rooms;
+        this.roomTypes = roomTypes;
         this.floors = floors;
         this.payments = payments;
         this.advanceLedgers = advanceLedgers;
@@ -101,6 +104,9 @@ public class GuestController {
         model.addAttribute("activeGuestPayments", activeGuestPayments);
         model.addAttribute("activeGuestStayDays", activeGuestStayDays);
         model.addAttribute("reservedBookings", reservedBookings);
+        model.addAttribute("unassignedBookings", bookings.findByRoomIsNullAndStatusOrderByCheckInDateAscIdDesc(BookingStatus.CONFIRMED));
+        model.addAttribute("availableRooms", rooms.findByStatusOrderByRoomNumber(RoomStatus.AVAILABLE));
+        model.addAttribute("roomTypes", roomTypes.findAllByOrderByNameAsc());
         model.addAttribute("stayTypes", StayType.values());
         model.addAttribute("defaultDepositAmount", settings.defaultDeposit());
         return "guests/index";
@@ -115,6 +121,11 @@ public class GuestController {
                 @RequestParam(required = false) Long floorId,
                 RedirectAttributes redirect) {
         var room = rooms.findById(roomId).orElseThrow();
+        if (room.getStatus() != RoomStatus.AVAILABLE && room.getStatus() != RoomStatus.RESERVED && bookingId != null) {
+            redirect.addFlashAttribute("error", "ห้องที่เลือกไม่ว่าง");
+            redirect.addFlashAttribute("flashType", "warning");
+            return floorId == null ? "redirect:/guests" : "redirect:/guests?floorId=" + floorId;
+        }
         guest.setRoom(room);
         guest.setActive(true);
         if (guest.getInitialWaterMeter() == null) {
@@ -127,6 +138,11 @@ public class GuestController {
             var booking = bookings.findById(bookingId).orElseThrow();
             if (booking.getStayType() != guest.getStayType()) {
                 redirect.addFlashAttribute("error", "รูปแบบการพักต้องตรงกับการจอง");
+                redirect.addFlashAttribute("flashType", "warning");
+                return floorId == null ? "redirect:/guests" : "redirect:/guests?floorId=" + floorId;
+            }
+            if (booking.getRoomType() != null && (room.getRoomType() == null || !booking.getRoomType().getId().equals(room.getRoomType().getId()))) {
+                redirect.addFlashAttribute("error", "ห้องที่เลือกไม่ตรงกับประเภทห้องที่จอง");
                 redirect.addFlashAttribute("flashType", "warning");
                 return floorId == null ? "redirect:/guests" : "redirect:/guests?floorId=" + floorId;
             }
@@ -146,6 +162,7 @@ public class GuestController {
         }
         if (bookingId != null) {
             var booking = bookings.findById(bookingId).orElseThrow();
+            booking.setRoom(room);
             booking.setStatus(BookingStatus.CHECKED_IN);
             bookings.save(booking);
         }

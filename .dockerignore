@@ -2,6 +2,7 @@
 .settings
 .classpath
 .project
+.env
 target
 data
 *.log

@@ -7,6 +7,7 @@ data/
 *.zip
 
 src/main/resources/application-local.properties
+.env
 
 .idea/
 .vscode/

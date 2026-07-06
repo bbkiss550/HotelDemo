@@ -59,7 +59,9 @@
                     <td th:text="${b.room != null ? b.room.roomNumber : '-'}"></td>
                     <td th:text="${b.customerName}"></td><td th:text="${b.phone}"></td><td th:text="${b.stayType.label}"></td>
                     <td th:text="${#numbers.formatDecimal(b.depositAmount != null ? b.depositAmount : 0, 1, 'COMMA', 2, 'POINT')}"></td>
-                    <td><span class="badge bg-light-info" th:text="${b.status.label}"></span></td>
+                    <td><span class="badge booking-status"
+                              th:classappend="${'booking-status-' + #strings.toLowerCase(b.status.name())}"
+                              th:text="${b.status.label}"></span></td>
                     <td class="text-end">
                         <div class="d-flex justify-content-end gap-2">
                             <button class="btn btn-sm btn-outline-primary px-3" type="button" data-bs-toggle="modal" th:data-bs-target="|#bookingEditModal${b.id}|">
@@ -96,17 +98,17 @@
                         <input class="form-control id-card-field" th:field="*{idCard}" inputmode="numeric" maxlength="13" pattern="[0-9]{13}">
                     </div>
                     <div class="col-md-4"><label class="form-label">สัญชาติ</label><input class="form-control" th:field="*{nationality}" value="ไทย"></div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label class="form-label">ประเภทห้องที่จอง</label>
                         <select class="form-select room-type-field" name="roomTypeId" required>
                             <option th:each="rt : ${roomTypes}" th:value="${rt.id}" th:text="${rt.name}" th:attr="data-daily-price=${rt.nightlyPrice},data-monthly-price=${rt.monthlyPrice},data-available-count=${availableRoomCounts[rt.id]}"></option>
                         </select>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label class="form-label">ห้องว่าง</label>
                         <div class="form-control bg-light available-room-count" aria-live="polite">0 ห้อง</div>
                     </div>
-                    <div class="col-md-6 room-select-wrapper">
+                    <div class="col-md-4 room-select-wrapper">
                         <label class="form-label">ห้องที่ต้องการจอง</label>
                         <select class="form-select room-field" name="roomId">
                             <option value="">ไม่ต้องการเลือกห้อง</option>
@@ -172,17 +174,17 @@
                         <input class="form-control id-card-field" name="idCard" th:value="${b.idCard}" inputmode="numeric" maxlength="13" pattern="[0-9]{13}">
                     </div>
                     <div class="col-md-4"><label class="form-label">สัญชาติ</label><input class="form-control" name="nationality" th:value="${b.nationality != null ? b.nationality : 'ไทย'}"></div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label class="form-label">ประเภทห้องที่จอง</label>
                         <select class="form-select room-type-field" name="roomTypeId" required>
                             <option th:each="rt : ${roomTypes}" th:value="${rt.id}" th:text="${rt.name}" th:selected="${(b.roomType != null and b.roomType.id == rt.id) or (b.roomType == null and b.room != null and b.room.roomType != null and b.room.roomType.id == rt.id)}" th:attr="data-daily-price=${rt.nightlyPrice},data-monthly-price=${rt.monthlyPrice},data-available-count=${availableRoomCounts[rt.id]}"></option>
                         </select>
                     </div>
-                    <div class="col-md-6">
+                    <div class="col-md-4">
                         <label class="form-label">ห้องว่าง</label>
                         <div class="form-control bg-light available-room-count" aria-live="polite">0 ห้อง</div>
                     </div>
-                    <div class="col-md-6 room-select-wrapper">
+                    <div class="col-md-4 room-select-wrapper">
                         <label class="form-label">ห้องที่ต้องการจอง</label>
                         <select class="form-select room-field" name="roomId">
                             <option value="">ไม่ต้องการเลือกห้อง</option>
@@ -582,9 +584,12 @@ root.querySelectorAll('.booking-stay-form').forEach((form) => {
         const { checkIn, checkOut } = getDateRange();
         const invalid = checkIn && checkOut && checkIn > checkOut;
         if (invalid) {
+            if (showWarning) {
+                showBookingWarningToast('วันที่ออกห้ามน้อยกว่าวันที่เข้าพัก');
+            }
             form.querySelector('[name="checkOutDate"]')?.setCalendarDate?.(addDays(checkIn, 1));
         }
-        return true;
+        return !invalid;
     };
     const syncDuration = () => {
         const { checkIn, checkOut } = getDateRange();
@@ -643,7 +648,7 @@ root.querySelectorAll('.booking-stay-form').forEach((form) => {
     }));
     form.addEventListener('submit', (event) => {
         event.preventDefault();
-        validateDateRange(true);
+        if (!validateDateRange(true)) return;
         fetch(form.action, {
             method: 'POST',
             headers: bookingAjaxHeaders(),

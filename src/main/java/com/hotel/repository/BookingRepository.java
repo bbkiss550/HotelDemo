@@ -15,6 +15,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
     long countByStatus(BookingStatus status);
     List<Booking> findAllByOrderByCheckInDateAscIdDesc();
     List<Booking> findByRoomAndStatusIn(Room room, List<BookingStatus> statuses);
+    List<Booking> findByRoomIsNullAndStatusOrderByCheckInDateAscIdDesc(BookingStatus status);
     java.util.Optional<Booking> findTopByRoomAndStatusOrderByCheckInDateDescIdDesc(Room room, BookingStatus status);
 
     @Query("select max(b.bookingNumber) from Booking b where b.bookingNumber like concat(:prefix, '%')")
