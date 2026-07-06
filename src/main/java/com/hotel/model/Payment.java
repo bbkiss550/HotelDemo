@@ -23,14 +23,22 @@ public class Payment {
     @Column(name = "p_amount")
     private BigDecimal amount = BigDecimal.ZERO;
 
+    @Column(name = "p_fine_amount")
+    private BigDecimal fineAmount = BigDecimal.ZERO;
+
     @Column(name = "p_payment_date")
     private LocalDate paymentDate;
 
-    @Column(name = "p_payment_type")
-    private String paymentType = "ค่าเข้าพัก";
-
     @Column(name = "p_payment_method")
     private String paymentMethod = "เงินสด";
+
+    @OneToOne
+    @JoinColumn(name = "`ID_reciept`", referencedColumnName = "`ID_reciept`")
+    private Reciept reciept;
+
+    @ManyToOne
+    @JoinColumn(name = "ID_monthly_rent_bill", referencedColumnName = "ID_monthly_rent_bill")
+    private MonthlyRentBill monthlyRentBill;
 
     @Column(name = "p_remark", length = 1000)
     private String remark;
@@ -47,12 +55,19 @@ public class Payment {
     public void setGuest(Guest guest) { this.guest = guest; }
     public BigDecimal getAmount() { return amount; }
     public void setAmount(BigDecimal amount) { this.amount = amount; }
+    public BigDecimal getFineAmount() { return fineAmount == null ? BigDecimal.ZERO : fineAmount; }
+    public void setFineAmount(BigDecimal fineAmount) { this.fineAmount = fineAmount; }
+    public BigDecimal getTotalAmount() {
+        return (amount == null ? BigDecimal.ZERO : amount).add(getFineAmount());
+    }
     public LocalDate getPaymentDate() { return paymentDate; }
     public void setPaymentDate(LocalDate paymentDate) { this.paymentDate = paymentDate; }
-    public String getPaymentType() { return paymentType; }
-    public void setPaymentType(String paymentType) { this.paymentType = paymentType; }
     public String getPaymentMethod() { return paymentMethod; }
     public void setPaymentMethod(String paymentMethod) { this.paymentMethod = paymentMethod; }
+    public Reciept getReciept() { return reciept; }
+    public void setReciept(Reciept reciept) { this.reciept = reciept; }
+    public MonthlyRentBill getMonthlyRentBill() { return monthlyRentBill; }
+    public void setMonthlyRentBill(MonthlyRentBill monthlyRentBill) { this.monthlyRentBill = monthlyRentBill; }
     public String getRemark() { return remark; }
     public void setRemark(String remark) { this.remark = remark; }
     public PaymentStatus getStatus() { return status; }

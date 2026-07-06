@@ -3,7 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Login - BlueCatHotelDemo</title>
+    <title th:text="|Login - ${systemName != null ? systemName : 'BlueCatHotelDemo'}|">Login - BlueCatHotelDemo</title>
     <link rel="preconnect" href="https://fonts.gstatic.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" th:href="@{/mazer/dist/assets/css/bootstrap.css}">
@@ -205,7 +205,7 @@
     <section class="login-panel">
         <div class="login-form-wrap">
             <div class="login-brand">
-                <img th:src="@{/mazer/dist/assets/images/logo/logo-web.png}" alt="BlueCatHotelDemo logo">
+                <img th:src="@{/mazer/dist/assets/images/logo/logo-web.png}" th:alt="|${systemName != null ? systemName : 'BlueCatHotelDemo'} logo|">
             </div>
 
             <h2 class="login-title">เข้าสู่ระบบ</h2>

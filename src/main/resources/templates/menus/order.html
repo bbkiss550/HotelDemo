@@ -1,0 +1,175 @@
+<!doctype html>
+<html lang="th">
+<head th:replace="~{fragments/head :: head('จัดการลำดับเมนู')}"></head>
+<body>
+<div id="app">
+    <div th:replace="~{fragments/nav :: nav}"></div>
+    <div id="main">
+        <header class="mb-3">
+            <a href="#" class="burger-btn d-block d-xl-none"><i class="bi bi-justify fs-3"></i></a>
+        </header>
+        <div class="page-heading d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <h3 th:text="${currentMenuName}"></h3>
+            </div>
+            <a class="btn btn-light-primary" th:href="@{/}">
+                <i class="bi bi-arrow-left me-1"></i>กลับหน้าแรก
+            </a>
+        </div>
+
+        <div class="page-content">
+            <section class="section">
+                <div class="menu-order-board">
+                    <div class="menu-order-section">
+                        <div class="menu-order-heading">
+                            <i class="bi bi-list-stars"></i>
+                            <span>เมนูหลัก</span>
+                        </div>
+                        <div class="menu-order-list" data-parent-id="">
+                            <div class="menu-order-item" draggable="true" th:each="menu : ${menus}" th:attr="data-menu-id=${menu.id}">
+                                <i class="bi bi-grip-vertical"></i>
+                                <span class="menu-order-name" th:text="${menu.name}"></span>
+                                <input class="form-control menu-order-link-input" th:value="${menu.link}" placeholder="เว้นว่าง = เมนูแม่">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="menu-order-section" th:each="menu : ${menus}">
+                        <div class="menu-order-heading">
+                            <i class="bi bi-diagram-3"></i>
+                            <span th:text="|เมนูลูกของ ${menu.name}|"></span>
+                        </div>
+                        <div class="menu-order-list" th:attr="data-parent-id=${menu.id}">
+                            <div class="menu-order-item" draggable="true" th:each="child : ${menu.children}" th:attr="data-menu-id=${child.id}">
+                                <i class="bi bi-grip-vertical"></i>
+                                <span class="menu-order-name" th:text="${child.name}"></span>
+                                <input class="form-control menu-order-link-input" th:value="${child.link}" placeholder="เว้นว่าง = เมนูแม่">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div th:each="menu : ${menus}">
+                        <div class="menu-order-section" th:each="child : ${menu.children}">
+                            <div class="menu-order-heading">
+                                <i class="bi bi-diagram-2"></i>
+                                <span th:text="|เมนูลูกของ ${child.name}|"></span>
+                            </div>
+                            <div class="menu-order-list" th:attr="data-parent-id=${child.id}">
+                                <div class="menu-order-item" draggable="true" th:each="grandchild : ${child.children}" th:attr="data-menu-id=${grandchild.id}">
+                                    <i class="bi bi-grip-vertical"></i>
+                                    <span class="menu-order-name" th:text="${grandchild.name}"></span>
+                                    <input class="form-control menu-order-link-input" th:value="${grandchild.link}" placeholder="เว้นว่าง = เมนูแม่">
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+<div th:replace="~{fragments/nav :: scripts}"></div>
+<script>
+(() => {
+    const csrfToken = document.querySelector('meta[name="_csrf"]')?.content;
+    const csrfHeader = document.querySelector('meta[name="_csrf_header"]')?.content;
+    const placeholder = document.createElement('div');
+    placeholder.className = 'menu-order-placeholder';
+    let dragged = null;
+
+    const getAfterElement = (container, y) => {
+        const items = [...container.querySelectorAll('.menu-order-item:not(.dragging)')];
+        return items.reduce((closest, item) => {
+            const box = item.getBoundingClientRect();
+            const offset = y - box.top - box.height / 2;
+            if (offset < 0 && offset > closest.offset) return { offset, element: item };
+            return closest;
+        }, { offset: Number.NEGATIVE_INFINITY, element: null }).element;
+    };
+
+    const saveOrder = container => {
+        const body = new URLSearchParams();
+        if (container.dataset.parentId) body.append('parentId', container.dataset.parentId);
+        const items = [...container.querySelectorAll('.menu-order-item')];
+        if (items.length === 0) return Promise.resolve();
+        items.forEach(item => body.append('menuIds', item.dataset.menuId));
+        const headers = { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' };
+        if (csrfToken && csrfHeader) headers[csrfHeader] = csrfToken;
+        return fetch('/menus/order/reorder', { method: 'POST', headers, body })
+            .then(response => {
+                if (!response.ok) throw new Error('save failed');
+                return response.text();
+            });
+    };
+
+    const saveLink = input => {
+        const item = input.closest('.menu-order-item');
+        if (!item) return;
+        const body = new URLSearchParams();
+        body.append('menuId', item.dataset.menuId);
+        body.append('link', input.value.trim());
+        const headers = { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' };
+        if (csrfToken && csrfHeader) headers[csrfHeader] = csrfToken;
+        fetch('/menus/order/link', { method: 'POST', headers, body })
+            .then(response => {
+                if (!response.ok) throw new Error('save failed');
+                window.showAlert?.('success', 'บันทึก link แล้ว');
+            })
+            .catch(() => window.showAlert?.('warning', 'บันทึก link ไม่สำเร็จ'));
+    };
+
+    document.querySelectorAll('.menu-order-link-input').forEach(input => {
+        input.addEventListener('pointerdown', event => event.stopPropagation());
+        input.addEventListener('dragstart', event => event.preventDefault());
+        input.addEventListener('blur', () => saveLink(input));
+        input.addEventListener('keydown', event => {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                input.blur();
+            }
+        });
+    });
+
+    document.querySelectorAll('.menu-order-list').forEach(list => {
+        list.addEventListener('dragstart', event => {
+            dragged = event.target.closest('.menu-order-item');
+            if (!dragged) return;
+            dragged.classList.add('dragging');
+            event.dataTransfer.effectAllowed = 'move';
+        });
+
+        list.addEventListener('dragover', event => {
+            event.preventDefault();
+            if (!dragged) return;
+            const afterElement = getAfterElement(list, event.clientY);
+            if (afterElement == null) list.appendChild(placeholder);
+            else list.insertBefore(placeholder, afterElement);
+        });
+
+        list.addEventListener('drop', event => {
+            event.preventDefault();
+            if (!dragged || !placeholder.parentNode) return;
+            const sourceContainer = dragged.closest('.menu-order-list');
+            const container = placeholder.closest('.menu-order-list');
+            container.insertBefore(dragged, placeholder);
+            placeholder.remove();
+            const saves = [saveOrder(container)];
+            if (sourceContainer && sourceContainer !== container) saves.push(saveOrder(sourceContainer));
+            Promise.all(saves)
+                .then(() => window.showAlert?.('success', 'บันทึกลำดับเมนูแล้ว'))
+                .catch(() => {
+                    window.showAlert?.('warning', 'บันทึกลำดับเมนูไม่สำเร็จ');
+                    window.setTimeout(() => window.location.reload(), 900);
+                });
+        });
+    });
+
+    document.addEventListener('dragend', () => {
+        if (dragged) dragged.classList.remove('dragging');
+        placeholder.remove();
+        dragged = null;
+    });
+})();
+</script>
+</body>
+</html>

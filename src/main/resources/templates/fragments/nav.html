@@ -4,7 +4,7 @@
             <div class="sidebar-header">
                 <div class="d-flex justify-content-between">
                     <a class="brand-mark text-decoration-none" th:href="@{/}">
-                        <img th:src="@{/mazer/dist/assets/images/logo/logo-web.png}" alt="BlueCatHotelDemo logo">
+                        <span th:text="${systemName}">BlueCatHotelDemo</span>
                     </a>
                     <div class="toggler">
                         <a href="#" class="sidebar-hide d-xl-none d-block"><i class="bi bi-x bi-middle"></i></a>
@@ -14,11 +14,32 @@
             <div class="sidebar-menu">
                 <ul class="menu">
                     <li class="sidebar-title">Menu</li>
-                    <li class="sidebar-item" th:each="menu : ${sidebarMenus}">
-                        <a class="sidebar-link" th:href="${menu.link}">
-                            <i class="bi" th:classappend="${menu.icon}"></i>
+                    <li th:each="menu : ${sidebarMenus}"
+                        th:class="${'sidebar-item' + (menu.hasChildren() ? ' has-sub' : '')}">
+                        <a class="sidebar-link"
+                           th:href="${menu.link != null and !#strings.isEmpty(menu.link) ? menu.link : '#'}">
+                            <i th:if="${menu.icon != null and !#strings.isEmpty(menu.icon)}" th:class="${#strings.startsWith(menu.icon, 'bi ') ? menu.icon : 'bi ' + menu.icon}"></i>
                             <span th:text="${menu.name}"></span>
                         </a>
+                        <ul class="submenu" th:if="${menu.hasChildren()}">
+                            <li th:each="child : ${menu.children}"
+                                th:class="${'submenu-item' + (child.hasChildren() ? ' has-sub' : '')}">
+                                <a class="submenu-link"
+                                   th:href="${child.link != null and !#strings.isEmpty(child.link) ? child.link : '#'}">
+                                    <i th:if="${child.icon != null and !#strings.isEmpty(child.icon)}" th:class="${#strings.startsWith(child.icon, 'bi ') ? child.icon : 'bi ' + child.icon}"></i>
+                                    <span th:text="${child.name}"></span>
+                                </a>
+                                <ul class="submenu" th:if="${child.hasChildren()}">
+                                    <li th:each="grandchild : ${child.children}" class="submenu-item">
+                                        <a class="submenu-link"
+                                           th:href="${grandchild.link != null and !#strings.isEmpty(grandchild.link) ? grandchild.link : '#'}">
+                                            <i th:if="${grandchild.icon != null and !#strings.isEmpty(grandchild.icon)}" th:class="${#strings.startsWith(grandchild.icon, 'bi ') ? grandchild.icon : 'bi ' + grandchild.icon}"></i>
+                                            <span th:text="${grandchild.name}"></span>
+                                        </a>
+                                    </li>
+                                </ul>
+                            </li>
+                        </ul>
                     </li>
                 </ul>
             </div>
@@ -26,8 +47,16 @@
         </div>
     </div>
     <div class="app-topbar">
+        <button class="btn btn-outline-secondary sidebar-collapse-btn d-none d-xl-inline-flex" type="button" id="hotelSidebarToggle" aria-label="ย่อหรือขยายแถบเมนู">
+            <i class="bi bi-layout-sidebar-inset" aria-hidden="true"></i>
+        </button>
         <div class="topbar-spacer" aria-hidden="true"></div>
         <div class="topbar-actions">
+            <button class="btn btn-outline-secondary theme-toggle-btn" type="button" id="hotelThemeToggle" aria-label="Toggle dark mode">
+                <i class="bi bi-sun theme-light-icon" aria-hidden="true"></i>
+                <i class="bi bi-moon theme-dark-icon" aria-hidden="true"></i>
+                <span class="theme-toggle-text">Light</span>
+            </button>
             <span class="topbar-user">
                 <i class="bi bi-person-circle"></i>
                 <span sec:authentication="name">admin</span>
@@ -42,14 +71,172 @@
 </div>
 
 <div th:fragment="scripts">
+    <div class="hotel-loading-bar" aria-hidden="true"></div>
+    <div class="hotel-loading-panel" role="status" aria-live="polite">
+        <span class="spinner-border spinner-border-sm" aria-hidden="true"></span>
+        <span>กำลังโหลด...</span>
+    </div>
     <div class="hotel-toast-container" id="hotelToastContainer" role="region" aria-live="polite" aria-atomic="false"></div>
     <div id="serverFlashToast"
          th:if="${message != null or error != null}"
          th:data-type="${error != null ? 'warning' : (flashType != null ? flashType : 'success')}"
          th:data-message="${error != null ? error : message}"
          hidden></div>
+    <script th:src="@{/mazer/dist/assets/vendors/sweetalert2/sweetalert2.all.min.js}"></script>
     <script>
         (function () {
+            const sweetAlert = window.Swal || window.Sweetalert2;
+            if (sweetAlert && !window.Swal) window.Swal = sweetAlert;
+            const themeToggle = document.getElementById('hotelThemeToggle');
+            const sidebarToggle = document.getElementById('hotelSidebarToggle');
+            const setSidebarCollapsed = (collapsed) => {
+                document.body.classList.toggle('hotel-sidebar-collapsed', collapsed);
+                sidebarToggle?.setAttribute('aria-pressed', String(collapsed));
+                try {
+                    localStorage.setItem('hotel-sidebar-collapsed', collapsed ? 'true' : 'false');
+                } catch (error) {
+                    /* localStorage can be unavailable in private contexts. */
+                }
+            };
+
+            try {
+                setSidebarCollapsed(localStorage.getItem('hotel-sidebar-collapsed') === 'true');
+            } catch (error) {
+                setSidebarCollapsed(false);
+            }
+
+            sidebarToggle?.addEventListener('click', () => {
+                setSidebarCollapsed(!document.body.classList.contains('hotel-sidebar-collapsed'));
+            });
+
+            document.querySelectorAll('.sidebar-item > .sidebar-link').forEach((link) => {
+                const label = link.textContent.trim();
+                if (label) {
+                    link.dataset.menuShort = label.slice(0, 1);
+                    link.setAttribute('title', label);
+                }
+            });
+
+            const setTheme = (theme) => {
+                const normalizedTheme = theme === 'dark' ? 'dark' : 'light';
+                document.documentElement.dataset.theme = normalizedTheme;
+                document.documentElement.classList.toggle('hotel-dark-mode', normalizedTheme === 'dark');
+                themeToggle?.setAttribute('aria-pressed', String(normalizedTheme === 'dark'));
+                const label = themeToggle?.querySelector('.theme-toggle-text');
+                if (label) label.textContent = normalizedTheme === 'dark' ? 'Dark' : 'Light';
+                try {
+                    localStorage.setItem('hotel-theme', normalizedTheme);
+                } catch (error) {
+                    /* localStorage can be unavailable in private contexts. */
+                }
+            };
+
+            if (themeToggle) {
+                setTheme(document.documentElement.dataset.theme || 'light');
+                themeToggle.addEventListener('click', () => {
+                    setTheme(document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark');
+                });
+            }
+
+            let loadingCount = 0;
+            let loadingTimer = null;
+            const showLoading = () => {
+                window.clearTimeout(loadingTimer);
+                document.body.classList.add('hotel-is-loading');
+            };
+            const hideLoading = () => {
+                window.clearTimeout(loadingTimer);
+                loadingTimer = window.setTimeout(() => {
+                    if (loadingCount <= 0) document.body.classList.remove('hotel-is-loading');
+                }, 180);
+            };
+            window.hotelLoading = {
+                start() {
+                    loadingCount += 1;
+                    showLoading();
+                },
+                finish() {
+                    loadingCount = Math.max(0, loadingCount - 1);
+                    if (loadingCount === 0) hideLoading();
+                }
+            };
+
+            if (!window.fetch.__hotelLoadingWrapped) {
+                const originalFetch = window.fetch.bind(window);
+                const wrappedFetch = (...args) => {
+                    window.hotelLoading.start();
+                    return originalFetch(...args).finally(() => window.hotelLoading.finish());
+                };
+                wrappedFetch.__hotelLoadingWrapped = true;
+                window.fetch = wrappedFetch;
+            }
+
+            const confirmWithSweetAlert = (message) => {
+                if (!window.Swal) {
+                    return Promise.resolve({ isConfirmed: window.confirm(message) });
+                }
+                return window.Swal.fire({
+                    icon: 'warning',
+                    title: 'ยืนยันการทำรายการ',
+                    text: message,
+                    showCancelButton: true,
+                    confirmButtonText: 'ยืนยัน',
+                    cancelButtonText: 'ยกเลิก',
+                    confirmButtonColor: '#dc3545',
+                    cancelButtonColor: '#6c757d'
+                });
+            };
+
+            document.addEventListener('submit', event => {
+                const form = event.target;
+                const message = form?.dataset?.swalConfirm;
+                if (message && form.dataset.swalConfirmed !== 'true') {
+                    event.preventDefault();
+                    confirmWithSweetAlert(message).then(result => {
+                        if (result.isConfirmed) {
+                            form.dataset.swalConfirmed = 'true';
+                            form.requestSubmit();
+                        }
+                    });
+                    return;
+                }
+                if (form?.dataset?.swalConfirmed === 'true') {
+                    delete form.dataset.swalConfirmed;
+                }
+                window.setTimeout(() => {
+                    if (!event.defaultPrevented) window.hotelLoading.start();
+                }, 0);
+            }, true);
+
+            document.addEventListener('click', event => {
+                const button = event.target.closest('[data-swal-confirm][type="submit"]');
+                if (!button || button.dataset.swalConfirmed === 'true') return;
+                const form = button.form;
+                if (!form || form.dataset.swalConfirm) return;
+                event.preventDefault();
+                confirmWithSweetAlert(button.dataset.swalConfirm).then(result => {
+                    if (result.isConfirmed) {
+                        button.dataset.swalConfirmed = 'true';
+                        button.click();
+                        delete button.dataset.swalConfirmed;
+                    }
+                });
+            }, true);
+
+            document.addEventListener('click', event => {
+                const link = event.target.closest('a[href]');
+                if (!link || link.target || link.hasAttribute('download')) return;
+                if (event.defaultPrevented) return;
+                const href = link.getAttribute('href');
+                if (link.dataset.bsToggle || href === '#' || href.startsWith('#')) return;
+                if (link.origin === window.location.origin) window.hotelLoading.start();
+            });
+
+            window.addEventListener('pageshow', () => {
+                loadingCount = 0;
+                document.body.classList.remove('hotel-is-loading');
+            });
+
             const alertConfig = {
                 create: { className: 'hotel-toast-create', icon: 'bi-check-circle' },
                 success: { className: 'hotel-toast-success', icon: 'bi-check-circle' },
@@ -111,14 +298,137 @@
     </script>
     <script th:src="@{/mazer/dist/assets/vendors/perfect-scrollbar/perfect-scrollbar.min.js}"></script>
     <script th:src="@{/mazer/dist/assets/js/bootstrap.bundle.min.js}"></script>
-    <script th:src="@{/mazer/dist/assets/js/main.js}"></script>
     <script>
-        document.querySelectorAll('.sidebar-link').forEach(function (link) {
+        function slideToggle(t, e, o) {
+            if (t.style.display === 'none' || window.getComputedStyle(t).display === 'none') slideDown(t, e, o);
+            else slideUp(t, e, o);
+        }
+
+        function slideUp(t, e, o) {
+            const duration = e || 300;
+            t.style.height = `${t.scrollHeight}px`;
+            t.style.overflow = 'hidden';
+            t.style.transition = `height ${duration}ms ease`;
+            t.offsetHeight;
+            t.style.height = '0px';
+            window.setTimeout(() => {
+                t.style.display = 'none';
+                t.style.height = '';
+                t.style.overflow = '';
+                t.style.transition = '';
+                if (typeof o === 'function') o();
+            }, duration);
+        }
+
+        function slideDown(t, e, o) {
+            const duration = e || 300;
+            t.style.display = 'block';
+            t.style.height = '0px';
+            t.style.overflow = 'hidden';
+            t.style.transition = `height ${duration}ms ease`;
+            const targetHeight = t.scrollHeight;
+            t.offsetHeight;
+            t.style.height = `${targetHeight}px`;
+            window.setTimeout(() => {
+                t.style.height = '';
+                t.style.overflow = '';
+                t.style.transition = '';
+                if (typeof o === 'function') o();
+            }, duration);
+        }
+
+        window.addEventListener('DOMContentLoaded', () => {
+            if (window.innerWidth < 1200) document.getElementById('sidebar')?.classList.remove('active');
+        });
+
+        window.addEventListener('resize', () => {
+            const sidebar = document.getElementById('sidebar');
+            if (!sidebar) return;
+            if (window.innerWidth < 1200) sidebar.classList.remove('active');
+            else sidebar.classList.add('active');
+        });
+
+        document.querySelector('.burger-btn')?.addEventListener('click', () => {
+            document.getElementById('sidebar')?.classList.toggle('active');
+        });
+
+        document.querySelector('.sidebar-hide')?.addEventListener('click', () => {
+            document.getElementById('sidebar')?.classList.toggle('active');
+        });
+
+        if (typeof PerfectScrollbar == 'function') {
+            const container = document.querySelector('.sidebar-wrapper');
+            if (container) new PerfectScrollbar(container, { wheelPropagation: false });
+        }
+
+        document.addEventListener('click', function (event) {
+            const link = event.target.closest('.sidebar-item.has-sub > .sidebar-link');
+            if (!link) return;
+            event.preventDefault();
+            event.stopPropagation();
+            const item = link.parentElement;
+            const submenu = Array.from(item.children).find(child => child.classList?.contains('submenu'));
+            if (!submenu) return;
+
+            const wasCollapsed = document.body.classList.contains('hotel-sidebar-collapsed');
+            if (wasCollapsed) {
+                document.body.classList.remove('hotel-sidebar-collapsed');
+                document.getElementById('hotelSidebarToggle')?.setAttribute('aria-pressed', 'false');
+                try {
+                    localStorage.setItem('hotel-sidebar-collapsed', 'false');
+                } catch (error) {
+                    /* localStorage can be unavailable in private contexts. */
+                }
+            }
+
+            const isVisible = window.getComputedStyle(submenu).display !== 'none' && submenu.offsetHeight > 0;
+            if (isVisible && !wasCollapsed) {
+                item.classList.remove('active');
+                submenu.classList.remove('active');
+                slideUp(submenu, 260);
+            } else {
+                item.classList.add('active');
+                submenu.classList.add('active');
+                slideDown(submenu, 260);
+            }
+        }, true);
+
+        document.querySelectorAll('.submenu-item.has-sub > .submenu-link').forEach(function (link) {
+            link.addEventListener('click', function (event) {
+                event.preventDefault();
+                const item = link.closest('.submenu-item.has-sub');
+                const submenu = item?.querySelector(':scope > .submenu');
+                if (!submenu) return;
+
+                if (submenu.classList.contains('active')) {
+                    submenu.classList.remove('active');
+                    slideUp(submenu, 260);
+                } else {
+                    submenu.classList.add('active');
+                    slideDown(submenu, 260);
+                }
+            });
+        });
+
+        document.querySelectorAll('.sidebar-link[href], .submenu-link[href]').forEach(function (link) {
+            const href = link.getAttribute('href');
+            if (!href || href === '#') return;
             if (link.pathname === window.location.pathname ||
                 (link.pathname !== '/' && window.location.pathname.startsWith(link.pathname))) {
+                link.closest('.sidebar-item, .submenu-item')?.classList.add('active');
                 link.closest('.sidebar-item')?.classList.add('active');
+                link.closest('.menu')?.querySelectorAll('.submenu-item.active').forEach(function (item) {
+                    item.closest('.submenu')?.classList.add('active');
+                    if (item.closest('.submenu')) item.closest('.submenu').style.display = 'block';
+                });
+                link.closest('.sidebar-item')?.querySelectorAll('.submenu').forEach(function (submenu) {
+                    submenu.classList.add('active');
+                    submenu.style.display = 'block';
+                });
             }
         });
+
+        document.querySelector('.sidebar-item.active')?.scrollIntoView(false);
 
         (function () {
             const monthNames = [

@@ -1,0 +1,736 @@
+<!doctype html>
+<html lang="th">
+<head th:replace="~{fragments/head :: head('คิดเงินค่าเช่ารายเดือน')}"></head>
+<body>
+<div id="app">
+    <div th:replace="~{fragments/nav :: nav}"></div>
+    <div id="main">
+        <header class="mb-3"><a href="#" class="burger-btn d-block d-xl-none"><i class="bi bi-justify fs-3"></i></a></header>
+        <div class="page-heading">
+            <div class="d-flex flex-wrap gap-3 justify-content-between align-items-end">
+                <div>
+                    <h3 th:text="${currentMenuName}"></h3>
+                </div>
+                <button class="btn btn-primary"
+                        type="button"
+                        data-bs-toggle="modal"
+                        data-bs-target="#monthlyBillBulkPreviewModal"
+                        th:disabled="${printableBillCount == 0}">
+                    <i class="bi bi-printer me-1"></i>พิมพ์บิลทั้งหมด
+                </button>
+            </div>
+        </div>
+        <div id="monthlyBillingWorkspace" th:fragment="monthlyBillingWorkspace">
+        <div class="page-content">
+            <section class="section">
+                <form class="floor-toolbar monthly-billing-filter mb-3" method="get" th:action="@{/finance/monthly-rent/billing}">
+                    <input type="hidden" name="floorId" th:value="${selectedFloor != null ? selectedFloor.id : ''}">
+                    <div class="billing-filter-controls">
+                        <div>
+                            <label class="form-label">เดือน</label>
+                            <select class="form-select billing-month-select" name="month">
+                                <option value="">ทั้งหมด</option>
+                                <option th:each="month : ${months}"
+                                        th:value="${month.value}"
+                                        th:text="${month.label}"
+                                        th:selected="${billingMonth == month.value}"></option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">ปี</label>
+                            <select class="form-select billing-year-select" name="year">
+                                <option value="">ทั้งหมด</option>
+                                <option th:each="year : ${years}"
+                                        th:value="${year}"
+                                        th:text="${year + 543}"
+                                        th:selected="${billingYear == year}"></option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">สถานะบิล</label>
+                            <select class="form-select" name="status">
+                                <option value="ALL" th:selected="${selectedStatus == 'ALL'}">ทั้งหมด</option>
+                                <option value="UNBILLED" th:selected="${selectedStatus == 'UNBILLED'}">ยังไม่ออกบิล</option>
+                                <option th:each="status : ${statuses}"
+                                        th:value="${status.id}"
+                                        th:text="${status.name}"
+                                        th:selected="${selectedStatus == #strings.toString(status.id)}"></option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">เลขบิล</label>
+                            <input class="form-control" name="billNo" th:value="${billNo}" placeholder="เลขบิล">
+                        </div>
+                        <div>
+                            <label class="form-label">เลขห้อง</label>
+                            <input class="form-control" name="roomNo" th:value="${roomNo}" placeholder="เลขห้อง">
+                        </div>
+                        <div>
+                            <label class="form-label">ชื่อผู้พัก</label>
+                            <input class="form-control" name="guestName" th:value="${guestName}" placeholder="ชื่อผู้พัก">
+                        </div>
+                    </div>
+                    <button class="btn btn-light-primary" type="submit"><i class="bi bi-funnel me-1"></i>กรอง</button>
+                </form>
+
+                <div class="floor-tabs mb-3">
+                    <a th:each="floor : ${floors}"
+                       class="floor-tab"
+                       th:classappend="${selectedFloor != null and selectedFloor.id == floor.id} ? 'active' : ''"
+                       th:href="@{/finance/monthly-rent/billing(month=${billingMonth},year=${billingYear},floorId=${floor.id},status=${selectedStatus},billNo=${billNo},roomNo=${roomNo},guestName=${guestName})}"
+                       th:attr="data-floor-id=${floor.id}">
+                        <i class="bi bi-building"></i><span th:text="${floor.name}"></span>
+                    </a>
+                </div>
+
+                <div class="room-grid monthly-billing-grid" th:if="${!items.isEmpty()}">
+                    <button class="room-tile monthly-bill-tile"
+                            th:each="item : ${items}"
+                            th:attr="data-bs-target=${item.bill != null and item.bill.status.name() == 'PAID' ? null : '#monthlyRentBillModal' + item.room.id},
+                                     data-bs-toggle=${item.bill != null and item.bill.status.name() == 'PAID' ? null : 'modal'},
+                                     data-paid-bill-alert=${item.bill != null and item.bill.status.name() == 'PAID' ? 'true' : null}"
+                            type="button"
+                            th:classappend="${item.statusClass}">
+                        <span class="room-number" th:text="${item.room.roomNumber}"></span>
+                        <span class="room-type" th:text="${item.room.roomType != null ? item.room.roomType.name : item.room.legacyRoomType}"></span>
+                        <span class="bill-tenant" th:text="|ผู้เช่า: ${item.guest.fullName}|"></span>
+                        <span class="bill-line" th:text="|ค่าเช่า: ${#numbers.formatDecimal(item.bill != null ? item.bill.rentAmount : item.defaultRent, 1, 'COMMA', 2, 'POINT')} บาท|"></span>
+                        <span class="bill-line" th:if="${item.bill == null}" th:text="|เครดิตล่วงหน้า: ${#numbers.formatDecimal(item.guest.advanceBalance != null ? item.guest.advanceBalance : 0, 1, 'COMMA', 2, 'POINT')} บาท|"></span>
+                        <span class="bill-line" th:text="|รอบบิล: ${@thaiDate.monthYear(billingMonth, billingYear)}|"></span>
+                        <span class="bill-line" th:if="${item.bill != null}" th:text="|ยอดก่อนหัก: ${#numbers.formatDecimal(item.bill.subtotalAmount, 1, 'COMMA', 2, 'POINT')} บาท|"></span>
+                        <span class="bill-line" th:if="${item.bill != null and item.bill.advanceAppliedAmount > 0}" th:text="|หักล่วงหน้า: ${#numbers.formatDecimal(item.bill.advanceAppliedAmount, 1, 'COMMA', 2, 'POINT')} บาท|"></span>
+                        <span class="bill-line" th:if="${item.bill != null}" th:text="|ยอดสุทธิ: ${#numbers.formatDecimal(item.bill.totalAmount, 1, 'COMMA', 2, 'POINT')} บาท|"></span>
+                        <span class="bill-line" th:if="${item.bill != null and item.bill.dueDate != null}" th:text="|ครบกำหนด: ${@thaiDate.format(item.bill.dueDate)}|"></span>
+                        <span class="room-status" th:text="${item.statusLabel}"></span>
+                    </button>
+                </div>
+
+                <div class="alert alert-light-secondary mt-3" th:if="${items.isEmpty()}">
+                    ไม่พบห้องรายเดือนที่ตรงกับตัวกรอง
+                </div>
+            </section>
+        </div>
+
+        <div class="modal fade" th:each="item : ${items}" th:id="${'monthlyRentBillModal' + item.room.id}" tabindex="-1">
+            <div class="modal-dialog modal-xl modal-dialog-scrollable monthly-bill-modal-dialog">
+                <div class="modal-content">
+                    <form class="monthly-bill-form" method="post" th:action="@{/finance/monthly-rent/billing}">
+                        <input type="hidden" name="billId" th:value="${item.bill != null ? item.bill.id : ''}">
+                        <input type="hidden" name="roomId" th:value="${item.room.id}">
+                        <input type="hidden" name="billingMonth" th:value="${billingMonth}">
+                        <input type="hidden" name="billingYear" th:value="${billingYear}">
+                        <input type="hidden" name="floorId" th:value="${selectedFloor != null ? selectedFloor.id : ''}">
+                        <input type="hidden" name="status" th:value="${selectedStatus}">
+                        <input type="hidden" name="billNo" th:value="${billNo}">
+                        <input type="hidden" name="roomNo" th:value="${roomNo}">
+                        <input type="hidden" name="guestName" th:value="${guestName}">
+                        <div class="modal-header">
+                            <h5 class="modal-title">คิดเงินค่าเช่า ห้อง <span class="modal-room-number" th:text="${item.room.roomNumber}"></span></h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                        </div>
+                        <div class="modal-body row g-3 monthly-bill-modal-body">
+                            <div class="col-md-3"><strong>เลขห้อง</strong><div th:text="${item.room.roomNumber}"></div></div>
+                            <div class="col-md-3"><strong>ผู้เช่า</strong><div th:text="${item.guest.fullName}"></div></div>
+                            <div class="col-md-3"><strong>รอบบิล</strong><div th:text="${@thaiDate.monthYear(billingMonth, billingYear)}"></div></div>
+                            <div class="col-md-3"><strong>สถานะ</strong><div th:text="${item.statusLabel}"></div></div>
+
+                            <div class="col-12">
+                                <div class="row g-3 monthly-bill-layout">
+                                    <div class="col-xl-8 monthly-bill-main">
+                                <div class="billing-section">
+                                    <div class="billing-section-title"><i class="bi bi-house-door"></i><span>ค่าห้อง</span></div>
+                                    <div class="row g-3">
+                                        <div class="col-md-4"><label class="form-label">ค่าเช่ารายเดือน</label><input class="form-control money-input calc-input rent-amount" name="rentAmount" th:value="${item.bill != null ? item.bill.rentAmount : item.defaultRent}" inputmode="decimal"></div>
+                                        <div class="col-md-4">
+                                            <label class="form-label">วันที่ออกบิล</label>
+                                            <div class="date-range-field search-date-field">
+                                                <div class="date-box">
+                                                    <i class="bi bi-calendar-check"></i>
+                                                    <input class="hotel-calendar-value" type="hidden" name="issueDate" th:value="${item.bill != null and item.bill.issueDate != null ? item.bill.issueDate : today}" data-default-today="true">
+                                                    <input class="form-control hotel-calendar-input" type="text" readonly data-calendar-for="issueDate">
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-4">
+                                            <label class="form-label">วันครบกำหนดชำระ</label>
+                                            <div class="date-range-field search-date-field">
+                                                <div class="date-box">
+                                                    <i class="bi bi-calendar-x"></i>
+                                                    <input class="hotel-calendar-value" type="hidden" name="dueDate" th:value="${item.bill != null and item.bill.dueDate != null ? item.bill.dueDate : defaultDueDate}">
+                                                    <input class="form-control hotel-calendar-input" type="text" readonly data-calendar-for="dueDate">
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                            <div>
+                                <div class="billing-section">
+                                    <div class="billing-section-title"><i class="bi bi-droplet"></i><span>ค่าน้ำ</span></div>
+                                    <div class="billing-meter-grid">
+                                        <div><label class="form-label">เลขมิเตอร์ครั้งก่อน</label><input class="form-control count-input calc-input prev-water" name="previousWaterMeter" th:value="${item.bill != null ? item.bill.previousWaterMeter : item.defaultPreviousWaterMeter}" inputmode="numeric"></div>
+                                        <div><label class="form-label">เลขมิเตอร์ครั้งนี้</label><input class="form-control count-input calc-input current-water" name="currentWaterMeter" th:value="${item.bill != null ? item.bill.currentWaterMeter : item.defaultPreviousWaterMeter}" inputmode="numeric"></div>
+                                        <div><label class="form-label">จำนวนหน่วยที่ใช้</label><input class="form-control water-unit" readonly></div>
+                                        <div><label class="form-label">ราคาต่อหน่วย</label><input class="form-control money-input calc-input water-rate" name="waterRate" th:value="${item.bill != null ? item.bill.waterRate : item.defaultWaterRate}" inputmode="decimal"></div>
+                                        <div><label class="form-label">รวมค่าน้ำ</label><input class="form-control water-amount money-output" readonly></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div>
+                                <div class="billing-section">
+                                    <div class="billing-section-title"><i class="bi bi-lightning-charge"></i><span>ค่าไฟ</span></div>
+                                    <div class="billing-meter-grid">
+                                        <div><label class="form-label">เลขมิเตอร์ครั้งก่อน</label><input class="form-control count-input calc-input prev-electric" name="previousElectricMeter" th:value="${item.bill != null ? item.bill.previousElectricMeter : item.defaultPreviousElectricMeter}" inputmode="numeric"></div>
+                                        <div><label class="form-label">เลขมิเตอร์ครั้งนี้</label><input class="form-control count-input calc-input current-electric" name="currentElectricMeter" th:value="${item.bill != null ? item.bill.currentElectricMeter : item.defaultPreviousElectricMeter}" inputmode="numeric"></div>
+                                        <div><label class="form-label">จำนวนหน่วยที่ใช้</label><input class="form-control electric-unit" readonly></div>
+                                        <div><label class="form-label">ราคาต่อหน่วย</label><input class="form-control money-input calc-input electric-rate" name="electricRate" th:value="${item.bill != null ? item.bill.electricRate : item.defaultElectricRate}" inputmode="decimal"></div>
+                                        <div><label class="form-label">รวมค่าไฟ</label><input class="form-control electric-amount money-output" readonly></div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div><label class="form-label">หมายเหตุ</label><textarea class="form-control monthly-bill-note" rows="2" name="note" th:text="${item.bill != null ? item.bill.note : ''}"></textarea></div>
+                                    </div>
+
+                                    <div class="col-xl-4 monthly-bill-summary-panel">
+                                <div class="billing-section billing-section-summary">
+                                    <div class="billing-section-title"><i class="bi bi-calculator"></i><span>สรุปยอด</span></div>
+                                    <div class="row g-3">
+                                        <div class="col-md-6"><label class="form-label">ค่าอื่น ๆ</label><input class="form-control money-input calc-input other-amount" name="otherAmount" th:value="${item.bill != null ? item.bill.otherAmount : 0}" inputmode="decimal"></div>
+                                        <div class="col-md-6"><label class="form-label">ส่วนลด</label><input class="form-control money-input calc-input discount-amount" name="discountAmount" th:value="${item.bill != null ? item.bill.discountAmount : 0}" inputmode="decimal"></div>
+                                        <div class="col-md-6"><label class="form-label">ยอดรวมก่อนหักเครดิต</label><input class="form-control subtotal-amount money-output" th:value="${item.bill != null ? item.bill.subtotalAmount : 0}" readonly></div>
+                                        <div class="col-md-6"><label class="form-label">เครดิตล่วงหน้าก่อนหัก</label><input class="form-control advance-balance money-output" th:value="${item.guest.advanceBalance != null ? item.guest.advanceBalance : 0}" readonly></div>
+                                        <div class="col-md-6"><label class="form-label">หักเงินล่วงหน้า</label><input class="form-control advance-applied money-output" th:value="${item.bill != null ? item.bill.advanceAppliedAmount : 0}" readonly></div>
+                                        <div class="col-md-6"><label class="form-label">เครดิตคงเหลือหลังหัก</label><input class="form-control advance-after money-output" readonly></div>
+                                        <div class="col-md-6"><label class="form-label">ยอดต้องชำระสุทธิ</label><input class="form-control total-amount money-output" th:value="${item.bill != null ? item.bill.totalAmount : 0}" readonly></div>
+                                    </div>
+                                </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modal-footer justify-content-between">
+                            <div class="d-flex gap-2">
+                                <a th:if="${item.bill != null and item.bill.status.name() != 'PAID'}" class="btn btn-light-primary" th:href="@{/payments/new(guestId=${item.guest.id})}">
+                                    <i class="bi bi-cash-coin me-1"></i>รับชำระ
+                                </a>
+                            </div>
+                            <div class="d-flex gap-2">
+                                <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">ปิด</button>
+                                <button th:if="${item.bill != null and item.bill.status.name() != 'CANCELLED' and item.bill.status.name() != 'PAID'}"
+                                        class="btn btn-light-danger"
+                                        type="submit"
+                                        name="action"
+                                        value="cancel"
+                                        data-swal-confirm="ยืนยันการยกเลิกบิลนี้?">
+                                    <i class="bi bi-x-circle me-1"></i>ยกเลิกบิล
+                                </button>
+                                <button th:if="${item.bill == null or item.bill.status.name() != 'PAID'}" class="btn btn-light-primary" type="submit" name="action" value="draft"><i class="bi bi-save me-1"></i>บันทึกแบบร่าง</button>
+                                <button th:if="${item.bill == null or item.bill.status.name() != 'PAID'}" class="btn btn-primary" type="submit" name="action" value="issue"><i class="bi bi-receipt me-1"></i>ออกบิล</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+        </div>
+
+        <div class="modal fade monthly-bill-preview-modal"
+             th:each="item : ${items}"
+             th:if="${previewBillId != null and item.bill != null and item.bill.id == previewBillId}"
+             id="monthlyBillPreviewModal"
+             tabindex="-1"
+             data-auto-preview="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">ตัวอย่างใบแจ้งค่าเช่า</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body monthly-bill-preview-wrap">
+                        <div class="monthly-bill-slip">
+                            <div class="bill-slip-header">
+                                <div>
+                                    <h4 th:text="${systemName}">BlueCatHotelDemo</h4>
+                                    <div>ใบแจ้งค่าเช่ารายเดือน</div>
+                                </div>
+                                <div class="bill-slip-number">
+                                    <strong th:text="|ห้อง ${item.room.roomNumber}|"></strong>
+                                    <span th:text="|เลขบิล #${item.bill.billNumber != null and !#strings.isEmpty(item.bill.billNumber) ? item.bill.billNumber : '-'}|"></span>
+                                </div>
+                            </div>
+
+                            <div class="bill-slip-meta monthly-bill-meta">
+                                <div class="bill-slip-meta-left">
+                                    <div class="bill-slip-meta-line"><span>ผู้เช่า</span><strong th:text="${item.guest.fullName}"></strong></div>
+                                    <div class="bill-slip-meta-line"><span>รอบบิล</span><strong th:text="${@thaiDate.monthYear(item.bill.billingMonth, item.bill.billingYear)}"></strong></div>
+                                </div>
+                                <div class="bill-slip-meta-right">
+                                    <div class="bill-slip-meta-line"><span>วันที่ออกบิล</span><strong th:text="${@thaiDate.format(item.bill.issueDate)}"></strong></div>
+                                    <div class="bill-slip-meta-line"><span>ครบกำหนด</span><strong th:text="${@thaiDate.format(item.bill.dueDate)}"></strong></div>
+                                </div>
+                            </div>
+
+                            <table class="bill-slip-table">
+                                <thead>
+                                <tr>
+                                    <th>รายการ</th>
+                                    <th class="text-end">จำนวนหน่วย</th>
+                                    <th class="text-end">ราคาต่อหน่วย</th>
+                                    <th class="text-end">จำนวนเงิน</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr>
+                                    <td>ค่าเช่าห้อง</td>
+                                    <td class="text-end">1</td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.rentAmount, 1, 'COMMA', 2, 'POINT')}"></td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.rentAmount, 1, 'COMMA', 2, 'POINT')}"></td>
+                                </tr>
+                                <tr>
+                                    <td>ค่าน้ำ</td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.waterUnit, 1, 'COMMA', 0, 'POINT')}"></td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.waterRate, 1, 'COMMA', 2, 'POINT')}"></td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.waterAmount, 1, 'COMMA', 2, 'POINT')}"></td>
+                                </tr>
+                                <tr>
+                                    <td>ค่าไฟ</td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.electricUnit, 1, 'COMMA', 0, 'POINT')}"></td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.electricRate, 1, 'COMMA', 2, 'POINT')}"></td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.electricAmount, 1, 'COMMA', 2, 'POINT')}"></td>
+                                </tr>
+                                <tr th:if="${item.bill.otherAmount != null and item.bill.otherAmount > 0}">
+                                    <td>ค่าอื่น ๆ</td>
+                                    <td class="text-end">1</td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.otherAmount, 1, 'COMMA', 2, 'POINT')}"></td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.otherAmount, 1, 'COMMA', 2, 'POINT')}"></td>
+                                </tr>
+                                <tr th:if="${item.bill.discountAmount != null and item.bill.discountAmount > 0}">
+                                    <td>ส่วนลด</td>
+                                    <td class="text-end">1</td>
+                                    <td class="text-end" th:text="|-${#numbers.formatDecimal(item.bill.discountAmount, 1, 'COMMA', 2, 'POINT')}|"></td>
+                                    <td class="text-end" th:text="|-${#numbers.formatDecimal(item.bill.discountAmount, 1, 'COMMA', 2, 'POINT')}|"></td>
+                                </tr>
+                                </tbody>
+                                <tfoot>
+                                <tr>
+                                    <th colspan="3">รวมก่อนหักเครดิต</th>
+                                    <th class="text-end" th:text="${#numbers.formatDecimal(item.bill.subtotalAmount, 1, 'COMMA', 2, 'POINT')}"></th>
+                                </tr>
+                                <tr th:if="${item.bill.advanceAppliedAmount != null and item.bill.advanceAppliedAmount > 0}">
+                                    <th colspan="3">หักเงินล่วงหน้า</th>
+                                    <th class="text-end" th:text="|-${#numbers.formatDecimal(item.bill.advanceAppliedAmount, 1, 'COMMA', 2, 'POINT')}|"></th>
+                                </tr>
+                                <tr class="bill-slip-total">
+                                    <th colspan="3">ยอดต้องชำระสุทธิ</th>
+                                    <th class="text-end" th:text="|${#numbers.formatDecimal(item.bill.totalAmount, 1, 'COMMA', 2, 'POINT')} บาท|"></th>
+                                </tr>
+                                </tfoot>
+                            </table>
+
+                            <div class="bill-slip-note" th:if="${item.bill.note != null and !#strings.isEmpty(item.bill.note)}">
+                                <span>หมายเหตุ</span>
+                                <div th:text="${item.bill.note}"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">ปิด</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade monthly-bill-preview-modal"
+             th:if="${printableBillCount > 0}"
+             id="monthlyBillBulkPreviewModal"
+             tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">พิมพ์ใบแจ้งค่าเช่าทั้งหมด</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body monthly-bill-preview-wrap monthly-bill-bulk-preview">
+                        <div class="monthly-bill-slip"
+                             th:each="item : ${items}"
+                             th:if="${item.bill != null and item.bill.status.name() != 'DRAFT' and item.bill.status.name() != 'CANCELLED'}">
+                            <div class="bill-slip-header">
+                                <div>
+                                    <h4 th:text="${systemName}">BlueCatHotelDemo</h4>
+                                    <div>ใบแจ้งค่าเช่ารายเดือน</div>
+                                </div>
+                                <div class="bill-slip-number">
+                                    <strong th:text="|ห้อง ${item.room.roomNumber}|"></strong>
+                                    <span th:text="|เลขบิล #${item.bill.billNumber != null and !#strings.isEmpty(item.bill.billNumber) ? item.bill.billNumber : '-'}|"></span>
+                                </div>
+                            </div>
+
+                            <div class="bill-slip-meta monthly-bill-meta">
+                                <div class="bill-slip-meta-left">
+                                    <div class="bill-slip-meta-line"><span>ผู้เช่า</span><strong th:text="${item.guest.fullName}"></strong></div>
+                                    <div class="bill-slip-meta-line"><span>รอบบิล</span><strong th:text="${@thaiDate.monthYear(item.bill.billingMonth, item.bill.billingYear)}"></strong></div>
+                                </div>
+                                <div class="bill-slip-meta-right">
+                                    <div class="bill-slip-meta-line"><span>วันที่ออกบิล</span><strong th:text="${@thaiDate.format(item.bill.issueDate)}"></strong></div>
+                                    <div class="bill-slip-meta-line"><span>ครบกำหนด</span><strong th:text="${@thaiDate.format(item.bill.dueDate)}"></strong></div>
+                                </div>
+                            </div>
+
+                            <table class="bill-slip-table">
+                                <thead>
+                                <tr>
+                                    <th>รายการ</th>
+                                    <th class="text-end">จำนวนหน่วย</th>
+                                    <th class="text-end">ราคาต่อหน่วย</th>
+                                    <th class="text-end">จำนวนเงิน</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr>
+                                    <td>ค่าเช่าห้อง</td>
+                                    <td class="text-end">1</td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.rentAmount, 1, 'COMMA', 2, 'POINT')}"></td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.rentAmount, 1, 'COMMA', 2, 'POINT')}"></td>
+                                </tr>
+                                <tr>
+                                    <td>ค่าน้ำ</td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.waterUnit, 1, 'COMMA', 0, 'POINT')}"></td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.waterRate, 1, 'COMMA', 2, 'POINT')}"></td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.waterAmount, 1, 'COMMA', 2, 'POINT')}"></td>
+                                </tr>
+                                <tr>
+                                    <td>ค่าไฟ</td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.electricUnit, 1, 'COMMA', 0, 'POINT')}"></td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.electricRate, 1, 'COMMA', 2, 'POINT')}"></td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.electricAmount, 1, 'COMMA', 2, 'POINT')}"></td>
+                                </tr>
+                                <tr th:if="${item.bill.otherAmount != null and item.bill.otherAmount > 0}">
+                                    <td>ค่าอื่น ๆ</td>
+                                    <td class="text-end">1</td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.otherAmount, 1, 'COMMA', 2, 'POINT')}"></td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.otherAmount, 1, 'COMMA', 2, 'POINT')}"></td>
+                                </tr>
+                                <tr th:if="${item.bill.discountAmount != null and item.bill.discountAmount > 0}">
+                                    <td>ส่วนลด</td>
+                                    <td class="text-end">1</td>
+                                    <td class="text-end" th:text="|-${#numbers.formatDecimal(item.bill.discountAmount, 1, 'COMMA', 2, 'POINT')}|"></td>
+                                    <td class="text-end" th:text="|-${#numbers.formatDecimal(item.bill.discountAmount, 1, 'COMMA', 2, 'POINT')}|"></td>
+                                </tr>
+                                </tbody>
+                                <tfoot>
+                                <tr>
+                                    <th colspan="3">รวมก่อนหักเครดิต</th>
+                                    <th class="text-end" th:text="${#numbers.formatDecimal(item.bill.subtotalAmount, 1, 'COMMA', 2, 'POINT')}"></th>
+                                </tr>
+                                <tr th:if="${item.bill.advanceAppliedAmount != null and item.bill.advanceAppliedAmount > 0}">
+                                    <th colspan="3">หักเงินล่วงหน้า</th>
+                                    <th class="text-end" th:text="|-${#numbers.formatDecimal(item.bill.advanceAppliedAmount, 1, 'COMMA', 2, 'POINT')}|"></th>
+                                </tr>
+                                <tr class="bill-slip-total">
+                                    <th colspan="3">ยอดต้องชำระสุทธิ</th>
+                                    <th class="text-end" th:text="|${#numbers.formatDecimal(item.bill.totalAmount, 1, 'COMMA', 2, 'POINT')} บาท|"></th>
+                                </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">ปิด</button>
+                        <button type="button" class="btn btn-primary" onclick="printMonthlyBills()">
+                            <i class="bi bi-printer me-1"></i>พิมพ์ทั้งหมด
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div th:replace="~{fragments/nav :: scripts}"></div>
+<script>
+const monthlyBillingContentUrl = '/finance/monthly-rent/billing/content';
+if (window.location.search) {
+    window.history.replaceState({}, '', window.location.pathname);
+}
+
+const billingThaiMonths = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+const billingThaiWeekdays = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
+const billingPad = value => String(value).padStart(2, '0');
+const billingToIsoDate = date => `${date.getFullYear()}-${billingPad(date.getMonth() + 1)}-${billingPad(date.getDate())}`;
+const billingFormatDisplayDate = date => `${billingPad(date.getDate())}/${billingPad(date.getMonth() + 1)}/${date.getFullYear() + 543}`;
+const billingParseIsoDate = value => {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value || '');
+    return match ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])) : null;
+};
+const billingSameDate = (a, b) => a && b && a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+
+const createBillingCalendar = (hiddenInput, displayInput) => {
+    if (hiddenInput.dataset.calendarReady === 'true') return;
+    hiddenInput.dataset.calendarReady = 'true';
+    if (!hiddenInput.value && hiddenInput.dataset.defaultToday === 'true') hiddenInput.value = billingToIsoDate(new Date());
+    let selectedDate = billingParseIsoDate(hiddenInput.value) || new Date();
+    let viewDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+    displayInput.value = billingFormatDisplayDate(selectedDate);
+
+    const popup = document.createElement('div');
+    popup.className = 'hotel-calendar-popup d-none';
+    displayInput.closest('.date-box').appendChild(popup);
+
+    const selectDate = date => {
+        selectedDate = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+        hiddenInput.value = billingToIsoDate(selectedDate);
+        displayInput.value = billingFormatDisplayDate(selectedDate);
+        hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
+        popup.classList.add('d-none');
+        render();
+    };
+
+    const render = () => {
+        const start = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1);
+        start.setDate(start.getDate() - start.getDay());
+        popup.innerHTML = `
+            <div class="hotel-calendar-header">
+                <button class="hotel-calendar-nav" type="button" data-nav="-1">‹</button>
+                <div class="hotel-calendar-title">${billingThaiMonths[viewDate.getMonth()]} ${viewDate.getFullYear() + 543}</div>
+                <button class="hotel-calendar-nav" type="button" data-nav="1">›</button>
+            </div>
+            <div class="hotel-calendar-weekdays">${billingThaiWeekdays.map(day => `<span>${day}</span>`).join('')}</div>
+            <div class="hotel-calendar-grid"></div>
+            <div class="hotel-calendar-footer"><button class="hotel-calendar-today" type="button">วันนี้</button></div>
+        `;
+        const grid = popup.querySelector('.hotel-calendar-grid');
+        for (let index = 0; index < 42; index++) {
+            const date = new Date(start);
+            date.setDate(start.getDate() + index);
+            const button = document.createElement('button');
+            button.type = 'button';
+            button.className = 'hotel-calendar-day';
+            if (date.getMonth() !== viewDate.getMonth()) button.classList.add('is-muted');
+            if (date.getDay() === 0) button.classList.add('is-weekend');
+            if (billingSameDate(date, selectedDate)) button.classList.add('is-selected');
+            button.textContent = date.getDate();
+            button.addEventListener('click', () => selectDate(date));
+            grid.appendChild(button);
+        }
+        popup.querySelectorAll('[data-nav]').forEach(button => {
+            button.addEventListener('click', () => {
+                viewDate.setMonth(viewDate.getMonth() + Number(button.dataset.nav));
+                render();
+            });
+        });
+        popup.querySelector('.hotel-calendar-today').addEventListener('click', () => {
+            const now = new Date();
+            viewDate = new Date(now.getFullYear(), now.getMonth(), 1);
+            selectDate(now);
+        });
+    };
+
+    displayInput.addEventListener('click', () => {
+        document.querySelectorAll('.hotel-calendar-popup').forEach(item => {
+            if (item !== popup) item.classList.add('d-none');
+        });
+        popup.classList.toggle('d-none');
+    });
+    render();
+};
+
+document.addEventListener('click', event => {
+    if (!event.target.closest('.date-box')) {
+        document.querySelectorAll('.hotel-calendar-popup').forEach(item => item.classList.add('d-none'));
+    }
+});
+
+const currentBillingQuery = () => {
+    const form = document.querySelector('.monthly-billing-filter');
+    return form ? new URLSearchParams(new FormData(form)) : new URLSearchParams(window.location.search);
+};
+
+const updateBulkIssueFields = (params) => {
+    document.querySelectorAll('.page-heading form [name]').forEach(input => {
+        if (input.name === 'billingMonth') input.value = params.get('month') || input.value;
+        if (input.name === 'billingYear') input.value = params.get('year') || input.value;
+        if (['floorId', 'status', 'billNo', 'roomNo', 'guestName'].includes(input.name)) input.value = params.get(input.name) || '';
+    });
+};
+
+const refreshMonthlyBillingWorkspace = (params = currentBillingQuery(), pushUrl = true) => {
+    const query = params.toString();
+    return fetch(`${monthlyBillingContentUrl}${query ? `?${query}` : ''}`, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+        .then(response => response.text())
+        .then(html => {
+            const template = document.createElement('template');
+            template.innerHTML = html.trim();
+            const nextWorkspace = template.content.querySelector('#monthlyBillingWorkspace');
+            const currentWorkspace = document.getElementById('monthlyBillingWorkspace');
+            if (!nextWorkspace || !currentWorkspace) return;
+            currentWorkspace.replaceWith(nextWorkspace);
+            document.querySelectorAll('.modal-backdrop').forEach(item => item.remove());
+            document.body.classList.remove('modal-open');
+            document.body.style.removeProperty('overflow');
+            document.body.style.removeProperty('padding-right');
+            updateBulkIssueFields(params);
+            initMonthlyBilling(nextWorkspace);
+        })
+        .catch(() => window.showAlert?.('warning', 'โหลดข้อมูลไม่สำเร็จ'));
+};
+
+const initMonthlyBilling = (root = document) => {
+    root.querySelectorAll('.monthly-billing-filter').forEach(form => {
+        const floorField = form.querySelector('[name="floorId"]');
+        form.querySelector('[name="month"]')?.addEventListener('change', () => refreshMonthlyBillingWorkspace(new URLSearchParams(new FormData(form))));
+        form.querySelector('[name="year"]')?.addEventListener('change', () => refreshMonthlyBillingWorkspace(new URLSearchParams(new FormData(form))));
+        form.querySelector('[name="status"]')?.addEventListener('change', () => refreshMonthlyBillingWorkspace(new URLSearchParams(new FormData(form))));
+        form.addEventListener('submit', event => {
+            event.preventDefault();
+            refreshMonthlyBillingWorkspace(new URLSearchParams(new FormData(form)));
+        });
+        let searchTimer = null;
+        form.querySelectorAll('[name="billNo"], [name="roomNo"], [name="guestName"]').forEach(input => {
+            input.addEventListener('input', () => {
+                window.clearTimeout(searchTimer);
+                searchTimer = window.setTimeout(() => refreshMonthlyBillingWorkspace(new URLSearchParams(new FormData(form))), 450);
+            });
+        });
+        root.querySelectorAll('.floor-tab[data-floor-id]').forEach(tab => {
+            tab.addEventListener('click', event => {
+                event.preventDefault();
+                if (floorField) floorField.value = tab.dataset.floorId || '';
+                const params = new URLSearchParams(new FormData(form));
+                params.set('floorId', tab.dataset.floorId || '');
+                refreshMonthlyBillingWorkspace(params);
+            });
+        });
+    });
+
+    root.querySelectorAll('.monthly-bill-form').forEach(form => {
+        form.querySelectorAll('.hotel-calendar-input').forEach(displayInput => {
+            const hiddenInput = form.querySelector(`.hotel-calendar-value[name="${displayInput.dataset.calendarFor}"]`);
+            if (hiddenInput) createBillingCalendar(hiddenInput, displayInput);
+        });
+        const numberFormat = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const countFormat = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
+        const parseMoney = value => Number(String(value || '0').replace(/,/g, '')) || 0;
+        const formatMoney = value => numberFormat.format(Number(value || 0));
+        const formatCount = value => countFormat.format(Math.round(Number(value || 0)));
+        const field = selector => form.querySelector(selector);
+
+        const calculate = () => {
+            const previousWater = parseMoney(field('.prev-water')?.value);
+            const currentWater = parseMoney(field('.current-water')?.value);
+            const waterUnit = Math.max(0, currentWater - previousWater);
+            const waterAmount = waterUnit * parseMoney(field('.water-rate')?.value);
+            const previousElectric = parseMoney(field('.prev-electric')?.value);
+            const currentElectric = parseMoney(field('.current-electric')?.value);
+            const electricUnit = Math.max(0, currentElectric - previousElectric);
+            const electricAmount = electricUnit * parseMoney(field('.electric-rate')?.value);
+            const rentAmount = parseMoney(field('.rent-amount')?.value);
+            const subtotal = Math.max(0, rentAmount + waterAmount + electricAmount + parseMoney(field('.other-amount')?.value) - parseMoney(field('.discount-amount')?.value));
+            const advanceBalance = parseMoney(field('.advance-balance')?.value);
+            const advanceEligible = Math.min(rentAmount, subtotal);
+            const advanceApplied = Math.min(advanceBalance, advanceEligible);
+            const total = Math.max(0, subtotal - advanceApplied);
+            const setMoney = (selector, value) => {
+                const input = field(selector);
+                if (input) input.value = formatMoney(value);
+            };
+            const setCount = (selector, value) => {
+                const input = field(selector);
+                if (input) input.value = formatCount(value);
+            };
+            setCount('.water-unit', waterUnit);
+            setMoney('.water-amount', waterAmount);
+            setCount('.electric-unit', electricUnit);
+            setMoney('.electric-amount', electricAmount);
+            setMoney('.subtotal-amount', subtotal);
+            setMoney('.advance-balance', advanceBalance);
+            setMoney('.advance-eligible', advanceEligible);
+            setMoney('.advance-applied', advanceApplied);
+            setMoney('.advance-after', Math.max(0, advanceBalance - advanceApplied));
+            setMoney('.total-amount', total);
+            setMoney('.remaining-amount', total);
+        };
+
+        form.querySelectorAll('.money-input').forEach(input => {
+            input.value = formatMoney(parseMoney(input.value));
+            input.addEventListener('focus', () => {
+                input.value = String(input.value || '').replace(/,/g, '');
+                input.select();
+            });
+            input.addEventListener('blur', () => {
+                input.value = formatMoney(parseMoney(input.value));
+                calculate();
+            });
+            input.addEventListener('input', () => {
+                input.value = input.value.replace(/[^\d.]/g, '');
+                calculate();
+            });
+        });
+        form.querySelectorAll('.count-input').forEach(input => {
+            input.value = formatCount(parseMoney(input.value));
+            input.addEventListener('focus', () => {
+                input.value = String(input.value || '').replace(/,/g, '');
+                input.select();
+            });
+            input.addEventListener('blur', () => {
+                input.value = formatCount(parseMoney(input.value));
+                calculate();
+            });
+            input.addEventListener('input', () => {
+                input.value = input.value.replace(/[^\d]/g, '');
+                calculate();
+            });
+        });
+
+        form.addEventListener('submit', event => {
+            if (parseMoney(field('.current-water')?.value) < parseMoney(field('.prev-water')?.value)) {
+                event.preventDefault();
+                window.showAlert?.('warning', 'เลขมิเตอร์น้ำครั้งนี้ต้องไม่น้อยกว่าครั้งก่อน');
+                return;
+            }
+            if (parseMoney(field('.current-electric')?.value) < parseMoney(field('.prev-electric')?.value)) {
+                event.preventDefault();
+                window.showAlert?.('warning', 'เลขมิเตอร์ไฟครั้งนี้ต้องไม่น้อยกว่าครั้งก่อน');
+                return;
+            }
+            form.querySelectorAll('.money-input').forEach(input => input.value = String(input.value || '').replace(/,/g, ''));
+        });
+
+        calculate();
+    });
+};
+
+initMonthlyBilling();
+
+window.printMonthlyBills = () => {
+    document.querySelector('.monthly-bill-print-root')?.remove();
+    const source = document.querySelector('.monthly-bill-preview-modal.show .monthly-bill-preview-wrap')
+        || document.querySelector('.monthly-bill-preview-modal[data-auto-preview="true"] .monthly-bill-preview-wrap');
+    if (!source) return;
+    const root = document.createElement('div');
+    root.className = 'monthly-bill-print-root';
+    root.appendChild(source.cloneNode(true));
+    document.body.appendChild(root);
+    document.body.classList.add('printing-monthly-bills');
+    window.print();
+};
+
+window.addEventListener('afterprint', () => {
+    document.body.classList.remove('printing-monthly-bills');
+    document.querySelector('.monthly-bill-print-root')?.remove();
+});
+
+const previewModal = document.querySelector('.monthly-bill-preview-modal[data-auto-preview="true"]');
+if (previewModal && window.bootstrap) {
+    bootstrap.Modal.getOrCreateInstance(previewModal).show();
+}
+
+document.querySelectorAll('[data-paid-bill-alert="true"]').forEach(button => {
+    button.addEventListener('click', () => {
+        const message = 'ไม่สามารถแก้ไขใบแจ้งค่าเช่าได้แล้ว';
+        window.showAlert?.('warning', message) || window.alert(message);
+    });
+});
+</script>
+</body>
+</html>

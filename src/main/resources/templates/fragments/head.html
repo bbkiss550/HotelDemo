@@ -3,12 +3,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="_csrf" th:if="${_csrf != null}" th:content="${_csrf.token}">
     <meta name="_csrf_header" th:if="${_csrf != null}" th:content="${_csrf.headerName}">
-    <title th:text="${title} + ' - BlueCatHotelDemo'">BlueCatHotelDemo</title>
+    <title th:text="${title + ' - ' + (systemName != null ? systemName : 'BlueCatHotelDemo')}">BlueCatHotelDemo</title>
+    <script>
+        (function () {
+            try {
+                const savedTheme = localStorage.getItem('hotel-theme');
+                const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+                const theme = savedTheme || (prefersDark ? 'dark' : 'light');
+                document.documentElement.dataset.theme = theme;
+                document.documentElement.classList.toggle('hotel-dark-mode', theme === 'dark');
+            } catch (error) {
+                document.documentElement.dataset.theme = 'light';
+            }
+        })();
+    </script>
     <link rel="preconnect" href="https://fonts.gstatic.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Noto+Sans+Thai:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" th:href="@{/mazer/dist/assets/css/bootstrap.css}">
     <link rel="stylesheet" th:href="@{/mazer/dist/assets/vendors/perfect-scrollbar/perfect-scrollbar.css}">
     <link rel="stylesheet" th:href="@{/mazer/dist/assets/vendors/bootstrap-icons/bootstrap-icons.css}">
+    <link rel="stylesheet" th:href="@{/mazer/dist/assets/vendors/sweetalert2/sweetalert2.min.css}">
     <link rel="stylesheet" th:href="@{/mazer/dist/assets/css/app.css}">
     <style>
         :root {
@@ -101,6 +115,32 @@
             padding: .45rem .85rem;
         }
 
+        .theme-toggle-btn {
+            align-items: center;
+            border-radius: 999px;
+            display: inline-flex;
+            gap: .45rem;
+            min-height: 2.55rem;
+            padding: .45rem .85rem;
+        }
+
+        .sidebar-collapse-btn {
+            align-items: center;
+            border-radius: 999px;
+            justify-content: center;
+            min-height: 2.55rem;
+            width: 2.75rem;
+        }
+
+        .theme-toggle-btn .theme-dark-icon,
+        .hotel-dark-mode .theme-toggle-btn .theme-light-icon {
+            display: none;
+        }
+
+        .hotel-dark-mode .theme-toggle-btn .theme-dark-icon {
+            display: inline-flex;
+        }
+
         .sidebar-wrapper {
             border-right: 1px solid var(--hotel-line);
             box-shadow: .5rem 0 2rem rgba(23, 32, 51, .04);
@@ -118,12 +158,25 @@
             border-radius: .55rem;
             color: #4f5e72;
             font-weight: 700;
-            margin: .12rem .8rem;
-            padding: .72rem .9rem;
+            margin: .12rem .55rem;
+            padding: .72rem .65rem;
         }
 
         .sidebar-wrapper .menu .sidebar-link i {
             color: var(--hotel-primary);
+        }
+
+        .sidebar-wrapper .menu .submenu-link i {
+            color: var(--hotel-primary);
+            margin-right: .45rem;
+        }
+
+        .sidebar-wrapper .menu .submenu {
+            padding-left: .65rem;
+        }
+
+        .sidebar-wrapper .menu .submenu .submenu-link {
+            padding-left: .75rem;
         }
 
         .sidebar-wrapper .menu .sidebar-item.active > .sidebar-link,
@@ -152,7 +205,17 @@
             color: var(--hotel-ink);
             display: inline-flex;
             justify-content: center;
+            font-size: 1.15rem;
+            font-weight: 900;
+            line-height: 1.2;
+            min-height: 3rem;
+            padding: .5rem .75rem;
+            text-align: center;
             width: 100%;
+        }
+
+        .brand-mark span {
+            overflow-wrap: anywhere;
         }
 
         .brand-mark img,
@@ -164,6 +227,79 @@
             height: 10rem;
             max-height: none;
             width: 10rem;
+        }
+
+        @media (min-width: 1200px) {
+            body.hotel-sidebar-collapsed #sidebar,
+            body.hotel-sidebar-collapsed .sidebar-wrapper {
+                width: 5.25rem;
+            }
+
+            body.hotel-sidebar-collapsed #main {
+                margin-left: 5.25rem;
+            }
+
+            body.hotel-sidebar-collapsed .app-topbar {
+                left: 5.25rem;
+            }
+
+            body.hotel-sidebar-collapsed .sidebar-wrapper .sidebar-header {
+                padding-left: .55rem;
+                padding-right: .55rem;
+            }
+
+            body.hotel-sidebar-collapsed .brand-mark {
+                font-size: .95rem;
+                min-height: 3.25rem;
+                overflow: hidden;
+                padding: .45rem .25rem;
+            }
+
+            body.hotel-sidebar-collapsed .brand-mark span {
+                display: block;
+                max-width: 3.4rem;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+
+            body.hotel-sidebar-collapsed .sidebar-wrapper .menu {
+                padding-left: .45rem;
+                padding-right: .45rem;
+            }
+
+            body.hotel-sidebar-collapsed .sidebar-wrapper .menu .sidebar-title,
+            body.hotel-sidebar-collapsed .sidebar-wrapper .menu .sidebar-link span,
+            body.hotel-sidebar-collapsed .sidebar-wrapper .menu .submenu {
+                display: none !important;
+            }
+
+            body.hotel-sidebar-collapsed .sidebar-wrapper .menu .sidebar-link:not(:has(i))::before {
+                content: attr(data-menu-short);
+                font-weight: 900;
+            }
+
+            body.hotel-sidebar-collapsed .sidebar-wrapper .menu .sidebar-link i {
+                margin-right: 0;
+            }
+
+            body.hotel-sidebar-collapsed .sidebar-wrapper .menu .sidebar-link {
+                align-items: center;
+                display: flex;
+                justify-content: center;
+                margin-left: 0;
+                margin-right: 0;
+                min-height: 2.75rem;
+                padding: .7rem;
+            }
+
+            body.hotel-sidebar-collapsed .sidebar-wrapper .menu .sidebar-item.has-sub > .sidebar-link::after {
+                display: none;
+            }
+
+            body.hotel-sidebar-collapsed .sidebar-collapse-btn i {
+                transform: rotate(180deg);
+            }
         }
 
         .auth-brand-logo {
@@ -357,7 +493,7 @@
 
         .stay-type-choices {
             display: grid;
-            gap: .75rem;
+            gap: 1rem;
             grid-template-columns: repeat(2, minmax(0, 1fr));
         }
 
@@ -380,13 +516,14 @@
             align-items: center;
             background: #f6f9fc;
             border: 1px solid var(--hotel-line);
-            border-radius: .65rem;
+            border-radius: .7rem;
             color: #526176;
             display: flex;
+            font-size: 1rem;
             font-weight: 900;
-            gap: .65rem;
-            min-height: 3.85rem;
-            padding: .8rem .95rem;
+            gap: .8rem;
+            min-height: 3.9rem;
+            padding: .85rem 1rem;
             transition: border-color .15s ease, box-shadow .15s ease, background .15s ease, color .15s ease;
         }
 
@@ -406,7 +543,7 @@
         .stay-type-choice input:checked + .stay-type-card {
             background: var(--hotel-primary);
             border-color: var(--hotel-primary);
-            box-shadow: 0 .55rem 1.35rem rgba(31, 95, 139, .16);
+            box-shadow: 0 1rem 1.8rem rgba(31, 95, 139, .18);
             color: #fff;
         }
 
@@ -419,6 +556,14 @@
             display: grid;
             gap: .75rem;
             grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .date-range-field.search-date-field {
+            grid-template-columns: minmax(0, 1fr);
+        }
+
+        .booking-date-group.is-monthly .guest-date-range-field {
+            grid-template-columns: minmax(0, 1fr);
         }
 
         .date-range-field .date-box {
@@ -440,9 +585,20 @@
         }
 
         .hotel-calendar-input {
-            background: #fff;
+            background: #e9edf2;
+            border-color: #e0e6ef;
             cursor: pointer;
             padding-left: 2.45rem;
+        }
+
+        .booking-stay-form .price-field[readonly],
+        .booking-stay-form .night-count-field[readonly] {
+            background: #e9edf2;
+            border-color: #e0e6ef;
+        }
+
+        .booking-stay-form textarea {
+            min-height: 5.35rem;
         }
 
         .hotel-calendar-popup {
@@ -549,11 +705,17 @@
             text-align: right;
         }
 
+        .hotel-calendar-clear,
         .hotel-calendar-today {
             background: transparent;
             border: 0;
             color: #6aa4ff;
             font-weight: 900;
+        }
+
+        .hotel-calendar-clear {
+            color: #8a97ad;
+            margin-right: .75rem;
         }
 
         .modal-room-number {
@@ -635,6 +797,12 @@
         .table-actions {
             min-width: 6.25rem;
             white-space: nowrap;
+        }
+
+        .bill-view-action {
+            min-width: 3rem;
+            width: 3rem;
+            text-align: center;
         }
 
         .stat-card {
@@ -756,6 +924,83 @@
             opacity: .45;
         }
 
+        .menu-order-board {
+            display: grid;
+            gap: 1rem;
+            grid-template-columns: repeat(auto-fit, minmax(18rem, 1fr));
+        }
+
+        .menu-order-section {
+            background: #fff;
+            border: 1px solid var(--hotel-line);
+            border-radius: .65rem;
+            box-shadow: 0 .75rem 1.8rem rgba(23, 32, 51, .055);
+            padding: 1rem;
+        }
+
+        .menu-order-heading {
+            align-items: center;
+            color: var(--hotel-primary-strong);
+            display: flex;
+            font-weight: 900;
+            gap: .55rem;
+            margin-bottom: .85rem;
+        }
+
+        .menu-order-list {
+            display: flex;
+            flex-direction: column;
+            gap: .65rem;
+            min-height: 3rem;
+        }
+
+        .menu-order-item {
+            align-items: center;
+            background: #f6f9fc;
+            border: 1px solid var(--hotel-line);
+            border-radius: .55rem;
+            cursor: grab;
+            display: grid;
+            gap: .65rem;
+            grid-template-columns: auto minmax(7rem, .8fr) minmax(10rem, 1.2fr);
+            min-height: 3.2rem;
+            padding: .7rem .85rem;
+        }
+
+        .menu-order-item.dragging {
+            opacity: .45;
+        }
+
+        .menu-order-name {
+            color: var(--hotel-ink);
+            font-weight: 900;
+            min-width: 0;
+        }
+
+        .menu-order-link-input {
+            font-size: .82rem;
+            min-height: 2.2rem;
+            padding-bottom: .35rem;
+            padding-top: .35rem;
+        }
+
+        .menu-order-placeholder {
+            background: #e8f2f8;
+            border: 2px dashed var(--hotel-primary);
+            border-radius: .55rem;
+            min-height: 3.2rem;
+        }
+
+        @media (max-width: 575.98px) {
+            .menu-order-item {
+                grid-template-columns: auto minmax(0, 1fr);
+            }
+
+            .menu-order-link-input {
+                grid-column: 2;
+            }
+        }
+
         .floor-search {
             min-width: min(22rem, 100%);
         }
@@ -835,6 +1080,318 @@
         .status-occupied { background: linear-gradient(135deg, #CD5C5C, #a7464d); }
         .status-reserved { background: linear-gradient(135deg, #4f73d9, #3859b5); }
         .status-maintenance { background: linear-gradient(135deg, #747b88, #555c68); }
+
+        .billing-filter-controls {
+            align-items: end;
+            display: grid;
+            flex: 1 1 auto;
+            gap: .75rem;
+            grid-template-columns: minmax(8rem, .65fr) minmax(7rem, .5fr) minmax(10rem, .75fr) repeat(3, minmax(10rem, 1fr));
+        }
+
+        .monthly-billing-filter {
+            align-items: end;
+        }
+
+        .monthly-billing-grid {
+            grid-template-columns: repeat(6, minmax(0, 1fr));
+        }
+
+        .monthly-bill-tile {
+            color: #111827;
+            min-height: 14rem;
+        }
+
+        .monthly-bill-tile .room-number,
+        .monthly-bill-tile .room-type,
+        .monthly-bill-tile .room-status {
+            color: #111827;
+            text-shadow: none;
+        }
+
+        .monthly-bill-tile .bill-tenant,
+        .monthly-bill-tile .bill-line {
+            color: #111827;
+            display: block;
+            font-size: .86rem;
+            font-weight: 800;
+            line-height: 1.35;
+            margin-top: .28rem;
+            position: relative;
+            z-index: 1;
+        }
+
+        .monthly-bill-tile .bill-tenant {
+            margin-top: .65rem;
+        }
+
+        .bill-unbilled { background: linear-gradient(135deg, #747b88, #555c68); }
+        .bill-draft { background: linear-gradient(135deg, #4f73d9, #3859b5); }
+        .bill-pending { background: linear-gradient(135deg, #FE9A37, #d97724); }
+        .bill-partial { background: linear-gradient(135deg, #f2c94c, #d49d18); color: #332500; }
+        .bill-paid { background: linear-gradient(135deg, #3D9013, #2e7410); }
+        .bill-overdue { background: linear-gradient(135deg, #CD5C5C, #a7464d); }
+        .bill-cancelled { background: linear-gradient(135deg, #747b88, #555c68); }
+
+        .bill-partial .room-number {
+            text-shadow: none;
+        }
+
+        .sidebar-wrapper .menu .submenu .submenu .submenu-link {
+            padding-left: 1.35rem;
+        }
+
+        .sidebar-wrapper .menu .submenu-item.active > .submenu-link {
+            color: var(--hotel-primary-strong) !important;
+            font-weight: 900;
+        }
+
+        .total-amount {
+            background: #e9edf2;
+            border-color: #e0e6ef;
+            font-size: 1.05rem;
+            font-weight: 900;
+        }
+
+        .monthly-bill-modal-dialog .modal-content {
+            max-height: calc(100vh - 3.5rem);
+        }
+
+        .monthly-bill-form {
+            display: flex;
+            flex-direction: column;
+            max-height: calc(100vh - 3.5rem);
+        }
+
+        .monthly-bill-modal-body {
+            flex: 1 1 auto;
+            overflow-y: auto;
+            padding: 1.25rem;
+        }
+
+        .monthly-bill-main {
+            display: flex;
+            flex-direction: column;
+            gap: .75rem;
+        }
+
+        .monthly-bill-summary-panel {
+            align-self: stretch;
+        }
+
+        .monthly-bill-note {
+            height: 70px;
+            min-height: 70px;
+            resize: vertical;
+        }
+
+        .monthly-bill-preview-wrap {
+            background: #eef3f8;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            justify-content: center;
+            padding: 1.25rem;
+        }
+
+        .monthly-bill-slip {
+            background: #fff;
+            border: 1px solid #d9e2ee;
+            box-sizing: border-box;
+            box-shadow: 0 1rem 2.4rem rgba(23, 32, 51, .14);
+            color: #111827;
+            min-height: 148mm;
+            padding: 10mm;
+            width: 210mm;
+        }
+
+        .monthly-bill-bulk-preview {
+            max-height: calc(100vh - 12rem);
+            overflow-y: auto;
+        }
+
+        .bill-slip-header {
+            align-items: flex-start;
+            border-bottom: 2px solid #111827;
+            display: flex;
+            justify-content: space-between;
+            gap: 1rem;
+            padding-bottom: .75rem;
+        }
+
+        .bill-slip-header h4 {
+            color: #111827;
+            font-size: 1.15rem;
+            font-weight: 900;
+            margin: 0 0 .2rem;
+        }
+
+        .bill-slip-number {
+            display: flex;
+            flex-direction: column;
+            font-size: .92rem;
+            gap: .15rem;
+            text-align: right;
+        }
+
+        .bill-slip-meta {
+            display: grid;
+            gap: .45rem .85rem;
+            grid-template-columns: minmax(0, 3fr) minmax(0, 1fr);
+            margin: .85rem 0;
+        }
+
+        .bill-slip-meta div {
+            align-items: baseline;
+            background: transparent;
+            border: 0;
+            display: flex;
+            gap: .35rem;
+            padding: .12rem 0;
+        }
+
+        .bill-slip-meta .bill-slip-due-date {
+            grid-column: 2;
+        }
+
+        .bill-slip-meta span,
+        .bill-slip-note span {
+            color: #6f7d91;
+            display: inline;
+            font-size: .82rem;
+            font-weight: 800;
+        }
+
+        .bill-slip-meta strong {
+            display: inline;
+            font-size: .86rem;
+            font-weight: 900;
+        }
+
+        .bill-slip-meta span::after {
+            content: " :";
+        }
+
+        .monthly-bill-meta .bill-slip-meta-left,
+        .monthly-bill-meta .bill-slip-meta-right {
+            display: flex;
+            flex-direction: column;
+            gap: .2rem;
+        }
+
+        .monthly-bill-meta .bill-slip-meta-line {
+            align-items: baseline;
+            display: flex;
+            gap: .35rem;
+            padding: .02rem 0;
+        }
+
+        .bill-slip-table {
+            border-collapse: collapse;
+            font-size: .86rem;
+            width: 100%;
+        }
+
+        .bill-slip-table th,
+        .bill-slip-table td {
+            border-bottom: 1px solid #e4e9f2;
+            padding: .45rem .35rem;
+        }
+
+        .bill-slip-table thead th {
+            background: #f6f9fc;
+            border-top: 1px solid #e4e9f2;
+        }
+
+        .bill-slip-total th {
+            border-bottom: 0;
+            font-size: 1rem;
+            padding-top: .75rem;
+        }
+
+        .bill-slip-note {
+            border: 1px solid #e4e9f2;
+            border-radius: .35rem;
+            margin-top: .85rem;
+            min-height: 1.9rem;
+            padding: .5rem .6rem;
+        }
+
+        .monthly-bill-print-root {
+            display: none;
+        }
+
+        .billing-section {
+            background: #f8fafc;
+            border: 1px solid var(--hotel-line);
+            border-radius: .65rem;
+            padding: 1rem;
+        }
+
+        .billing-section + .billing-section {
+            margin-top: .75rem;
+        }
+
+        .billing-section-title {
+            align-items: center;
+            color: var(--hotel-primary-strong);
+            display: flex;
+            font-size: .95rem;
+            font-weight: 900;
+            gap: .55rem;
+            margin-bottom: .85rem;
+        }
+
+        .billing-section-title i {
+            align-items: center;
+            background: #e8f2f8;
+            border-radius: .5rem;
+            color: var(--hotel-primary);
+            display: inline-flex;
+            height: 2rem;
+            justify-content: center;
+            width: 2rem;
+        }
+
+        .billing-section-summary {
+            background: #fff;
+            border-color: #c8dfed;
+        }
+
+        .monthly-bill-summary-panel .billing-section-summary {
+            position: sticky;
+            top: 0;
+        }
+
+        .billing-meter-grid {
+            display: grid;
+            gap: .75rem;
+            grid-template-columns: repeat(5, minmax(0, 1fr));
+        }
+
+        @media (max-width: 991.98px) {
+            .monthly-billing-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+
+            .monthly-bill-summary-panel .billing-section-summary {
+                position: static;
+            }
+
+            .billing-meter-grid {
+                grid-template-columns: repeat(2, minmax(0, 1fr));
+            }
+        }
+
+        @media (max-width: 575.98px) {
+            .monthly-billing-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .billing-meter-grid {
+                grid-template-columns: 1fr;
+            }
+        }
 
         .hotel-toast-container {
             align-items: stretch;
@@ -928,6 +1485,74 @@
             color: #332500;
         }
 
+        .hotel-loading-bar {
+            background: rgba(79, 115, 217, .16);
+            height: .25rem;
+            left: 0;
+            opacity: 0;
+            overflow: hidden;
+            pointer-events: none;
+            position: fixed;
+            right: 0;
+            top: 0;
+            transition: opacity .18s ease;
+            z-index: 2300;
+        }
+
+        .hotel-loading-bar::before {
+            animation: hotel-loading-slide 1.05s ease-in-out infinite;
+            background: linear-gradient(90deg, #4f73d9, #2fb8a8, #f47b20);
+            content: "";
+            height: 100%;
+            left: -35%;
+            position: absolute;
+            top: 0;
+            width: 35%;
+        }
+
+        .hotel-loading-panel {
+            align-items: center;
+            background: rgba(23, 32, 51, .78);
+            border-radius: .75rem;
+            box-shadow: 0 1rem 2.5rem rgba(23, 32, 51, .24);
+            color: #fff;
+            display: inline-flex;
+            font-weight: 900;
+            gap: .7rem;
+            left: 50%;
+            opacity: 0;
+            padding: .85rem 1.1rem;
+            pointer-events: none;
+            position: fixed;
+            top: 50%;
+            transform: translate(-50%, calc(-50% - .75rem));
+            transition: opacity .18s ease, transform .18s ease;
+            z-index: 2301;
+        }
+
+        .hotel-loading-panel .spinner-border {
+            height: 1.15rem;
+            width: 1.15rem;
+        }
+
+        body.hotel-is-loading .hotel-loading-bar,
+        body.hotel-is-loading .hotel-loading-panel {
+            opacity: 1;
+        }
+
+        body.hotel-is-loading .hotel-loading-panel {
+            transform: translate(-50%, -50%);
+        }
+
+        @keyframes hotel-loading-slide {
+            from {
+                left: -35%;
+            }
+            to {
+                left: 100%;
+            }
+        }
+
         @keyframes toast-fade-in {
             from {
                 opacity: 0;
@@ -954,12 +1579,359 @@
                 transform: none;
                 width: auto;
             }
+
+            .billing-filter-controls {
+                grid-template-columns: 1fr;
+            }
         }
 
         @media print {
+            @page {
+                margin: 0;
+                size: A4 portrait;
+            }
+
             #sidebar, .page-heading .btn, .burger-btn { display: none !important; }
             #main { margin-left: 0 !important; padding: 0 !important; background: #fff !important; }
             .card { box-shadow: none !important; }
+
+            body.printing-monthly-bills > *:not(.monthly-bill-print-root) {
+                display: none !important;
+            }
+
+            body.printing-monthly-bills .monthly-bill-print-root {
+                display: block !important;
+            }
+
+            body.printing-monthly-bills .monthly-bill-print-root .monthly-bill-preview-wrap {
+                background: #fff !important;
+                display: block !important;
+                max-height: none !important;
+                overflow: visible !important;
+                padding: 0 !important;
+                width: 210mm !important;
+            }
+
+            body.printing-monthly-bills .modal-backdrop,
+            body.printing-monthly-bills .monthly-bill-preview-modal .modal-header,
+            body.printing-monthly-bills .monthly-bill-preview-modal .modal-footer {
+                display: none !important;
+            }
+
+            body.printing-monthly-bills .monthly-bill-preview-modal,
+            body.printing-monthly-bills .monthly-bill-preview-modal .modal-dialog,
+            body.printing-monthly-bills .monthly-bill-preview-modal .modal-content,
+            body.printing-monthly-bills .monthly-bill-preview-modal .modal-body {
+                background: #fff !important;
+                border: 0 !important;
+                box-shadow: none !important;
+                display: block !important;
+                height: auto !important;
+                margin: 0 !important;
+                max-height: none !important;
+                max-width: none !important;
+                overflow: visible !important;
+                padding: 0 !important;
+                position: static !important;
+                transform: none !important;
+                width: auto !important;
+            }
+
+            body.printing-monthly-bills .monthly-bill-slip {
+                border: 0;
+                box-shadow: none;
+                break-after: auto;
+                break-inside: avoid;
+                height: 148.5mm;
+                min-height: 0;
+                overflow: hidden;
+                page-break-after: auto;
+                page-break-inside: avoid;
+                padding: 8mm 10mm;
+                width: 210mm;
+            }
+
+            body.printing-monthly-bills .monthly-bill-slip:nth-child(odd) {
+                border-bottom: 1px dashed #94a3b8;
+            }
+
+            body.printing-monthly-bills .monthly-bill-slip:nth-child(2n) {
+                break-after: page;
+                page-break-after: always;
+            }
+
+            body.printing-monthly-bills .monthly-bill-slip:nth-child(2n):last-child {
+                break-after: auto;
+                page-break-after: auto;
+            }
+        }
+
+        .hotel-dark-mode {
+            color-scheme: dark;
+            --hotel-ink: #e7edf7;
+            --hotel-muted: #96a5b9;
+            --hotel-line: #263447;
+            --hotel-panel: #172233;
+            --hotel-bg: #0d1420;
+            --hotel-primary: #68b7ee;
+            --hotel-primary-strong: #9bd2f8;
+            --hotel-green: #76c768;
+            --hotel-orange: #ffb86b;
+            --hotel-red: #ff8a8a;
+            --hotel-blue: #8aa7ff;
+            --hotel-gray: #a5afbd;
+        }
+
+        .hotel-dark-mode body,
+        .hotel-dark-mode #app {
+            background: var(--hotel-bg);
+            color: var(--hotel-ink);
+        }
+
+        .hotel-dark-mode #main {
+            background:
+                linear-gradient(180deg, rgba(104, 183, 238, .12), rgba(104, 183, 238, 0) 16rem),
+                var(--hotel-bg);
+        }
+
+        .hotel-dark-mode .app-topbar,
+        .hotel-dark-mode .page-heading,
+        .hotel-dark-mode .card,
+        .hotel-dark-mode .card-header,
+        .hotel-dark-mode .card-body,
+        .hotel-dark-mode .modal-content,
+        .hotel-dark-mode .dropdown-menu,
+        .hotel-dark-mode .list-group-item,
+        .hotel-dark-mode .menu-order-section,
+        .hotel-dark-mode .billing-section,
+        .hotel-dark-mode .floor-toolbar,
+        .hotel-dark-mode .hotel-calendar-popup {
+            background: var(--hotel-panel);
+            border-color: var(--hotel-line);
+            color: var(--hotel-ink);
+        }
+
+        .hotel-dark-mode .app-topbar {
+            background: rgba(23, 34, 51, .92);
+            box-shadow: 0 .6rem 1.8rem rgba(0, 0, 0, .24);
+        }
+
+        .hotel-dark-mode .sidebar-wrapper {
+            background: #111b2a;
+            border-color: var(--hotel-line);
+            box-shadow: .5rem 0 2rem rgba(0, 0, 0, .2);
+        }
+
+        .hotel-dark-mode .sidebar-wrapper .menu .sidebar-title {
+            color: #7f8da0;
+        }
+
+        .hotel-dark-mode .sidebar-wrapper .menu .sidebar-link,
+        .hotel-dark-mode .sidebar-wrapper .menu .submenu .submenu-link,
+        .hotel-dark-mode .topbar-user {
+            background: transparent;
+            color: #c6d1df;
+        }
+
+        .hotel-dark-mode .sidebar-wrapper .menu .sidebar-item.active > .sidebar-link,
+        .hotel-dark-mode .sidebar-wrapper .menu .sidebar-link:hover,
+        .hotel-dark-mode .sidebar-wrapper .menu .submenu-item.active > .submenu-link,
+        .hotel-dark-mode .sidebar-wrapper .menu .submenu-link:hover {
+            background: rgba(104, 183, 238, .13);
+            border-color: rgba(104, 183, 238, .28);
+            color: var(--hotel-primary-strong) !important;
+        }
+
+        .hotel-dark-mode .topbar-user {
+            background: #111b2a;
+            border-color: var(--hotel-line);
+        }
+
+        .hotel-dark-mode .btn-light,
+        .hotel-dark-mode .btn-light-primary,
+        .hotel-dark-mode .btn-light-secondary,
+        .hotel-dark-mode .btn-outline-secondary,
+        .hotel-dark-mode .theme-toggle-btn {
+            background: #111b2a;
+            border-color: var(--hotel-line);
+            color: var(--hotel-ink);
+        }
+
+        .hotel-dark-mode .btn-light:hover,
+        .hotel-dark-mode .btn-light-primary:hover,
+        .hotel-dark-mode .btn-light-secondary:hover,
+        .hotel-dark-mode .btn-outline-secondary:hover,
+        .hotel-dark-mode .theme-toggle-btn:hover {
+            background: #1d2a3d;
+            border-color: #35465d;
+            color: #ffffff;
+        }
+
+        .hotel-dark-mode .form-control,
+        .hotel-dark-mode .form-select,
+        .hotel-dark-mode .input-group-text {
+            background-color: #101a28;
+            border-color: #2c3a4f;
+            color: var(--hotel-ink);
+        }
+
+        .hotel-dark-mode .form-control:focus,
+        .hotel-dark-mode .form-select:focus {
+            background-color: #101a28;
+            border-color: var(--hotel-primary);
+            color: var(--hotel-ink);
+            box-shadow: 0 0 0 .2rem rgba(104, 183, 238, .16);
+        }
+
+        .hotel-dark-mode .form-control::placeholder {
+            color: #748298;
+        }
+
+        .hotel-dark-mode .form-control[readonly],
+        .hotel-dark-mode .form-control:disabled,
+        .hotel-dark-mode .form-select:disabled,
+        .hotel-dark-mode .hotel-calendar-input,
+        .hotel-dark-mode .total-amount,
+        .hotel-dark-mode .booking-stay-form .price-field[readonly],
+        .hotel-dark-mode .booking-stay-form .night-count-field[readonly] {
+            background-color: #0d1624;
+            border-color: #2c3a4f;
+            color: #cbd7e6;
+            opacity: 1;
+        }
+
+        .hotel-dark-mode .table {
+            --bs-table-bg: transparent;
+            --bs-table-color: var(--hotel-ink);
+            --bs-table-border-color: var(--hotel-line);
+            color: var(--hotel-ink);
+        }
+
+        .hotel-dark-mode .table thead th {
+            background: #111b2a;
+            border-color: var(--hotel-line);
+            color: #cbd7e6;
+        }
+
+        .hotel-dark-mode .table td,
+        .hotel-dark-mode .table th {
+            border-color: var(--hotel-line);
+        }
+
+        .hotel-dark-mode .table-hover > tbody > tr:hover > * {
+            --bs-table-accent-bg: rgba(104, 183, 238, .08);
+            color: var(--hotel-ink);
+        }
+
+        .hotel-dark-mode .modal-header,
+        .hotel-dark-mode .modal-footer,
+        .hotel-dark-mode .border,
+        .hotel-dark-mode hr {
+            border-color: var(--hotel-line) !important;
+        }
+
+        .hotel-dark-mode .text-dark,
+        .hotel-dark-mode .page-heading h3,
+        .hotel-dark-mode h1,
+        .hotel-dark-mode h2,
+        .hotel-dark-mode h3,
+        .hotel-dark-mode h4,
+        .hotel-dark-mode h5,
+        .hotel-dark-mode h6 {
+            color: var(--hotel-ink) !important;
+        }
+
+        .hotel-dark-mode .text-muted,
+        .hotel-dark-mode .text-subtitle {
+            color: var(--hotel-muted) !important;
+        }
+
+        .hotel-dark-mode .bg-light,
+        .hotel-dark-mode .alert-light {
+            background-color: #111b2a !important;
+            color: var(--hotel-ink);
+        }
+
+        .hotel-dark-mode .bg-light-primary,
+        .hotel-dark-mode .bg-light-secondary,
+        .hotel-dark-mode .bg-light-success,
+        .hotel-dark-mode .badge.bg-light-primary,
+        .hotel-dark-mode .badge.bg-light-secondary,
+        .hotel-dark-mode .badge.bg-light-success {
+            background-color: rgba(104, 183, 238, .15) !important;
+            border: 1px solid rgba(104, 183, 238, .25);
+            color: var(--hotel-primary-strong) !important;
+        }
+
+        .hotel-dark-mode .menu-order-item,
+        .hotel-dark-mode .picture-radio-card,
+        .hotel-dark-mode .stay-type-card,
+        .hotel-dark-mode .floor-tab,
+        .hotel-dark-mode .hotel-calendar-weekdays,
+        .hotel-dark-mode .hotel-calendar-days button {
+            background: #111b2a;
+            border-color: var(--hotel-line);
+            color: var(--hotel-ink);
+        }
+
+        .hotel-dark-mode .picture-radio input:checked + .picture-radio-card {
+            background: #172233;
+            border-color: var(--hotel-primary);
+            color: var(--hotel-ink);
+        }
+
+        .hotel-dark-mode .floor-tab.active,
+        .hotel-dark-mode .floor-tab:hover,
+        .hotel-dark-mode .hotel-calendar-days button.is-selected {
+            background: var(--hotel-primary);
+            border-color: var(--hotel-primary);
+            color: #08111d;
+        }
+
+        .hotel-dark-mode .menu-order-name,
+        .hotel-dark-mode .billing-section-title,
+        .hotel-dark-mode .hotel-calendar-title {
+            color: var(--hotel-primary-strong);
+        }
+
+        .hotel-dark-mode .menu-order-placeholder,
+        .hotel-dark-mode .billing-section-title i {
+            background: rgba(104, 183, 238, .13);
+            border-color: rgba(104, 183, 238, .35);
+            color: var(--hotel-primary);
+        }
+
+        .hotel-dark-mode .billing-section-summary {
+            background: #111b2a;
+            border-color: rgba(104, 183, 238, .28);
+        }
+
+        .hotel-dark-mode .monthly-bill-preview-wrap {
+            background: #0f1826;
+        }
+
+        .hotel-dark-mode .modal-backdrop {
+            --bs-backdrop-bg: #020617;
+            --bs-backdrop-opacity: .72;
+        }
+
+        .hotel-dark-mode .btn-close {
+            filter: invert(1) grayscale(100%) brightness(190%);
+        }
+
+        .hotel-dark-mode .monthly-bill-slip,
+        .hotel-dark-mode .bill-slip-preview {
+            background: #ffffff;
+            color: #172033;
+        }
+
+        .hotel-dark-mode .monthly-bill-slip .bill-slip-header h4 {
+            color: #0b1220 !important;
+        }
+
+        .hotel-dark-mode .hotel-loading-panel,
+        .hotel-dark-mode .hotel-toast-item {
+            box-shadow: 0 1rem 2.5rem rgba(0, 0, 0, .32);
         }
 
         @media (max-width: 1199.98px) {

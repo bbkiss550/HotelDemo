@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="th">
+<head th:replace="~{fragments/head :: head('รายการบิลค่าเช่า')}"></head>
+<body>
+<div id="app">
+    <div th:replace="~{fragments/nav :: nav}"></div>
+    <div id="main">
+        <header class="mb-3"><a href="#" class="burger-btn d-block d-xl-none"><i class="bi bi-justify fs-3"></i></a></header>
+        <div class="page-heading d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div>
+                <h3 th:text="${currentMenuName}"></h3>
+            </div>
+            <div class="d-flex flex-wrap gap-2">
+                <button class="btn btn-primary" type="button" id="printSelectedBillsBtn">
+                    <i class="bi bi-printer me-1"></i>พิมพ์รายการที่เลือก
+                </button>
+            </div>
+        </div>
+        <div class="page-content">
+            <section class="section">
+                <form class="floor-toolbar monthly-billing-filter mb-3" method="get" th:action="@{/finance/monthly-rent/bills}">
+                    <div class="billing-filter-controls">
+                        <div>
+                            <label class="form-label">เดือน</label>
+                            <select class="form-select billing-month-select" name="month">
+                                <option value="" th:selected="${selectedMonth == null}">ทั้งหมด</option>
+                                <option th:each="month : ${months}"
+                                        th:value="${month.value}"
+                                        th:text="${month.label}"
+                                        th:selected="${selectedMonth == month.value}"></option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">ปี</label>
+                            <select class="form-select billing-year-select" name="year">
+                                <option value="" th:selected="${selectedYear == null}">ทั้งหมด</option>
+                                <option th:each="year : ${years}"
+                                        th:value="${year}"
+                                        th:text="${year + 543}"
+                                        th:selected="${selectedYear == year}"></option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">สถานะบิล</label>
+                            <select class="form-select" name="status">
+                                <option value="ALL" th:selected="${selectedStatus == 'ALL'}">ทั้งหมด</option>
+                                <option th:each="status : ${statuses}"
+                                        th:value="${status.id}"
+                                        th:text="${status.name}"
+                                        th:selected="${selectedStatus == #strings.toString(status.id)}"></option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="form-label">เลขบิล</label>
+                            <input class="form-control" name="billNo" th:value="${billNo}" placeholder="เลขบิล">
+                        </div>
+                        <div>
+                            <label class="form-label">เลขห้อง</label>
+                            <input class="form-control" name="roomNo" th:value="${roomNo}" placeholder="เลขห้อง">
+                        </div>
+                        <div>
+                            <label class="form-label">ชื่อผู้พัก</label>
+                            <input class="form-control" name="guestName" th:value="${guestName}" placeholder="ชื่อผู้พัก">
+                        </div>
+                    </div>
+                    <button class="btn btn-light-primary" type="submit"><i class="bi bi-funnel me-1"></i>กรอง</button>
+                </form>
+
+                <div class="card">
+                    <div class="card-body">
+                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                            <label class="form-check mb-0">
+                                <input class="form-check-input" type="checkbox" id="selectAllBills">
+                                <span class="form-check-label fw-bold">เลือกทั้งหมดในหน้านี้</span>
+                            </label>
+                            <span class="text-muted small">เลือกบิลที่ต้องการแล้วกดพิมพ์รายการที่เลือก</span>
+                        </div>
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead>
+                                <tr>
+                                    <th class="text-center" style="width: 3rem;">เลือก</th>
+                                    <th class="table-actions bill-view-action">ดู</th>
+                                    <th>เลขบิล</th>
+                                    <th>รอบบิล</th>
+                                    <th>ห้อง</th>
+                                    <th>ผู้เช่า</th>
+                                    <th class="text-end">ค่าเช่า</th>
+                                    <th class="text-end">น้ำ</th>
+                                    <th class="text-end">ไฟ</th>
+                                    <th class="text-end">ยอดสุทธิ</th>
+                                    <th class="text-end">ชำระแล้ว</th>
+                                    <th class="text-end">คงเหลือ</th>
+                                    <th>ครบกำหนด</th>
+                                    <th>สถานะ</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="item : ${bills}">
+                                    <td class="text-center">
+                                        <input class="form-check-input bill-select-checkbox"
+                                               type="checkbox"
+                                               th:value="${item.bill.id}">
+                                    </td>
+                                    <td class="table-actions bill-view-action">
+                                        <button class="btn btn-sm btn-light-primary"
+                                                type="button"
+                                                title="ดูบิล"
+                                                data-bs-toggle="modal"
+                                                th:attr="data-bs-target=${'#monthlyBillViewModal' + item.bill.id}">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                    </td>
+                                    <td th:text="${item.bill.billNumber != null and !#strings.isEmpty(item.bill.billNumber) ? item.bill.billNumber : '-'}"></td>
+                                    <td th:text="${@thaiDate.monthYear(item.bill.billingMonth, item.bill.billingYear)}"></td>
+                                    <td><span class="badge bg-light-primary" th:text="${item.bill.room != null ? item.bill.room.roomNumber : '-'}"></span></td>
+                                    <td th:text="${item.bill.guest != null ? item.bill.guest.fullName : '-'}"></td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.rentAmount, 1, 'COMMA', 2, 'POINT')}"></td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.waterAmount, 1, 'COMMA', 2, 'POINT')}"></td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.electricAmount, 1, 'COMMA', 2, 'POINT')}"></td>
+                                    <td class="text-end fw-bold" th:text="${#numbers.formatDecimal(item.bill.totalAmount, 1, 'COMMA', 2, 'POINT')}"></td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.paidAmount, 1, 'COMMA', 2, 'POINT')}"></td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.remainingAmount, 1, 'COMMA', 2, 'POINT')}"></td>
+                                    <td th:text="${@thaiDate.format(item.bill.dueDate)}"></td>
+                                    <td><span class="badge" th:classappend="${item.statusClass}" th:text="${item.statusLabel}"></span></td>
+                                </tr>
+                                <tr th:if="${bills.isEmpty()}">
+                                    <td colspan="14" class="text-center text-muted py-4">ไม่พบรายการบิลค่าเช่า</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div class="d-none" id="monthlyBillSlipSource">
+            <div th:each="item : ${bills}"
+                 th:replace="~{finance/monthly-rent/bill-slip :: billSlip(${item}, null, null, null, null, null)}"></div>
+        </div>
+
+        <div class="modal fade monthly-bill-preview-modal"
+             th:each="item : ${bills}"
+             th:id="${'monthlyBillViewModal' + item.bill.id}"
+             tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title" th:text="|บิลค่าเช่า #${item.bill.billNumber != null and !#strings.isEmpty(item.bill.billNumber) ? item.bill.billNumber : '-'}|"></h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body monthly-bill-preview-wrap">
+                        <div th:replace="~{finance/monthly-rent/bill-slip :: billSlip(${item}, null, null, null, null, null)}"></div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">ปิด</button>
+                        <button type="button" class="btn btn-primary print-single-bill" th:attr="data-bill-id=${item.bill.id}">
+                            <i class="bi bi-printer me-1"></i>พิมพ์บิลนี้
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade monthly-bill-preview-modal" id="monthlyBillSelectedPreviewModal" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered modal-xl">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">พิมพ์บิลค่าเช่าที่เลือก</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body monthly-bill-preview-wrap monthly-bill-bulk-preview" id="selectedBillPreviewBody"></div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">ปิด</button>
+                        <button type="button" class="btn btn-primary" id="confirmPrintSelectedBills">
+                            <i class="bi bi-printer me-1"></i>พิมพ์
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div th:replace="~{fragments/nav :: scripts}"></div>
+<script>
+(function () {
+    const selectAll = document.getElementById('selectAllBills');
+    const selectedPreviewBody = document.getElementById('selectedBillPreviewBody');
+    const selectedPreviewModalEl = document.getElementById('monthlyBillSelectedPreviewModal');
+    const selectedPreviewModal = selectedPreviewModalEl ? new bootstrap.Modal(selectedPreviewModalEl) : null;
+
+    const selectedIds = () => Array.from(document.querySelectorAll('.bill-select-checkbox:checked')).map(input => input.value);
+    const slipFor = id => {
+        const escapedId = CSS.escape(id);
+        return document.querySelector(`#monthlyBillSlipSource .monthly-bill-slip[data-bill-id="${escapedId}"]`)
+            || document.querySelector(`#monthlyBillViewModal${escapedId} .monthly-bill-slip`);
+    };
+
+    const cloneSelectedSlips = ids => {
+        selectedPreviewBody.innerHTML = '';
+        ids.forEach(id => {
+            const slip = slipFor(id);
+            if (slip) selectedPreviewBody.appendChild(slip.cloneNode(true));
+        });
+    };
+
+    const printSlips = slips => {
+        document.querySelector('.monthly-bill-print-root')?.remove();
+        const root = document.createElement('div');
+        root.className = 'monthly-bill-print-root';
+        const wrap = document.createElement('div');
+        wrap.className = 'monthly-bill-preview-wrap';
+        slips.forEach(slip => wrap.appendChild(slip.cloneNode(true)));
+        root.appendChild(wrap);
+        document.body.appendChild(root);
+        document.body.classList.add('printing-monthly-bills');
+        window.print();
+    };
+
+    selectAll?.addEventListener('change', () => {
+        document.querySelectorAll('.bill-select-checkbox').forEach(input => input.checked = selectAll.checked);
+    });
+
+    document.getElementById('printSelectedBillsBtn')?.addEventListener('click', () => {
+        const ids = selectedIds();
+        if (ids.length === 0) {
+            window.showAlert ? window.showAlert('warning', 'กรุณาเลือกรายการบิลที่ต้องการพิมพ์') : alert('กรุณาเลือกรายการบิลที่ต้องการพิมพ์');
+            return;
+        }
+        cloneSelectedSlips(ids);
+        selectedPreviewModal?.show();
+    });
+
+    document.getElementById('confirmPrintSelectedBills')?.addEventListener('click', () => {
+        const slips = Array.from(selectedPreviewBody.querySelectorAll('.monthly-bill-slip'));
+        if (slips.length > 0) printSlips(slips);
+    });
+
+    document.querySelectorAll('.print-single-bill').forEach(button => {
+        button.addEventListener('click', () => {
+            const slip = slipFor(button.dataset.billId);
+            if (slip) printSlips([slip]);
+        });
+    });
+
+    window.addEventListener('afterprint', () => {
+        document.body.classList.remove('printing-monthly-bills');
+        document.querySelector('.monthly-bill-print-root')?.remove();
+    });
+})();
+</script>
+</body>
+</html>

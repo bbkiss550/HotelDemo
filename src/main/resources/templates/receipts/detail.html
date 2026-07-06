@@ -1,17 +1,72 @@
 <!doctype html>
 <html lang="th">
-<head th:replace="~{fragments/head :: head('ใบเสร็จ')}"></head>
+<head th:replace="~{fragments/head :: head('ใบเสร็จรับเงิน')}"></head>
 <body>
 <div id="app">
     <div th:replace="~{fragments/nav :: nav}"></div>
     <div id="main">
         <header class="mb-3"><a href="#" class="burger-btn d-block d-xl-none"><i class="bi bi-justify fs-3"></i></a></header>
-        <div class="page-heading d-flex justify-content-between align-items-center"><h3>ใบเสร็จรับเงิน</h3><button class="btn btn-primary" onclick="window.print()"><i class="bi bi-printer me-1"></i>พิมพ์</button></div>
-        <div class="page-content"><section class="section"><div class="card"><div class="card-body p-5">
-            <div class="d-flex justify-content-between border-bottom pb-3 mb-4"><div><h4>BlueCatHotelDemo</h4><div class="text-muted">ระบบจัดการโรงแรม</div></div><div class="text-end"><h5 th:text="${receipt.receiptNo}">RC</h5><div th:text="${@thaiDate.format(receipt.receiptDate)}"></div></div></div>
-            <div class="row mb-4"><div class="col-md-6"><strong>รับจาก</strong><div th:text="${receipt.guest.fullName}"></div><div th:text="${receipt.guest.phone}"></div></div><div class="col-md-6 text-md-end"><strong>ห้อง</strong><div th:text="${receipt.guest.room.roomNumber}"></div></div></div>
-            <table class="table"><thead><tr><th>รายการ</th><th class="text-end">จำนวนเงิน</th></tr></thead><tbody><tr><td th:text="${receipt.payment.paymentType}">รายการ</td><td class="text-end" th:text="${#numbers.formatDecimal(receipt.totalAmount, 1, 'COMMA', 2, 'POINT')}">0.00</td></tr></tbody><tfoot><tr><th>รวม</th><th class="text-end" th:text="${#numbers.formatDecimal(receipt.totalAmount, 1, 'COMMA', 2, 'POINT')}">0.00</th></tr></tfoot></table>
-        </div></div></section></div>
+        <div class="page-heading d-flex justify-content-between align-items-center">
+            <h3 th:text="${currentMenuName}"></h3>
+            <button class="btn btn-primary" onclick="window.print()"><i class="bi bi-printer me-1"></i>พิมพ์</button>
+        </div>
+
+        <div class="page-content">
+            <section class="section">
+                <div class="monthly-bill-preview-wrap">
+                    <div class="monthly-bill-slip">
+                        <div class="bill-slip-header">
+                            <div>
+                                <h4 th:text="${systemName}">BlueCatHotelDemo</h4>
+                                <div>ใบเสร็จรับเงิน</div>
+                            </div>
+                            <div class="bill-slip-number">
+                                <strong th:text="|ห้อง ${payment.room != null ? payment.room.roomNumber : (payment.guest != null and payment.guest.room != null ? payment.guest.room.roomNumber : '-')}|"></strong>
+                                <span th:text="|เลขใบเสร็จ #${receiptNo != null and !#strings.isEmpty(receiptNo) ? receiptNo : '-'}|"></span>
+                                <span th:text="|เลขที่ใบแจ้งค่าเช่า #${billNumber != null and billNumber != '-' ? billNumber : '-'}|"></span>
+                            </div>
+                        </div>
+
+                        <div class="bill-slip-meta">
+                            <div><span>รับจาก</span><strong th:text="${payment.guest != null ? payment.guest.fullName : '-'}"></strong></div>
+                            <div><span>วันที่ชำระ</span><strong th:text="${@thaiDate.format(payment.paymentDate)}"></strong></div>
+                            <div><span>เบอร์โทร</span><strong th:text="${payment.guest != null and payment.guest.phone != null ? payment.guest.phone : '-'}"></strong></div>
+                            <div class="bill-slip-due-date"><span>วิธีชำระ</span><strong th:text="${payment.paymentMethod != null ? payment.paymentMethod : '-'}"></strong></div>
+                        </div>
+
+                        <table class="bill-slip-table">
+                            <thead>
+                            <tr>
+                                <th>รายการ</th>
+                                <th class="text-end">จำนวนหน่วย</th>
+                                <th class="text-end">ราคาต่อหน่วย</th>
+                                <th class="text-end">จำนวนเงิน</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            <tr>
+                                <td th:text="${receiptTypeName}">รายการ</td>
+                                <td class="text-end">1</td>
+                                <td class="text-end" th:text="${#numbers.formatDecimal(payment.amount, 1, 'COMMA', 2, 'POINT')}">0.00</td>
+                                <td class="text-end" th:text="${#numbers.formatDecimal(payment.amount, 1, 'COMMA', 2, 'POINT')}">0.00</td>
+                            </tr>
+                            </tbody>
+                            <tfoot>
+                            <tr class="bill-slip-total">
+                                <th colspan="3">รวมรับชำระ</th>
+                                <th class="text-end" th:text="|${#numbers.formatDecimal(payment.amount, 1, 'COMMA', 2, 'POINT')} บาท|">0.00 บาท</th>
+                            </tr>
+                            </tfoot>
+                        </table>
+
+                        <div class="bill-slip-note" th:if="${payment.remark != null and !#strings.isEmpty(payment.remark)}">
+                            <span>หมายเหตุ</span>
+                            <div th:text="${payment.remark}"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
     </div>
 </div>
 <div th:replace="~{fragments/nav :: scripts}"></div>

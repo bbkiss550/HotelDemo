@@ -7,7 +7,7 @@
     <div id="main">
         <header class="mb-3"><a href="#" class="burger-btn d-block d-xl-none"><i class="bi bi-justify fs-3"></i></a></header>
         <div class="page-heading d-flex justify-content-between align-items-center">
-            <div><h3 th:text="${guest.fullName}">ผู้พัก</h3><p class="text-subtitle text-muted mb-0" th:text="|ห้อง ${guest.room.roomNumber}|"></p></div>
+            <div><h3 th:text="${currentMenuName}"></h3></div>
             <a class="btn btn-primary" th:href="@{/payments/new(guestId=${guest.id})}"><i class="bi bi-credit-card me-1"></i>รับชำระ</a>
         </div>
         <div class="page-content">
@@ -21,11 +21,31 @@
                         <dt class="col-5">วันออก</dt><dd class="col-7" th:text="${@thaiDate.format(guest.checkOutDate)}"></dd>
                         <dt class="col-5">ยอดแรกเข้า</dt><dd class="col-7" th:text="${#numbers.formatDecimal(guest.initialPayment, 1, 'COMMA', 2, 'POINT')}"></dd>
                         <dt class="col-5">จ่ายแล้ว</dt><dd class="col-7" th:text="${#numbers.formatDecimal(guest.totalPaid, 1, 'COMMA', 2, 'POINT')}"></dd>
+                        <dt class="col-5">เครดิตล่วงหน้า</dt><dd class="col-7" th:text="${#numbers.formatDecimal(guest.advanceBalance != null ? guest.advanceBalance : 0, 1, 'COMMA', 2, 'POINT')}"></dd>
                     </dl>
                 </div></div></div>
                 <div class="col-lg-7"><div class="card"><div class="card-body">
                     <h5>ประวัติชำระเงิน</h5>
-                    <div class="table-responsive"><table class="table mb-0"><thead><tr><th>วันที่</th><th>ประเภท</th><th>ยอด</th><th>สถานะ</th></tr></thead><tbody><tr th:each="p : ${payments}"><td th:text="${@thaiDate.format(p.paymentDate)}"></td><td th:text="${p.paymentType}"></td><td th:text="${#numbers.formatDecimal(p.amount, 1, 'COMMA', 2, 'POINT')}"></td><td th:text="${p.status.label}"></td></tr></tbody></table></div>
+                    <div class="table-responsive"><table class="table mb-0"><thead><tr><th>วันที่</th><th>ประเภท</th><th>ยอด</th><th>สถานะ</th></tr></thead><tbody><tr th:each="p : ${payments}"><td th:text="${@thaiDate.format(p.paymentDate)}"></td><td th:text="${p.reciept != null and p.reciept.type != null ? p.reciept.type.name : '-'}"></td><td th:text="${#numbers.formatDecimal(p.amount, 1, 'COMMA', 2, 'POINT')}"></td><td th:text="${p.status.label}"></td></tr></tbody></table></div>
+                </div></div></div>
+                <div class="col-12"><div class="card"><div class="card-body">
+                    <h5>ประวัติเครดิตล่วงหน้า</h5>
+                    <div class="table-responsive">
+                        <table class="table mb-0">
+                            <thead><tr><th>วันที่</th><th>ประเภท</th><th>รายละเอียด</th><th>เข้า/ออก</th><th>คงเหลือ</th><th>อ้างอิงบิล</th></tr></thead>
+                            <tbody>
+                            <tr th:each="ledger : ${advanceLedgers}">
+                                <td th:text="${@thaiDate.format(ledger.createdAt)}"></td>
+                                <td th:text="${ledger.type.label}"></td>
+                                <td th:text="${ledger.note != null ? ledger.note : '-'}"></td>
+                                <td th:text="${#numbers.formatDecimal(ledger.amount, 1, 'COMMA', 2, 'POINT')}"></td>
+                                <td th:text="${#numbers.formatDecimal(ledger.balanceAfter, 1, 'COMMA', 2, 'POINT')}"></td>
+                                <td th:text="${ledger.bill != null ? @thaiDate.monthYear(ledger.bill.billingMonth, ledger.bill.billingYear) : '-'}"></td>
+                            </tr>
+                            <tr th:if="${advanceLedgers.isEmpty()}"><td colspan="6" class="text-center text-muted">ยังไม่มีประวัติเครดิตล่วงหน้า</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
                 </div></div></div>
             </section>
         </div>

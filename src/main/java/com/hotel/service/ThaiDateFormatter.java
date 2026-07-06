@@ -6,6 +6,11 @@ import org.springframework.stereotype.Component;
 
 @Component("thaiDate")
 public class ThaiDateFormatter {
+    private static final String[] THAI_MONTHS = {
+            "มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน",
+            "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"
+    };
+
     public String format(LocalDate date) {
         if (date == null) {
             return "-";
@@ -18,5 +23,12 @@ public class ThaiDateFormatter {
             return "-";
         }
         return format(dateTime.toLocalDate());
+    }
+
+    public String monthYear(Integer month, Integer year) {
+        if (month == null || year == null || month < 1 || month > 12) {
+            return "-";
+        }
+        return THAI_MONTHS[month - 1] + " " + (year + 543);
     }
 }

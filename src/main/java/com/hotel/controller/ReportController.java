@@ -56,7 +56,7 @@ public class ReportController {
                     thaiDate.format(p.getPaymentDate()),
                     p.getRoom() == null ? "" : p.getRoom().getRoomNumber(),
                     p.getGuest() == null ? "" : p.getGuest().getFullName(),
-                    p.getPaymentType(),
+                    p.getReciept() != null && p.getReciept().getType() != null ? p.getReciept().getType().getName() : "",
                     p.getPaymentMethod(),
                     p.getStatus(),
                     p.getAmount());

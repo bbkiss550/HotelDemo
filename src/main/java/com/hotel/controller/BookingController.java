@@ -7,11 +7,14 @@ import com.hotel.model.StayType;
 import com.hotel.repository.BookingRepository;
 import com.hotel.repository.RoomTypeRepository;
 import com.hotel.repository.RoomRepository;
+import com.hotel.service.AppSettingService;
 import com.hotel.service.AuditService;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.math.BigDecimal;
 import java.time.LocalDate;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.http.ResponseEntity;
@@ -24,28 +27,40 @@ public class BookingController {
     private final BookingRepository bookings;
     private final RoomRepository rooms;
     private final RoomTypeRepository roomTypes;
+    private final AppSettingService settings;
     private final AuditService audit;
 
-    public BookingController(BookingRepository bookings, RoomRepository rooms, RoomTypeRepository roomTypes, AuditService audit) {
+    public BookingController(BookingRepository bookings, RoomRepository rooms, RoomTypeRepository roomTypes, AppSettingService settings, AuditService audit) {
         this.bookings = bookings;
         this.rooms = rooms;
         this.roomTypes = roomTypes;
+        this.settings = settings;
         this.audit = audit;
     }
 
     @GetMapping
-    String index(Model model) {
-        addBookingPageData(model);
+    String index(Model model,
+                 @RequestParam(required = false) String customerName,
+                 @RequestParam(required = false) String phone,
+                 @RequestParam(required = false) LocalDate checkInDate,
+                 @RequestParam(required = false) Long roomTypeId,
+                 @RequestParam(required = false) StayType stayType) {
+        addBookingPageData(model, customerName, phone, checkInDate, roomTypeId, stayType);
         return "bookings/index";
     }
 
     @GetMapping("/content")
-    String content(Model model) {
-        addBookingPageData(model);
+    String content(Model model,
+                   @RequestParam(required = false) String customerName,
+                   @RequestParam(required = false) String phone,
+                   @RequestParam(required = false) LocalDate checkInDate,
+                   @RequestParam(required = false) Long roomTypeId,
+                   @RequestParam(required = false) StayType stayType) {
+        addBookingPageData(model, customerName, phone, checkInDate, roomTypeId, stayType);
         return "bookings/index :: bookingWorkspace";
     }
 
-    private void addBookingPageData(Model model) {
+    private void addBookingPageData(Model model, String customerName, String phone, LocalDate checkInDate, Long roomTypeId, StayType stayType) {
         var roomTypeList = roomTypes.findAllByOrderByNameAsc();
         var availableRoomCounts = new HashMap<Long, Long>();
         var today = LocalDate.now();
@@ -53,41 +68,66 @@ public class BookingController {
         for (var roomType : roomTypeList) {
             availableRoomCounts.put(roomType.getId(), countAvailableRooms(roomType, today, tomorrow, null));
         }
-        model.addAttribute("bookings", bookings.findAllByOrderByCheckInDateAscIdDesc());
+        var normalizedCustomerName = customerName != null && !customerName.isBlank() ? customerName.trim() : "";
+        var normalizedPhone = phone != null && !phone.isBlank() ? phone.trim() : "";
+        model.addAttribute("bookings", bookings.searchBookings(
+                normalizedCustomerName,
+                normalizedPhone,
+                checkInDate != null,
+                checkInDate != null ? checkInDate : LocalDate.of(1900, 1, 1),
+                roomTypeId != null,
+                roomTypeId != null ? roomTypeId : 0L,
+                stayType != null,
+                stayType != null ? stayType : StayType.DAILY
+        ));
         model.addAttribute("roomTypes", roomTypeList);
+        model.addAttribute("rooms", rooms.findAllByOrderByRoomNumber());
         model.addAttribute("availableRoomCounts", availableRoomCounts);
+        model.addAttribute("searchCustomerName", customerName);
+        model.addAttribute("searchPhone", phone);
+        model.addAttribute("searchCheckInDate", checkInDate);
+        model.addAttribute("searchRoomTypeId", roomTypeId);
+        model.addAttribute("searchStayType", stayType);
         model.addAttribute("statuses", BookingStatus.values());
         model.addAttribute("stayTypes", StayType.values());
         var booking = new Booking();
+        booking.setDepositAmount(settings.defaultDeposit());
         booking.setNationality("ไทย");
         model.addAttribute("booking", booking);
+        model.addAttribute("defaultDepositAmount", settings.defaultDeposit());
     }
 
     @PostMapping
+    @Transactional
     Object save(@ModelAttribute Booking booking, @RequestParam Long roomTypeId,
+                @RequestParam(required = false) Long roomId,
                 @RequestHeader(value = "X-Requested-With", required = false) String requestedWith,
                 RedirectAttributes redirect) {
         boolean isNew = booking.getId() == null;
         var roomType = roomTypes.findById(roomTypeId).orElseThrow();
+        var selectedRoom = roomId != null ? rooms.findById(roomId).orElseThrow() : null;
+        if (selectedRoom != null && (selectedRoom.getRoomType() == null || !selectedRoom.getRoomType().getId().equals(roomType.getId()))) {
+            return bookingSaveError("ห้องที่เลือกไม่ตรงกับประเภทห้อง", requestedWith, redirect);
+        }
         Booking savedBooking = isNew ? new Booking() : bookings.findById(booking.getId()).orElseThrow();
         var checkInDate = booking.getCheckInDate();
         var checkOutDate = booking.getCheckOutDate();
-        if (checkInDate != null && (checkOutDate == null || checkInDate.isAfter(checkOutDate))) {
+        var isMonthly = booking.getStayType() == StayType.MONTHLY;
+        if (isMonthly) {
+            checkOutDate = null;
+        } else if (checkInDate != null && (checkOutDate == null || checkInDate.isAfter(checkOutDate))) {
             checkOutDate = checkInDate.plusDays(1);
         }
-        if (checkInDate != null && checkOutDate != null && countAvailableRooms(roomType, checkInDate, checkOutDate, savedBooking.getId()) <= 0) {
-            if (isAjax(requestedWith)) {
-                return ResponseEntity.badRequest().body(Map.of(
-                        "type", "warning",
-                        "message", "ไม่มีห้องว่างสำหรับประเภทห้องและช่วงวันที่เลือก"
-                ));
-            }
-            redirect.addFlashAttribute("error", "ไม่มีห้องว่างสำหรับประเภทห้องและช่วงวันที่เลือก");
-            redirect.addFlashAttribute("flashType", "warning");
-            return "redirect:/bookings";
+        var availabilityCheckOutDate = isMonthly && checkInDate != null ? checkInDate.plusDays(1) : checkOutDate;
+        if (checkInDate != null && availabilityCheckOutDate != null && countAvailableRooms(roomType, checkInDate, availabilityCheckOutDate, savedBooking.getId()) <= 0) {
+            return bookingSaveError("ไม่มีห้องว่างสำหรับประเภทห้องและช่วงวันที่เลือก", requestedWith, redirect);
         }
-        if (!isNew && savedBooking.getRoom() != null && savedBooking.getRoom().getStatus() == RoomStatus.RESERVED) {
-            var previousRoom = savedBooking.getRoom();
+        if (selectedRoom != null && checkInDate != null && availabilityCheckOutDate != null && countAvailableSelectedRoom(selectedRoom, checkInDate, availabilityCheckOutDate, savedBooking.getId()) <= 0) {
+            return bookingSaveError("ห้องที่เลือกไม่ว่างในช่วงวันที่เลือก", requestedWith, redirect);
+        }
+        var previousRoom = savedBooking.getRoom();
+        var roomChanged = previousRoom != null && (selectedRoom == null || !previousRoom.getId().equals(selectedRoom.getId()));
+        if (!isNew && roomChanged && previousRoom.getStatus() == RoomStatus.RESERVED) {
             previousRoom.setStatus(RoomStatus.AVAILABLE);
             rooms.save(previousRoom);
         }
@@ -99,15 +139,22 @@ public class BookingController {
         savedBooking.setCheckInDate(checkInDate);
         savedBooking.setCheckOutDate(checkOutDate);
         savedBooking.setStayType(booking.getStayType());
-        savedBooking.setDepositAmount(booking.getDepositAmount());
+        savedBooking.setDepositAmount(booking.getDepositAmount() != null ? booking.getDepositAmount() : BigDecimal.ZERO);
         savedBooking.setStatus(booking.getStatus());
         savedBooking.setNote(booking.getNote());
         savedBooking.setRoomType(roomType);
-        savedBooking.setRoom(null);
+        savedBooking.setRoom(selectedRoom);
         if (savedBooking.getBookingDate() == null) {
             savedBooking.setBookingDate(LocalDate.now());
         }
+        if (savedBooking.getBookingNumber() == null || savedBooking.getBookingNumber().isBlank()) {
+            savedBooking.setBookingNumber(nextBookingNumber(savedBooking.getBookingDate()));
+        }
         bookings.save(savedBooking);
+        if (selectedRoom != null && selectedRoom.getStatus() == RoomStatus.AVAILABLE) {
+            selectedRoom.setStatus(RoomStatus.RESERVED);
+            rooms.save(selectedRoom);
+        }
         audit.record("BOOKING", "Room type " + roomType.getName() + " customer " + savedBooking.getCustomerName());
         if (isAjax(requestedWith)) {
             return ResponseEntity.ok(Map.of(
@@ -162,6 +209,29 @@ public class BookingController {
         return "XMLHttpRequest".equals(requestedWith);
     }
 
+    private Object bookingSaveError(String message, String requestedWith, RedirectAttributes redirect) {
+        if (isAjax(requestedWith)) {
+            return ResponseEntity.badRequest().body(Map.of(
+                    "type", "warning",
+                    "message", message
+            ));
+        }
+        redirect.addFlashAttribute("error", message);
+        redirect.addFlashAttribute("flashType", "warning");
+        return "redirect:/bookings";
+    }
+
+    private String nextBookingNumber(LocalDate bookingDate) {
+        var date = bookingDate != null ? bookingDate : LocalDate.now();
+        var prefix = "B" + date.getYear();
+        var maxBookingNumber = bookings.findMaxBookingNumberByPrefix(prefix);
+        var nextSequence = 1;
+        if (maxBookingNumber != null && maxBookingNumber.length() > prefix.length()) {
+            nextSequence = Integer.parseInt(maxBookingNumber.substring(prefix.length())) + 1;
+        }
+        return "%s%06d".formatted(prefix, nextSequence);
+    }
+
     private long countAvailableRooms(com.hotel.model.RoomType roomType, LocalDate checkInDate, LocalDate checkOutDate, Long excludeId) {
         long availableByRoomStatus = rooms.countByRoomTypeAndStatusIn(roomType, List.of(RoomStatus.AVAILABLE, RoomStatus.RESERVED));
         if (checkInDate == null || checkOutDate == null) {
@@ -175,5 +245,19 @@ public class BookingController {
                 excludeId
         );
         return Math.max(0, availableByRoomStatus - overlappingBookings);
+    }
+
+    private long countAvailableSelectedRoom(com.hotel.model.Room room, LocalDate checkInDate, LocalDate checkOutDate, Long excludeId) {
+        if (room.getStatus() != RoomStatus.AVAILABLE && room.getStatus() != RoomStatus.RESERVED) {
+            return 0;
+        }
+        long overlappingBookings = bookings.countOverlappingRoomBookings(
+                room,
+                List.of(BookingStatus.CONFIRMED, BookingStatus.CHECKED_IN),
+                checkInDate,
+                checkOutDate,
+                excludeId
+        );
+        return overlappingBookings == 0 ? 1 : 0;
     }
 }

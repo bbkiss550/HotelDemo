@@ -12,7 +12,6 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
     long countByStatus(PaymentStatus status);
     List<Payment> findAllByOrderByPaymentDateDescIdDesc();
     List<Payment> findByGuestIdOrderByPaymentDateDescIdDesc(Long guestId);
-
     @Query("""
             select coalesce(sum(p.amount), 0) from Payment p
             where p.status = com.hotel.model.PaymentStatus.PAID

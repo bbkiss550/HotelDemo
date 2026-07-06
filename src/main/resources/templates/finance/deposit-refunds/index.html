@@ -1,0 +1,247 @@
+<!doctype html>
+<html lang="th">
+<head th:replace="~{fragments/head :: head('รายการคืนเงินประกัน')}"></head>
+<body>
+<div id="app">
+    <div th:replace="~{fragments/nav :: nav}"></div>
+    <div id="main">
+        <header class="mb-3">
+            <a href="#" class="burger-btn d-block d-xl-none"><i class="bi bi-justify fs-3"></i></a>
+        </header>
+        <div class="page-heading">
+            <h3 th:text="${currentMenuName}"></h3>
+        </div>
+        <div class="page-content">
+            <section class="section">
+                <div class="card">
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle mb-0">
+                                <thead>
+                                <tr>
+                                    <th class="table-actions">ดู</th>
+                                    <th>เลขเอกสาร</th>
+                                    <th>วันที่</th>
+                                    <th>ห้อง</th>
+                                    <th>ผู้พัก</th>
+                                    <th class="text-end">ค่าประกัน</th>
+                                    <th class="text-end">หักรวม</th>
+                                    <th class="text-end">คืนสุทธิ</th>
+                                    <th class="text-end">เรียกเก็บเพิ่ม</th>
+                                    <th>วิธีคืนเงิน</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="refund : ${refunds}">
+                                    <td class="table-actions">
+                                        <button class="btn btn-sm btn-light-primary refund-view-btn"
+                                                type="button"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#refundViewModal"
+                                                th:attr="data-refund-no=${refund.refundNo},
+                                                         data-refund-date=${@thaiDate.format(refund.refundDate)},
+                                                         data-room=${refund.room != null ? refund.room.roomNumber : '-'},
+                                                         data-guest=${refund.guest != null ? refund.guest.fullName : '-'},
+                                                         data-deposit=${#numbers.formatDecimal(refund.depositAmount, 1, 'COMMA', 2, 'POINT')},
+                                                         data-deduct=${#numbers.formatDecimal(refund.totalDeductAmount, 1, 'COMMA', 2, 'POINT')},
+                                                         data-refund=${#numbers.formatDecimal(refund.refundAmount, 1, 'COMMA', 2, 'POINT')},
+                                                         data-extra=${#numbers.formatDecimal(refund.extraChargeAmount, 1, 'COMMA', 2, 'POINT')},
+                                                         data-method=${refund.refundMethod != null ? refund.refundMethod : '-'},
+                                                         data-remark=${refund.remark != null and !#strings.isEmpty(refund.remark) ? refund.remark : '-'}">
+                                            <i class="bi bi-eye"></i>
+                                        </button>
+                                        <span class="refund-item-source d-none"
+                                              th:each="item : ${refund.items}"
+                                              th:attr="data-name=${item.itemName},
+                                                       data-amount=${#numbers.formatDecimal(item.itemAmount, 1, 'COMMA', 2, 'POINT')}"></span>
+                                    </td>
+                                    <td class="fw-bold" th:text="${refund.refundNo}"></td>
+                                    <td th:text="${@thaiDate.format(refund.refundDate)}"></td>
+                                    <td><span class="badge bg-light-primary" th:text="${refund.room != null ? refund.room.roomNumber : '-'}"></span></td>
+                                    <td th:text="${refund.guest != null ? refund.guest.fullName : '-'}"></td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(refund.depositAmount, 1, 'COMMA', 2, 'POINT')}"></td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(refund.totalDeductAmount, 1, 'COMMA', 2, 'POINT')}"></td>
+                                    <td class="text-end fw-bold text-success" th:text="${#numbers.formatDecimal(refund.refundAmount, 1, 'COMMA', 2, 'POINT')}"></td>
+                                    <td class="text-end text-danger" th:text="${#numbers.formatDecimal(refund.extraChargeAmount, 1, 'COMMA', 2, 'POINT')}"></td>
+                                    <td th:text="${refund.refundMethod != null ? refund.refundMethod : '-'}"></td>
+                                </tr>
+                                <tr th:if="${refunds.isEmpty()}">
+                                    <td colspan="10" class="text-center text-muted py-4">ไม่พบรายการคืนเงินประกัน</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <div class="modal fade" id="refundViewModal" tabindex="-1">
+            <div class="modal-dialog modal-lg">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">ใบสำคัญรับเงิน <span id="refundModalNo"></span></h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body monthly-bill-preview-wrap" id="refundPreviewBody">
+                        <div class="monthly-bill-slip deposit-refund-slip">
+                            <div class="bill-slip-header">
+                                <div>
+                                    <h4 th:text="${systemName}">BlueCatHotelDemo</h4>
+                                    <div>ใบสำคัญรับเงิน คืนค่าประกัน</div>
+                                </div>
+                                <div class="bill-slip-number">
+                                    <strong id="refundSlipRoom">ห้อง -</strong>
+                                    <span id="refundSlipNo">เลขที่ #-</span>
+                                </div>
+                            </div>
+                            <div class="bill-slip-meta deposit-refund-meta">
+                                <div class="deposit-refund-meta-name"><span>ผู้รับเงิน</span><strong id="refundSlipGuest">-</strong></div>
+                                <div class="deposit-refund-meta-side">
+                                    <div><span>วันที่</span><strong id="refundSlipDate">-</strong></div>
+                                    <div><span>วิธีคืนเงิน</span><strong id="refundSlipMethod">-</strong></div>
+                                </div>
+                            </div>
+                            <table class="bill-slip-table">
+                                <thead>
+                                <tr>
+                                    <th>รายการ</th>
+                                    <th class="text-end">จำนวนเงิน</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr>
+                                    <td>ค่าประกันที่รับไว้</td>
+                                    <td class="text-end" id="refundSlipDeposit">0.00</td>
+                                </tr>
+                                <tr>
+                                    <td>หักรวม/ค่าเสียหาย</td>
+                                    <td class="text-end" id="refundSlipDeduct">0.00</td>
+                                </tr>
+                                <tr id="refundSlipNoDeductRow">
+                                    <td class="ps-4 text-muted">ไม่มีรายการหัก</td>
+                                    <td class="text-end text-muted">0.00</td>
+                                </tr>
+                                <tr>
+                                    <td>เรียกเก็บเพิ่ม</td>
+                                    <td class="text-end" id="refundSlipExtra">0.00</td>
+                                </tr>
+                                </tbody>
+                                <tfoot>
+                                <tr class="bill-slip-total">
+                                    <th>ยอดคืนสุทธิ</th>
+                                    <th class="text-end" id="refundSlipRefund">0.00 บาท</th>
+                                </tr>
+                                </tfoot>
+                            </table>
+                            <div class="bill-slip-note">
+                                <span>หมายเหตุ</span>
+                                <small id="refundSlipRemark">-</small>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">ปิด</button>
+                        <button type="button" class="btn btn-primary" id="refundPrintBtn">
+                            <i class="bi bi-printer me-1"></i>พิมพ์ใบสำคัญ
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div th:replace="~{fragments/nav :: scripts}"></div>
+<style>
+    .deposit-refund-meta {
+        display: grid;
+        gap: 1rem;
+        grid-template-columns: 3fr 1fr;
+        margin: .7rem 0;
+    }
+
+    .deposit-refund-meta > div,
+    .deposit-refund-meta-side div {
+        align-items: baseline;
+        background: transparent;
+        border: 0;
+        display: flex;
+        gap: .35rem;
+        padding: .12rem 0;
+    }
+
+    .deposit-refund-meta-side {
+        align-items: stretch;
+        display: flex;
+        flex-direction: column;
+        gap: .2rem;
+    }
+
+    .deposit-refund-meta span,
+    .deposit-refund-meta strong {
+        display: inline;
+        font-size: .88rem;
+    }
+
+    .deposit-refund-meta span::after {
+        content: " :";
+    }
+</style>
+<script>
+    const setRefundText = (id, value) => {
+        const target = document.getElementById(id);
+        if (target) target.textContent = value || '-';
+    };
+    document.querySelectorAll('.refund-view-btn').forEach((button) => {
+        button.addEventListener('click', () => {
+            const no = button.dataset.refundNo || '-';
+            document.querySelectorAll('.refund-slip-deduct-item').forEach(row => row.remove());
+            setRefundText('refundModalNo', `#${no}`);
+            setRefundText('refundSlipNo', `เลขที่ #${no}`);
+            setRefundText('refundSlipRoom', `ห้อง ${button.dataset.room || '-'}`);
+            setRefundText('refundSlipGuest', button.dataset.guest);
+            setRefundText('refundSlipDate', button.dataset.refundDate);
+            setRefundText('refundSlipMethod', button.dataset.method);
+            setRefundText('refundSlipDeposit', button.dataset.deposit);
+            setRefundText('refundSlipDeduct', button.dataset.deduct);
+            setRefundText('refundSlipExtra', button.dataset.extra);
+            setRefundText('refundSlipRefund', `${button.dataset.refund || '0.00'} บาท`);
+            setRefundText('refundSlipRemark', button.dataset.remark);
+            const noDeductRow = document.getElementById('refundSlipNoDeductRow');
+            const items = Array.from(button.closest('tr')?.querySelectorAll('.refund-item-source') || []);
+            if (noDeductRow) noDeductRow.classList.toggle('d-none', items.length > 0);
+            items.forEach((item) => {
+                const row = document.createElement('tr');
+                row.className = 'refund-slip-deduct-item';
+                const nameCell = document.createElement('td');
+                nameCell.className = 'ps-4';
+                nameCell.textContent = `- ${item.dataset.name || '-'}`;
+                const amountCell = document.createElement('td');
+                amountCell.className = 'text-end';
+                amountCell.textContent = `-${item.dataset.amount || '0.00'}`;
+                row.append(nameCell, amountCell);
+                noDeductRow?.insertAdjacentElement('beforebegin', row);
+            });
+        });
+    });
+    document.getElementById('refundPrintBtn')?.addEventListener('click', () => {
+        const slip = document.querySelector('#refundPreviewBody .deposit-refund-slip');
+        if (!slip) return;
+        document.querySelector('.monthly-bill-print-root')?.remove();
+        const root = document.createElement('div');
+        root.className = 'monthly-bill-print-root';
+        const wrap = document.createElement('div');
+        wrap.className = 'monthly-bill-preview-wrap';
+        wrap.appendChild(slip.cloneNode(true));
+        root.appendChild(wrap);
+        document.body.appendChild(root);
+        document.body.classList.add('printing-monthly-bills');
+        window.print();
+    });
+    window.addEventListener('afterprint', () => {
+        document.body.classList.remove('printing-monthly-bills');
+        document.querySelector('.monthly-bill-print-root')?.remove();
+    });
+</script>
+</body>
+</html>

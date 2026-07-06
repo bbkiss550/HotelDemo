@@ -7,7 +7,7 @@
     <div id="main">
         <header class="mb-3"><a href="#" class="burger-btn d-block d-xl-none"><i class="bi bi-justify fs-3"></i></a></header>
         <div class="page-heading d-flex justify-content-between align-items-center">
-            <div><h3>รายงาน</h3><p class="text-subtitle text-muted mb-0">สรุปรายได้ สถานะห้อง และรายการใช้งานจริง</p></div>
+            <div><h3 th:text="${currentMenuName}"></h3></div>
             <a class="btn btn-light-primary" th:href="@{/reports/payments.csv}"><i class="bi bi-filetype-csv me-1"></i>Export CSV</a>
         </div>
         <div class="page-content"><section class="row g-3">

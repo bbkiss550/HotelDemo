@@ -18,6 +18,9 @@ public class Booking {
     @Column(name = "b_phone")
     private String phone;
 
+    @Column(name = "b_booking_number", unique = true)
+    private String bookingNumber;
+
     @Column(name = "b_id_card")
     private String idCard;
 
@@ -61,6 +64,8 @@ public class Booking {
     public void setCustomerName(String customerName) { this.customerName = customerName; }
     public String getPhone() { return phone; }
     public void setPhone(String phone) { this.phone = phone; }
+    public String getBookingNumber() { return bookingNumber; }
+    public void setBookingNumber(String bookingNumber) { this.bookingNumber = bookingNumber; }
     public String getIdCard() { return idCard; }
     public void setIdCard(String idCard) { this.idCard = idCard; }
     public String getNationality() { return nationality; }

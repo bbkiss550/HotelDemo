@@ -10,8 +10,7 @@
         </header>
         <div class="page-heading d-flex flex-wrap justify-content-between align-items-center gap-3">
             <div>
-                <h3>จัดการผู้ใช้งาน</h3>
-                <p class="text-subtitle text-muted mb-0">เพิ่ม แก้ไข และจัดการบัญชีสำหรับเข้าสู่ระบบ</p>
+                <h3 th:text="${currentMenuName}"></h3>
             </div>
             <button class="btn btn-primary" data-bs-target="#userCreateModal" data-bs-toggle="modal" type="button"><i class="bi bi-person-plus me-1"></i>เพิ่มผู้ใช้</button>
         </div>
@@ -43,7 +42,7 @@
                                     <td class="table-actions">
                                         <div class="d-flex gap-2">
                                             <button class="btn btn-sm btn-warning" th:attr="data-bs-target=${'#userEditModal' + u.id}" data-bs-toggle="modal" title="แก้ไข" type="button"><i class="bi bi-pencil-square"></i></button>
-                                            <form method="post" th:action="@{/users/{id}/delete(id=${u.id})}" onsubmit="return confirm('ยืนยันการลบผู้ใช้นี้?')">
+                                            <form method="post" th:action="@{/users/{id}/delete(id=${u.id})}" data-swal-confirm="ยืนยันการลบผู้ใช้นี้?">
                                                 <button class="btn btn-sm btn-danger" type="submit" title="ลบ"><i class="bi bi-trash"></i></button>
                                             </form>
                                         </div>

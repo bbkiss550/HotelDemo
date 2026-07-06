@@ -56,6 +56,15 @@ public class Guest {
     @Column(name = "g_total_paid")
     private BigDecimal totalPaid = BigDecimal.ZERO;
 
+    @Column(name = "g_advance_balance")
+    private BigDecimal advanceBalance = BigDecimal.ZERO;
+
+    @Column(name = "g_initial_water_meter")
+    private BigDecimal initialWaterMeter = BigDecimal.ZERO;
+
+    @Column(name = "g_initial_electric_meter")
+    private BigDecimal initialElectricMeter = BigDecimal.ZERO;
+
     @Column(name = "g_active")
     private Boolean active = true;
 
@@ -92,6 +101,12 @@ public class Guest {
     public void setInitialPayment(BigDecimal initialPayment) { this.initialPayment = initialPayment; }
     public BigDecimal getTotalPaid() { return totalPaid; }
     public void setTotalPaid(BigDecimal totalPaid) { this.totalPaid = totalPaid; }
+    public BigDecimal getAdvanceBalance() { return advanceBalance; }
+    public void setAdvanceBalance(BigDecimal advanceBalance) { this.advanceBalance = advanceBalance; }
+    public BigDecimal getInitialWaterMeter() { return initialWaterMeter; }
+    public void setInitialWaterMeter(BigDecimal initialWaterMeter) { this.initialWaterMeter = initialWaterMeter; }
+    public BigDecimal getInitialElectricMeter() { return initialElectricMeter; }
+    public void setInitialElectricMeter(BigDecimal initialElectricMeter) { this.initialElectricMeter = initialElectricMeter; }
     public Boolean getActive() { return active; }
     public void setActive(Boolean active) { this.active = active; }
     public String getNote() { return note; }
