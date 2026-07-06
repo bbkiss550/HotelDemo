@@ -1,0 +1,9 @@
+services:
+  hotel-system:
+    build:
+      context: .
+    image: hotel-system:local
+    container_name: hotel-system
+    ports:
+      - "8080:8080"
+    restart: unless-stopped

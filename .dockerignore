@@ -1,0 +1,9 @@
+.git
+.settings
+.classpath
+.project
+target
+data
+*.log
+*.err.log
+apache-maven-3.9.9-bin.zip
