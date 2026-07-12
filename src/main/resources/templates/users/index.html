@@ -30,7 +30,7 @@
                             <table class="table table-hover mb-0">
                                 <thead>
                                 <tr>
-                                    <th class="table-actions"></th>
+                                    <th class="table-actions">จัดการ</th>
                                     <th>Username</th>
                                     <th>ชื่อ</th>
                                     <th>Role</th>
@@ -41,9 +41,9 @@
                                 <tr th:each="u : ${users}">
                                     <td class="table-actions">
                                         <div class="d-flex gap-2">
-                                            <button class="btn btn-sm btn-warning" th:attr="data-bs-target=${'#userEditModal' + u.id}" data-bs-toggle="modal" title="แก้ไข" type="button"><i class="bi bi-pencil-square"></i></button>
+                                            <button class="btn btn-sm btn-warning" th:attr="data-bs-target=${'#userEditModal' + u.id}" data-bs-toggle="modal" title="แก้ไข" type="button"><i class="bi bi-pencil-square me-1"></i>แก้ไข</button>
                                             <form method="post" th:action="@{/users/{id}/delete(id=${u.id})}" data-swal-confirm="ยืนยันการลบผู้ใช้นี้?">
-                                                <button class="btn btn-sm btn-danger" type="submit" title="ลบ"><i class="bi bi-trash"></i></button>
+                                                <button class="btn btn-sm btn-danger" type="submit" title="ลบ"><i class="bi bi-trash me-1"></i>ลบ</button>
                                             </form>
                                         </div>
                                     </td>

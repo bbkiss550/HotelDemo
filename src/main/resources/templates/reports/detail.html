@@ -1,0 +1,327 @@
+<!doctype html>
+<html lang="th">
+<head th:replace="~{fragments/head :: head(${currentMenuName})}"></head>
+<body>
+<div id="app">
+    <div th:replace="~{fragments/nav :: nav}"></div>
+    <div id="main">
+        <header class="mb-3"><a href="#" class="burger-btn d-block d-xl-none"><i class="bi bi-justify fs-3"></i></a></header>
+        <div class="page-heading d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div><h3 th:text="${currentMenuName}">รายงาน</h3></div>
+            <a class="btn btn-light-primary" th:href="@{${reportPdfAction}(startDate=${startDate},endDate=${endDate})}">
+                <i class="bi bi-file-earmark-pdf me-1"></i>Export PDF
+            </a>
+        </div>
+        <div class="page-content report-print-area">
+            <section class="section">
+                <div class="card" th:if="${reportAction != null}">
+                    <div class="card-body">
+                        <form class="row g-3 align-items-end report-filter-form" method="get" th:action="${reportAction}">
+                            <div class="col-md-6">
+                                <label class="form-label">วันที่บันทึกเริ่มต้น</label>
+                                <div class="date-box">
+                                    <i class="bi bi-calendar-check"></i>
+                                    <input class="hotel-calendar-value" type="hidden" name="startDate" th:value="${startDate}" data-default-today="true">
+                                    <input class="form-control hotel-calendar-input" type="text" readonly data-calendar-for="startDate">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">วันที่บันทึกสิ้นสุด</label>
+                                <div class="date-box">
+                                    <i class="bi bi-calendar-check"></i>
+                                    <input class="hotel-calendar-value" type="hidden" name="endDate" th:value="${endDate}" data-default-today="true">
+                                    <input class="form-control hotel-calendar-input" type="text" readonly data-calendar-for="endDate">
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div th:if="${reportType == 'revenue'}">
+                    <div class="row g-3">
+                        <div class="col-xl-6 col-md-6">
+                            <div class="card"><div class="card-body">
+                                <h6 class="text-muted">รายได้รวม</h6>
+                                <h3 th:text="${#numbers.formatDecimal(totalRevenue, 1, 'COMMA', 2, 'POINT')}">0.00</h3>
+                            </div></div>
+                        </div>
+                        <div class="col-xl-6 col-md-6">
+                            <div class="card"><div class="card-body">
+                                <h6 class="text-muted">ค่าปรับ</h6>
+                                <h3 th:text="${#numbers.formatDecimal(fineRevenue, 1, 'COMMA', 2, 'POINT')}">0.00</h3>
+                            </div></div>
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-lg-6">
+                            <div class="card h-100">
+                                <div class="card-header"><h5 class="mb-0">รายได้ตามประเภทใบเสร็จ</h5></div>
+                                <div class="card-body">
+                                    <div class="table-responsive"><table class="table mb-0">
+                                        <thead><tr><th>ประเภท</th><th class="text-end">จำนวนเงิน</th></tr></thead>
+                                        <tbody>
+                                        <tr th:each="entry : ${revenueByType}">
+                                            <td th:text="${entry.key}"></td>
+                                            <td class="text-end fw-bold" th:text="${#numbers.formatDecimal(entry.value, 1, 'COMMA', 2, 'POINT')}"></td>
+                                        </tr>
+                                        <tr th:if="${revenueByType.isEmpty()}"><td colspan="2" class="text-center text-muted">ไม่มีข้อมูล</td></tr>
+                                        </tbody>
+                                    </table></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="card h-100">
+                                <div class="card-header"><h5 class="mb-0">รายได้ตามวิธีชำระ</h5></div>
+                                <div class="card-body">
+                                    <div class="table-responsive"><table class="table mb-0">
+                                        <thead><tr><th>วิธีชำระ</th><th class="text-end">จำนวนเงิน</th></tr></thead>
+                                        <tbody>
+                                        <tr th:each="entry : ${revenueByMethod}">
+                                            <td th:text="${entry.key}"></td>
+                                            <td class="text-end fw-bold" th:text="${#numbers.formatDecimal(entry.value, 1, 'COMMA', 2, 'POINT')}"></td>
+                                        </tr>
+                                        <tr th:if="${revenueByMethod.isEmpty()}"><td colspan="2" class="text-center text-muted">ไม่มีข้อมูล</td></tr>
+                                        </tbody>
+                                    </table></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-header"><h5 class="mb-0">รายการชำระเงิน</h5></div>
+                        <div class="card-body">
+                            <div class="table-responsive"><table class="table mb-0 hotel-sortable-table hotel-paginated-table">
+                                <thead><tr><th>เลขใบเสร็จ</th><th>วันที่</th><th>ห้อง</th><th>ผู้พัก</th><th>ประเภท</th><th>วิธีชำระ</th><th class="text-end">ยอดสุทธิ</th><th>สถานะ</th></tr></thead>
+                                <tbody>
+                                <tr th:each="payment : ${payments}">
+                                    <td class="fw-bold" th:text="${payment.reciept != null ? payment.reciept.recNo : '-'}"></td>
+                                    <td th:text="${@thaiDate.format(payment.paymentDate)}"></td>
+                                    <td th:text="${payment.room != null ? payment.room.roomNumber : '-'}"></td>
+                                    <td th:text="${payment.guest != null ? payment.guest.fullName : '-'}"></td>
+                                    <td th:text="${payment.reciept != null and payment.reciept.type != null ? payment.reciept.type.name : '-'}"></td>
+                                    <td th:text="${payment.paymentMethod}"></td>
+                                    <td class="text-end fw-bold" th:text="${#numbers.formatDecimal(payment.totalAmount, 1, 'COMMA', 2, 'POINT')}"></td>
+                                    <td th:text="${payment.status.label}"></td>
+                                </tr>
+                                <tr th:if="${payments.isEmpty()}"><td colspan="8" class="text-center text-muted">ไม่มีข้อมูล</td></tr>
+                                </tbody>
+                            </table></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div th:if="${reportType == 'monthly-bills'}">
+                    <div class="row g-3">
+                        <div class="col-xl-4 col-md-6">
+                            <div class="card"><div class="card-body">
+                                <h6 class="text-muted">จำนวนใบแจ้ง</h6>
+                                <h3 th:text="${monthlyBills.size()}">0</h3>
+                            </div></div>
+                        </div>
+                        <div class="col-xl-4 col-md-6">
+                            <div class="card"><div class="card-body">
+                                <h6 class="text-muted">ยอดค้างทั้งหมด</h6>
+                                <h3 th:text="${#numbers.formatDecimal(outstandingAmount, 1, 'COMMA', 2, 'POINT')}">0.00</h3>
+                            </div></div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header"><h5 class="mb-0">ใบแจ้งค่าเช่า</h5></div>
+                        <div class="card-body">
+                            <div class="table-responsive"><table class="table mb-0 hotel-sortable-table hotel-paginated-table">
+                                <thead><tr><th>เลขบิล</th><th>รอบบิล</th><th>ห้อง</th><th>ผู้พัก</th><th class="text-end">ยอดสุทธิ</th><th class="text-end">คงเหลือ</th><th>ครบกำหนด</th><th>สถานะ</th></tr></thead>
+                                <tbody>
+                                <tr th:each="bill : ${monthlyBills}">
+                                    <td class="fw-bold" th:text="${bill.displayBillNumber}"></td>
+                                    <td th:text="${@thaiDate.monthYear(bill.billingMonth, bill.billingYear)}"></td>
+                                    <td th:text="${bill.room != null ? bill.room.roomNumber : '-'}"></td>
+                                    <td th:text="${bill.guest != null ? bill.guest.fullName : '-'}"></td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(bill.totalAmount, 1, 'COMMA', 2, 'POINT')}"></td>
+                                    <td class="text-end fw-bold" th:text="${#numbers.formatDecimal(bill.remainingAmount, 1, 'COMMA', 2, 'POINT')}"></td>
+                                    <td th:text="${@thaiDate.format(bill.dueDate)}"></td>
+                                    <td th:text="${bill.billStatus != null ? bill.billStatus.name : bill.status.label}"></td>
+                                </tr>
+                                <tr th:if="${monthlyBills.isEmpty()}"><td colspan="8" class="text-center text-muted">ไม่มีข้อมูล</td></tr>
+                                </tbody>
+                            </table></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div th:if="${reportType == 'rooms'}">
+                    <div class="row g-3">
+                        <div class="col-xl-4 col-md-6"><div class="card"><div class="card-body"><h6 class="text-muted">ห้องทั้งหมด</h6><h3 th:text="${totalRooms}">0</h3></div></div></div>
+                        <div class="col-xl-4 col-md-6"><div class="card"><div class="card-body"><h6 class="text-muted">ห้องว่าง</h6><h3 th:text="${availableRooms}">0</h3></div></div></div>
+                        <div class="col-xl-4 col-md-6"><div class="card"><div class="card-body"><h6 class="text-muted">มีผู้พัก</h6><h3 th:text="${occupiedRooms}">0</h3></div></div></div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header"><h5 class="mb-0">สถานะห้องพัก</h5></div>
+                        <div class="card-body">
+                            <div class="table-responsive"><table class="table mb-0">
+                                <thead><tr><th>สถานะ</th><th class="text-end">จำนวนห้อง</th></tr></thead>
+                                <tbody>
+                                <tr th:each="entry : ${roomStatusCounts}">
+                                    <td th:text="${entry.key}"></td>
+                                    <td class="text-end fw-bold" th:text="${entry.value}"></td>
+                                </tr>
+                                </tbody>
+                            </table></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div th:if="${reportType == 'bookings'}">
+                    <div class="card">
+                        <div class="card-header"><h5 class="mb-0">รายการจอง</h5></div>
+                        <div class="card-body">
+                            <div class="table-responsive"><table class="table mb-0 hotel-sortable-table hotel-paginated-table">
+                                <thead><tr><th>เลขที่จอง</th><th>วันที่เข้า</th><th>วันที่ออก</th><th>ผู้จอง</th><th>ประเภท</th><th class="text-end">มัดจำ</th><th>สถานะ</th></tr></thead>
+                                <tbody>
+                                <tr th:each="b : ${bookings}">
+                                    <td class="fw-bold" th:text="${b.bookingNumber != null ? b.bookingNumber : '-'}"></td>
+                                    <td th:text="${@thaiDate.format(b.checkInDate)}"></td>
+                                    <td th:text="${@thaiDate.format(b.checkOutDate)}"></td>
+                                    <td th:text="${b.customerName}"></td>
+                                    <td th:text="${b.stayType.label}"></td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(b.depositAmount, 1, 'COMMA', 2, 'POINT')}"></td>
+                                    <td th:text="${b.status.label}"></td>
+                                </tr>
+                                <tr th:if="${bookings.isEmpty()}"><td colspan="7" class="text-center text-muted">ไม่มีข้อมูล</td></tr>
+                                </tbody>
+                            </table></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div th:if="${reportType == 'deposit-refunds'}">
+                    <div class="row g-3">
+                        <div class="col-xl-4 col-md-6">
+                            <div class="card"><div class="card-body">
+                                <h6 class="text-muted">ยอดคืนสุทธิ</h6>
+                                <h3 th:text="${#numbers.formatDecimal(refundAmount, 1, 'COMMA', 2, 'POINT')}">0.00</h3>
+                            </div></div>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header"><h5 class="mb-0">รายการคืนเงินประกัน</h5></div>
+                        <div class="card-body">
+                            <div class="table-responsive"><table class="table mb-0 hotel-sortable-table hotel-paginated-table">
+                                <thead><tr><th>เลขเอกสาร</th><th>วันที่</th><th>ห้อง</th><th>ผู้รับเงิน</th><th class="text-end">ค่าประกัน</th><th class="text-end">หักรวม</th><th class="text-end">คืนสุทธิ</th><th>วิธีคืน</th></tr></thead>
+                                <tbody>
+                                <tr th:each="refund : ${depositRefunds}">
+                                    <td class="fw-bold" th:text="${refund.refundNo}"></td>
+                                    <td th:text="${@thaiDate.format(refund.refundDate)}"></td>
+                                    <td th:text="${refund.room != null ? refund.room.roomNumber : '-'}"></td>
+                                    <td th:text="${refund.guest != null ? refund.guest.fullName : '-'}"></td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(refund.depositAmount, 1, 'COMMA', 2, 'POINT')}"></td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(refund.totalDeductAmount, 1, 'COMMA', 2, 'POINT')}"></td>
+                                    <td class="text-end fw-bold" th:text="${#numbers.formatDecimal(refund.refundAmount, 1, 'COMMA', 2, 'POINT')}"></td>
+                                    <td th:text="${refund.refundMethod}"></td>
+                                </tr>
+                                <tr th:if="${depositRefunds.isEmpty()}"><td colspan="8" class="text-center text-muted">ไม่มีข้อมูล</td></tr>
+                                </tbody>
+                            </table></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+<div th:replace="~{fragments/nav :: scripts}"></div>
+<script>
+(function () {
+    const thaiMonths = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+    const thaiWeekdays = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
+    const parseIsoDate = (value) => {
+        if (!value) return null;
+        const parts = value.split('-').map(Number);
+        if (parts.length !== 3 || parts.some(Number.isNaN)) return null;
+        return new Date(parts[0], parts[1] - 1, parts[2]);
+    };
+    const toIsoDate = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    const toThaiDate = (date) => date ? `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear() + 543}` : '';
+    const createReportCalendar = (hiddenInput, displayInput) => {
+        if (displayInput.dataset.calendarReady === 'true') return;
+        displayInput.dataset.calendarReady = 'true';
+        let selectedDate = parseIsoDate(hiddenInput.value);
+        let viewDate = selectedDate ? new Date(selectedDate) : new Date();
+        const popup = document.createElement('div');
+        popup.className = 'hotel-calendar-popup d-none';
+        displayInput.closest('.date-box')?.appendChild(popup);
+        const setValue = (date) => {
+            selectedDate = date;
+            hiddenInput.value = toIsoDate(date);
+            displayInput.value = toThaiDate(date);
+        };
+        if (selectedDate) displayInput.value = toThaiDate(selectedDate);
+        const render = () => {
+            popup.innerHTML = `
+                <div class="hotel-calendar-header">
+                    <button class="hotel-calendar-nav" type="button" data-nav="-1">‹</button>
+                    <div class="hotel-calendar-title">${thaiMonths[viewDate.getMonth()]} ${viewDate.getFullYear() + 543}</div>
+                    <button class="hotel-calendar-nav" type="button" data-nav="1">›</button>
+                </div>
+                <div class="hotel-calendar-weekdays">${thaiWeekdays.map(day => `<span>${day}</span>`).join('')}</div>
+                <div class="hotel-calendar-grid"></div>
+                <div class="hotel-calendar-footer"><button class="hotel-calendar-today" type="button">วันนี้</button></div>
+            `;
+            const grid = popup.querySelector('.hotel-calendar-grid');
+            const firstDay = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1);
+            const startDate = new Date(firstDay);
+            startDate.setDate(firstDay.getDate() - firstDay.getDay());
+            for (let i = 0; i < 42; i += 1) {
+                const day = new Date(startDate);
+                day.setDate(startDate.getDate() + i);
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'hotel-calendar-day';
+                if (day.getMonth() !== viewDate.getMonth()) button.classList.add('is-muted');
+                if (selectedDate && toIsoDate(day) === toIsoDate(selectedDate)) button.classList.add('is-selected');
+                button.textContent = day.getDate();
+                button.addEventListener('click', () => {
+                    setValue(day);
+                    popup.classList.add('d-none');
+                    hiddenInput.closest('form')?.requestSubmit();
+                });
+                grid.appendChild(button);
+            }
+            popup.querySelectorAll('[data-nav]').forEach(button => {
+                button.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    viewDate.setMonth(viewDate.getMonth() + Number(button.dataset.nav));
+                    render();
+                });
+            });
+            popup.querySelector('.hotel-calendar-today').addEventListener('click', () => {
+                const today = new Date();
+                viewDate = new Date(today);
+                setValue(today);
+                popup.classList.add('d-none');
+                hiddenInput.closest('form')?.requestSubmit();
+            });
+        };
+        render();
+        displayInput.addEventListener('click', (event) => {
+            event.stopPropagation();
+            document.querySelectorAll('.hotel-calendar-popup').forEach(item => {
+                if (item !== popup) item.classList.add('d-none');
+            });
+            popup.classList.toggle('d-none');
+        });
+    };
+    document.querySelectorAll('.report-filter-form .hotel-calendar-input').forEach(displayInput => {
+        const hiddenInput = displayInput.closest('form')?.querySelector(`.hotel-calendar-value[name="${displayInput.dataset.calendarFor}"]`);
+        if (hiddenInput) createReportCalendar(hiddenInput, displayInput);
+    });
+    document.addEventListener('click', () => {
+        document.querySelectorAll('.hotel-calendar-popup').forEach(item => item.classList.add('d-none'));
+    });
+})();
+</script>
+</body>
+</html>

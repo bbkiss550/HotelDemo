@@ -88,6 +88,7 @@
             const themeToggle = document.getElementById('hotelThemeToggle');
             const sidebarToggle = document.getElementById('hotelSidebarToggle');
             const setSidebarCollapsed = (collapsed) => {
+                document.documentElement.classList.toggle('hotel-sidebar-collapsed', collapsed);
                 document.body.classList.toggle('hotel-sidebar-collapsed', collapsed);
                 sidebarToggle?.setAttribute('aria-pressed', String(collapsed));
                 try {
@@ -174,7 +175,7 @@
                 document.addEventListener(type, blockWhileLoading, true);
             });
 
-            if (!window.fetch.__hotelLoadingWrapped) {
+            if (typeof window.fetch === 'function' && !window.fetch.__hotelLoadingWrapped) {
                 const originalFetch = window.fetch.bind(window);
                 const wrappedFetch = (...args) => {
                     window.hotelLoading.start();
@@ -189,6 +190,13 @@
                     return Promise.resolve({ isConfirmed: window.confirm(message) });
                 }
                 return window.Swal.fire({
+                    customClass: {
+                        popup: 'hotel-swal-popup',
+                        title: 'hotel-swal-title',
+                        htmlContainer: 'hotel-swal-text',
+                        confirmButton: 'hotel-swal-confirm',
+                        cancelButton: 'hotel-swal-cancel'
+                    },
                     icon: 'warning',
                     title: 'ยืนยันการทำรายการ',
                     text: message,
@@ -234,6 +242,17 @@
                         delete button.dataset.swalConfirmed;
                     }
                 });
+            }, true);
+
+            document.addEventListener('click', event => {
+                const button = event.target.closest('button[type="submit"], input[type="submit"]');
+                if (!button || button.disabled) return;
+                const form = button.form;
+                if (!form || form.dataset.swalConfirm || button.dataset.swalConfirm) return;
+                if (typeof form.checkValidity === 'function' && !form.checkValidity()) return;
+                window.setTimeout(() => {
+                    if (!event.defaultPrevented) window.hotelLoading.start();
+                }, 0);
             }, true);
 
             document.addEventListener('click', event => {
@@ -308,11 +327,313 @@
                 serverFlashToast.dataset.shown = 'true';
                 window.showAlert(serverFlashToast.dataset.type, serverFlashToast.dataset.message);
             }
+
+            const captureDocumentTarget = async (target, fileName) => {
+                if (!target) return;
+                try {
+                    await document.fonts?.ready;
+                    const rect = target.getBoundingClientRect();
+                    const width = Math.ceil(Math.max(target.scrollWidth, rect.width));
+                    const height = Math.ceil(Math.max(target.scrollHeight, rect.height));
+                    if (!width || !height) throw new Error('Invalid capture size');
+
+                    const clone = target.cloneNode(true);
+                    const copyComputedStyles = (source, destination) => {
+                        const computed = window.getComputedStyle(source);
+                        destination.style.cssText = Array.from(computed)
+                            .map(name => `${name}:${computed.getPropertyValue(name)};`)
+                            .join('');
+                        destination.querySelectorAll?.('*').forEach((child, index) => {
+                            const sourceChild = source.querySelectorAll('*')[index];
+                            if (sourceChild) copyComputedStyles(sourceChild, child);
+                        });
+                    };
+                    copyComputedStyles(target, clone);
+                    clone.style.boxSizing = 'border-box';
+                    clone.style.height = `${height}px`;
+                    clone.style.margin = '0';
+                    clone.style.width = `${width}px`;
+
+                    const wrapper = document.createElement('div');
+                    wrapper.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+                    wrapper.style.background = '#ffffff';
+                    wrapper.style.height = `${height}px`;
+                    wrapper.style.margin = '0';
+                    wrapper.style.overflow = 'hidden';
+                    wrapper.style.width = `${width}px`;
+                    wrapper.appendChild(clone);
+
+                    const html = new XMLSerializer().serializeToString(wrapper);
+                    const svg = `
+                        <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}">
+                            <foreignObject width="100%" height="100%">${html}</foreignObject>
+                        </svg>
+                    `;
+                    const svgUrl = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
+                    const image = new Image();
+                    image.decoding = 'async';
+                    const scale = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
+                    const canvas = document.createElement('canvas');
+                    canvas.width = Math.ceil(width * scale);
+                    canvas.height = Math.ceil(height * scale);
+                    const context = canvas.getContext('2d');
+                    context.fillStyle = '#ffffff';
+                    context.fillRect(0, 0, canvas.width, canvas.height);
+                    await new Promise((resolve, reject) => {
+                        image.onload = resolve;
+                        image.onerror = reject;
+                        image.src = svgUrl;
+                    });
+                    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+                    URL.revokeObjectURL(svgUrl);
+                    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+                    if (!blob) throw new Error('Cannot create image');
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = `${(fileName || 'document').replace(/[\\/:*?"<>|]+/g, '-').trim() || 'document'}.png`;
+                    document.body.appendChild(link);
+                    link.click();
+                    link.remove();
+                    window.setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+                    window.showAlert?.('success', 'บันทึกรูปภาพแล้ว');
+                } catch (error) {
+                    console.error('Document capture failed:', error);
+                    window.showAlert?.('warning', 'บันทึกรูปภาพไม่สำเร็จ');
+                }
+            };
+
+            const documentCaptureTarget = (modal) => {
+                const slips = modal.querySelectorAll('.monthly-bill-slip');
+                if (slips.length > 1) return modal.querySelector('.monthly-bill-preview-wrap') || slips[0];
+                return slips[0] || modal.querySelector('.bill-slip-preview');
+            };
+
+            const ensureDocumentCaptureButtons = (root = document) => {
+                const modals = root.matches?.('.modal')
+                    ? [root]
+                    : Array.from(root.querySelectorAll?.('.modal') || []);
+                modals.forEach(modal => {
+                    if (modal.dataset.captureButtonReady === 'true') return;
+                    const footer = modal.querySelector('.modal-footer');
+                    if (!footer || !documentCaptureTarget(modal)) return;
+                    modal.dataset.captureButtonReady = 'true';
+                    const button = document.createElement('button');
+                    button.className = 'btn btn-light-primary document-capture-btn';
+                    button.type = 'button';
+                    button.innerHTML = '<i class="bi bi-camera me-1"></i>บันทึกรูป';
+                    button.addEventListener('click', () => {
+                        const target = documentCaptureTarget(modal);
+                        const title = modal.querySelector('.modal-title')?.textContent?.replace(/\s+/g, ' ').trim();
+                        if (window.hotelCaptureElement) window.hotelCaptureElement(target, title);
+                        else captureDocumentTarget(target, title);
+                    });
+                    const actionGroup = footer.querySelector('.d-flex.gap-2:last-child');
+                    (actionGroup || footer).insertBefore(button, actionGroup ? actionGroup.firstChild : footer.lastElementChild);
+                });
+            };
+
+            window.hotelEnsureDocumentCaptureButtons = ensureDocumentCaptureButtons;
+            ensureDocumentCaptureButtons();
+            document.addEventListener('shown.bs.modal', event => ensureDocumentCaptureButtons(event.target));
+            new MutationObserver(records => {
+                records.forEach(record => {
+                    record.addedNodes.forEach(node => {
+                        if (node.nodeType === 1) ensureDocumentCaptureButtons(node);
+                    });
+                });
+            }).observe(document.body, { childList: true, subtree: true });
         })();
     </script>
     <script th:src="@{/mazer/dist/assets/vendors/perfect-scrollbar/perfect-scrollbar.min.js}"></script>
     <script th:src="@{/mazer/dist/assets/js/bootstrap.bundle.min.js}"></script>
     <script th:src="@{/mazer/dist/assets/js/hotel-toast.js}"></script>
+    <script th:src="@{/js/html2canvas.min.js}"></script>
+    <script>
+        (function () {
+            const toast = (type, message) => {
+                if (typeof window.showAlert === 'function') window.showAlert(type, message);
+            };
+            const fileSafeName = value => (value || 'document').replace(/[\\/:*?"<>|]+/g, '-').replace(/\s+/g, ' ').trim() || 'document';
+            const documentCanvasOptions = () => ({
+                backgroundColor: '#ffffff',
+                ignoreElements: element => element.classList?.contains('modal-backdrop')
+                    || element.classList?.contains('hotel-loading-blocker')
+                    || element.classList?.contains('hotel-loading-panel')
+                    || element.classList?.contains('hotel-loading-bar'),
+                logging: false,
+                onclone: clonedDocument => {
+                    clonedDocument.documentElement.classList.remove('hotel-dark-mode');
+                    clonedDocument.body.classList.remove('hotel-dark-mode', 'modal-open', 'hotel-is-loading');
+                    clonedDocument.querySelectorAll('.monthly-bill-slip, .bill-slip-preview').forEach(element => {
+                        element.style.background = '#ffffff';
+                        element.style.backgroundColor = '#ffffff';
+                        element.style.color = '#172033';
+                        element.style.boxShadow = 'none';
+                    });
+                    clonedDocument.querySelectorAll('.monthly-bill-preview-wrap').forEach(element => {
+                        element.style.background = '#ffffff';
+                        element.style.backgroundColor = '#ffffff';
+                    });
+                    clonedDocument.querySelectorAll('.monthly-bill-slip *').forEach(element => {
+                        element.style.backgroundColor = 'transparent';
+                        element.style.color = element.classList.contains('text-muted') ? '#6f7d91' : '#172033';
+                    });
+                    clonedDocument.querySelectorAll('.monthly-bill-slip .bill-slip-table thead th').forEach(element => {
+                        element.style.background = '#f6f9fc';
+                        element.style.backgroundColor = '#f6f9fc';
+                        element.style.color = '#172033';
+                    });
+                    clonedDocument.querySelectorAll('.monthly-bill-slip .bill-slip-table tbody td, .monthly-bill-slip .bill-slip-table tfoot th, .monthly-bill-slip .bill-slip-table tfoot td').forEach(element => {
+                        element.style.background = '#ffffff';
+                        element.style.backgroundColor = '#ffffff';
+                    });
+                    clonedDocument.querySelectorAll('.monthly-bill-slip .bill-slip-note').forEach(element => {
+                        element.style.background = '#ffffff';
+                        element.style.backgroundColor = '#ffffff';
+                    });
+                    clonedDocument.querySelectorAll('.report-print-area').forEach(element => {
+                        element.style.background = '#ffffff';
+                        element.style.backgroundColor = '#ffffff';
+                        element.style.color = '#172033';
+                        element.style.padding = '16px';
+                    });
+                    clonedDocument.querySelectorAll('.report-print-area .card, .report-print-area .card-body, .report-print-area .card-header, .report-print-area .table-responsive').forEach(element => {
+                        element.style.background = '#ffffff';
+                        element.style.backgroundColor = '#ffffff';
+                        element.style.color = '#172033';
+                        element.style.borderColor = '#dbe4ef';
+                        element.style.boxShadow = 'none';
+                    });
+                    clonedDocument.querySelectorAll('.report-print-area table, .report-print-area th, .report-print-area td, .report-print-area h3, .report-print-area h5, .report-print-area h6, .report-print-area .fw-bold').forEach(element => {
+                        element.style.backgroundColor = element.tagName === 'TH' ? '#f6f9fc' : '#ffffff';
+                        element.style.color = '#172033';
+                        element.style.borderColor = '#dbe4ef';
+                    });
+                    clonedDocument.querySelectorAll('.report-print-area .text-muted').forEach(element => {
+                        element.style.color = '#6f7d91';
+                    });
+                },
+                scale: Math.min(2, Math.max(1, window.devicePixelRatio || 1)),
+                useCORS: true,
+                windowWidth: document.documentElement.scrollWidth,
+                windowHeight: document.documentElement.scrollHeight
+            });
+            const inlineStyles = (source, clone) => {
+                const sourceNodes = [source, ...source.querySelectorAll('*')];
+                const cloneNodes = [clone, ...clone.querySelectorAll('*')];
+                sourceNodes.forEach((node, index) => {
+                    const target = cloneNodes[index];
+                    if (!target) return;
+                    const computed = window.getComputedStyle(node);
+                    target.style.cssText = Array.from(computed)
+                        .map(name => `${name}:${computed.getPropertyValue(name)};`)
+                        .join('');
+                });
+            };
+            const captureElement = async (target, title) => {
+                if (!target) return;
+                try {
+                    if (document.fonts?.ready) await document.fonts.ready;
+                    if (typeof window.html2canvas === 'function') {
+                        const canvas = await window.html2canvas(target, documentCanvasOptions());
+                        const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+                        if (!blob) throw new Error('Cannot create PNG');
+                        const link = document.createElement('a');
+                        link.href = URL.createObjectURL(blob);
+                        link.download = `${fileSafeName(title)}.png`;
+                        document.body.appendChild(link);
+                        link.click();
+                        link.remove();
+                        setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+                        toast('success', 'บันทึกรูปภาพแล้ว');
+                        return;
+                    }
+                    const rect = target.getBoundingClientRect();
+                    const width = Math.ceil(Math.max(target.scrollWidth, rect.width));
+                    const height = Math.ceil(Math.max(target.scrollHeight, rect.height));
+                    if (!width || !height) throw new Error('Invalid capture size');
+                    const clone = target.cloneNode(true);
+                    inlineStyles(target, clone);
+                    clone.style.boxSizing = 'border-box';
+                    clone.style.height = `${height}px`;
+                    clone.style.margin = '0';
+                    clone.style.width = `${width}px`;
+                    const wrapper = document.createElement('div');
+                    wrapper.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+                    wrapper.style.background = '#fff';
+                    wrapper.style.height = `${height}px`;
+                    wrapper.style.overflow = 'hidden';
+                    wrapper.style.width = `${width}px`;
+                    wrapper.appendChild(clone);
+                    const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}"><foreignObject width="100%" height="100%">${new XMLSerializer().serializeToString(wrapper)}</foreignObject></svg>`;
+                    const svgUrl = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml;charset=utf-8' }));
+                    const image = new Image();
+                    const scale = Math.min(2, Math.max(1, window.devicePixelRatio || 1));
+                    const canvas = document.createElement('canvas');
+                    canvas.width = Math.ceil(width * scale);
+                    canvas.height = Math.ceil(height * scale);
+                    const context = canvas.getContext('2d');
+                    context.fillStyle = '#fff';
+                    context.fillRect(0, 0, canvas.width, canvas.height);
+                    await new Promise((resolve, reject) => {
+                        image.onload = resolve;
+                        image.onerror = reject;
+                        image.src = svgUrl;
+                    });
+                    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+                    URL.revokeObjectURL(svgUrl);
+                    const blob = await new Promise(resolve => canvas.toBlob(resolve, 'image/png'));
+                    if (!blob) throw new Error('Cannot create PNG');
+                    const link = document.createElement('a');
+                    link.href = URL.createObjectURL(blob);
+                    link.download = `${fileSafeName(title)}.png`;
+                    document.body.appendChild(link);
+                    link.click();
+                    link.remove();
+                    setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+                    toast('success', 'บันทึกรูปภาพแล้ว');
+                } catch (error) {
+                    console.error('Document capture failed:', error);
+                    toast('warning', 'บันทึกรูปภาพไม่สำเร็จ');
+                }
+            };
+            const captureTarget = modal => {
+                const slips = modal.querySelectorAll('.monthly-bill-slip');
+                if (slips.length > 1) return modal.querySelector('.monthly-bill-preview-wrap') || slips[0];
+                return slips[0] || modal.querySelector('.bill-slip-preview');
+            };
+            const ensureCaptureButtons = (root = document) => {
+                const modals = root.matches?.('.modal')
+                    ? [root]
+                    : Array.from(root.querySelectorAll?.('.modal') || []);
+                modals.forEach(modal => {
+                    if (modal.dataset.captureButtonReady === 'true') return;
+                    const footer = modal.querySelector('.modal-footer');
+                    if (!footer || !captureTarget(modal)) return;
+                    modal.dataset.captureButtonReady = 'true';
+                    const button = document.createElement('button');
+                    button.type = 'button';
+                    button.className = 'btn btn-light-primary document-capture-btn';
+                    button.innerHTML = '<i class="bi bi-camera me-1"></i>บันทึกรูป';
+                    button.addEventListener('click', () => {
+                        const title = modal.querySelector('.modal-title')?.textContent || 'document';
+                        captureElement(captureTarget(modal), title);
+                    });
+                    const group = footer.querySelector('.d-flex.gap-2:last-child');
+                    (group || footer).insertBefore(button, group ? group.firstChild : footer.lastElementChild);
+                });
+            };
+            window.hotelCaptureElement = captureElement;
+            window.hotelEnsureDocumentCaptureButtons = ensureCaptureButtons;
+            ensureCaptureButtons();
+            document.addEventListener('shown.bs.modal', event => ensureCaptureButtons(event.target));
+            new MutationObserver(records => {
+                records.forEach(record => record.addedNodes.forEach(node => {
+                    if (node.nodeType === 1) ensureCaptureButtons(node);
+                }));
+            }).observe(document.body, { childList: true, subtree: true });
+        })();
+    </script>
     <script>
         function slideToggle(t, e, o) {
             if (t.style.display === 'none' || window.getComputedStyle(t).display === 'none') slideDown(t, e, o);
@@ -388,9 +709,7 @@
             if (container) new PerfectScrollbar(container, { wheelPropagation: false });
         }
 
-        document.addEventListener('click', function (event) {
-            const link = event.target.closest('.sidebar-item.has-sub > .sidebar-link');
-            if (!link) return;
+        const toggleSidebarSubmenu = function (event, link) {
             event.preventDefault();
             event.stopPropagation();
             const item = link.parentElement;
@@ -418,7 +737,13 @@
                 submenu.classList.add('active');
                 slideDown(submenu, 380);
             }
-        }, true);
+        };
+
+        document.querySelectorAll('.sidebar-item.has-sub > .sidebar-link').forEach(function (link) {
+            link.addEventListener('click', function (event) {
+                toggleSidebarSubmenu(event, link);
+            });
+        });
 
         document.querySelectorAll('.submenu-item.has-sub > .submenu-link').forEach(function (link) {
             link.addEventListener('click', function (event) {
@@ -541,6 +866,266 @@
                 });
                 input.insertAdjacentElement('afterend', wrapper);
                 syncOriginalInput();
+            });
+        })();
+
+        (function () {
+            const topOpenModal = () => {
+                const modals = Array.from(document.querySelectorAll('.modal.show'));
+                return modals.at(-1);
+            };
+
+            document.addEventListener('show.bs.modal', event => {
+                event.target.setAttribute('data-bs-backdrop', 'true');
+                event.target.setAttribute('data-bs-keyboard', 'true');
+            });
+            document.addEventListener('hide.bs.modal', event => {
+                event.target.classList.add('modal-closing');
+            });
+            document.addEventListener('hidden.bs.modal', event => {
+                event.target.classList.remove('modal-closing');
+            });
+            document.addEventListener('mousedown', event => {
+                if (!event.target.classList?.contains('modal') || !event.target.classList.contains('show')) return;
+                bootstrap.Modal.getOrCreateInstance(event.target, { backdrop: true, keyboard: true }).hide();
+            });
+            document.addEventListener('keydown', event => {
+                if (event.key !== 'Escape' || document.querySelector('.swal2-container.swal2-shown')) return;
+                const modal = topOpenModal();
+                if (modal) bootstrap.Modal.getOrCreateInstance(modal, { backdrop: true, keyboard: true }).hide();
+            }, true);
+        })();
+
+        (function () {
+            const pageSizeChoices = [5, 10, 20, 30, 40, 50];
+            let activePaginationTable = null;
+
+            const ensurePageSizeModal = () => {
+                let modal = document.getElementById('hotelTablePageSizeModal');
+                if (modal) return modal;
+                modal = document.createElement('div');
+                modal.className = 'modal fade';
+                modal.id = 'hotelTablePageSizeModal';
+                modal.tabIndex = -1;
+                modal.innerHTML = `
+                    <div class="modal-dialog modal-dialog-centered">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">เลือกรายการที่ต้องการแสดง</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                                <div class="hotel-page-size-options">
+                                    ${pageSizeChoices.map(size => `
+                                        <button class="btn btn-outline-primary hotel-page-size-choice" type="button" data-page-size="${size}">
+                                            ${size} รายการ
+                                        </button>
+                                    `).join('')}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+                modal.querySelectorAll('.hotel-page-size-choice').forEach(button => {
+                    button.addEventListener('click', () => {
+                        if (!activePaginationTable) return;
+                        activePaginationTable.dataset.pageSize = button.dataset.pageSize;
+                        activePaginationTable.dataset.page = '1';
+                        renderTablePagination(activePaginationTable);
+                        bootstrap.Modal.getOrCreateInstance(modal).hide();
+                    });
+                });
+                return modal;
+            };
+
+            const getDataRows = table => Array.from(table.tBodies[0]?.rows || [])
+                .filter(row => row.cells.length > 1 && !row.classList.contains('hotel-pagination-ignore'));
+
+            const renderTablePagination = table => {
+                const controls = table.dataset.paginationControlsId
+                    ? document.getElementById(table.dataset.paginationControlsId)
+                    : null;
+                if (!controls) return;
+                const rows = getDataRows(table);
+                const pageSize = Math.min(50, Math.max(5, Number(table.dataset.pageSize || 5)));
+                const totalPages = Math.max(1, Math.ceil(rows.length / pageSize));
+                const page = Math.min(totalPages, Math.max(1, Number(table.dataset.page || 1)));
+                table.dataset.page = String(page);
+                table.dataset.pageSize = String(pageSize);
+
+                const start = (page - 1) * pageSize;
+                const end = start + pageSize;
+                rows.forEach((row, index) => row.classList.toggle('d-none', index < start || index >= end));
+
+                const from = rows.length ? start + 1 : 0;
+                const to = Math.min(end, rows.length);
+                controls.querySelector('.hotel-table-page-info').textContent = `${from}-${to} จาก ${rows.length} รายการ`;
+                const pageList = controls.querySelector('.hotel-page-list');
+                if (pageList) {
+                    const groupStart = Math.floor((page - 1) / 10) * 10 + 1;
+                    const groupEnd = Math.min(totalPages, groupStart + 9);
+                    pageList.innerHTML = '';
+                    const prevItem = document.createElement('li');
+                    prevItem.className = `page-item${page <= 1 ? ' disabled' : ''}`;
+                    const prevButton = document.createElement('button');
+                    prevButton.className = 'page-link hotel-page-prev';
+                    prevButton.type = 'button';
+                    prevButton.textContent = 'ก่อนหน้า';
+                    prevButton.disabled = page <= 1;
+                    prevButton.addEventListener('click', () => {
+                        table.dataset.page = String(Math.max(1, Number(table.dataset.page || 1) - 1));
+                        renderTablePagination(table);
+                    });
+                    prevItem.appendChild(prevButton);
+                    pageList.appendChild(prevItem);
+                    for (let pageNumber = groupStart; pageNumber <= groupEnd; pageNumber++) {
+                        const item = document.createElement('li');
+                        item.className = `page-item${pageNumber === page ? ' active' : ''}`;
+                        const button = document.createElement('button');
+                        button.className = 'page-link';
+                        button.type = 'button';
+                        button.textContent = String(pageNumber);
+                        button.addEventListener('click', () => {
+                            table.dataset.page = String(pageNumber);
+                            renderTablePagination(table);
+                        });
+                        item.appendChild(button);
+                        pageList.appendChild(item);
+                    }
+                    const nextItem = document.createElement('li');
+                    nextItem.className = `page-item${page >= totalPages ? ' disabled' : ''}`;
+                    const nextButton = document.createElement('button');
+                    nextButton.className = 'page-link hotel-page-next';
+                    nextButton.type = 'button';
+                    nextButton.textContent = 'ถัดไป';
+                    nextButton.disabled = page >= totalPages;
+                    nextButton.addEventListener('click', () => {
+                        table.dataset.page = String(Number(table.dataset.page || 1) + 1);
+                        renderTablePagination(table);
+                    });
+                    nextItem.appendChild(nextButton);
+                    pageList.appendChild(nextItem);
+                }
+            };
+
+            const initTablePagination = (root = document) => {
+                root.querySelectorAll('table.table:not(.bill-slip-table)').forEach((table, index) => {
+                    if (table.dataset.paginationReady === 'true') {
+                        renderTablePagination(table);
+                        return;
+                    }
+                const rows = getDataRows(table);
+                if (rows.length <= 5) {
+                    table.classList.remove('hotel-pagination-pending');
+                    return;
+                }
+                table.dataset.paginationReady = 'true';
+                    table.dataset.pageSize = table.dataset.pageSize || '5';
+                    table.dataset.page = table.dataset.page || '1';
+                    const controls = document.createElement('div');
+                    const controlsId = `hotelTablePagination${Date.now()}${index}`;
+                    controls.id = controlsId;
+                    controls.className = 'hotel-table-pagination';
+                    controls.innerHTML = `
+                        <nav aria-label="Table pagination">
+                            <ul class="pagination pagination-primary pagination-sm justify-content-center hotel-page-list"></ul>
+                        </nav>
+                        <div class="hotel-table-page-info"></div>
+                    `;
+                    table.dataset.paginationControlsId = controlsId;
+                    table.closest('.table-responsive')?.insertAdjacentElement('afterend', controls);
+                    table.addEventListener('hotel:table-sorted', () => {
+                        table.dataset.page = '1';
+                        renderTablePagination(table);
+                    });
+                    renderTablePagination(table);
+                    table.classList.remove('hotel-pagination-pending');
+                });
+            };
+
+            window.hotelInitTablePagination = initTablePagination;
+            window.hotelRefreshTablePagination = table => renderTablePagination(table);
+            document.addEventListener('DOMContentLoaded', () => initTablePagination());
+            initTablePagination();
+            const observer = new MutationObserver(mutations => {
+                mutations.forEach(mutation => {
+                    mutation.addedNodes.forEach(node => {
+                        if (node.nodeType === 1) initTablePagination(node);
+                    });
+                });
+            });
+            observer.observe(document.body, { childList: true, subtree: true });
+        })();
+
+        (function () {
+            const parseValue = (text) => {
+                const value = (text || '').replace(/\s+/g, ' ').trim();
+                if (!value || value === '-') return { type: 'empty', value: '' };
+
+                const thaiDate = /^(\d{1,2})\/(\d{1,2})\/(\d{4})$/.exec(value);
+                if (thaiDate) {
+                    return {
+                        type: 'date',
+                        value: new Date(Number(thaiDate[3]) - 543, Number(thaiDate[2]) - 1, Number(thaiDate[1])).getTime()
+                    };
+                }
+
+                const numberValue = Number(value.replace(/,/g, '').replace(/[^\d.-]/g, ''));
+                if (Number.isFinite(numberValue) && /\d/.test(value)) {
+                    return { type: 'number', value: numberValue };
+                }
+
+                return { type: 'text', value: value.toLocaleLowerCase('th-TH') };
+            };
+
+            const compareValues = (left, right) => {
+                if (left.type === 'empty' && right.type !== 'empty') return 1;
+                if (right.type === 'empty' && left.type !== 'empty') return -1;
+                if (left.type === 'number' && right.type === 'number') return left.value - right.value;
+                if (left.type === 'date' && right.type === 'date') return left.value - right.value;
+                return String(left.value).localeCompare(String(right.value), 'th-TH', { numeric: true });
+            };
+
+            document.querySelectorAll('table.table:not(.bill-slip-table)').forEach(table => {
+                const headerRow = table.querySelector('thead tr');
+                const body = table.tBodies[0];
+                if (!headerRow || !body) return;
+
+                Array.from(headerRow.cells).forEach((header, columnIndex) => {
+                    if (header.dataset.sortDisabled === 'true') return;
+                    if (!header.textContent.trim()) return;
+                    header.classList.add('hotel-sortable');
+                    header.tabIndex = 0;
+                    header.setAttribute('role', 'button');
+
+                    const sortTable = () => {
+                        const direction = header.dataset.sortDirection === 'asc' ? 'desc' : 'asc';
+                        headerRow.querySelectorAll('.hotel-sortable').forEach(item => {
+                            item.classList.remove('is-sorted-asc', 'is-sorted-desc');
+                            delete item.dataset.sortDirection;
+                        });
+                        header.dataset.sortDirection = direction;
+                        header.classList.add(direction === 'asc' ? 'is-sorted-asc' : 'is-sorted-desc');
+
+                        const rows = Array.from(body.rows);
+                        rows.sort((leftRow, rightRow) => {
+                            const left = parseValue(leftRow.cells[columnIndex]?.innerText);
+                            const right = parseValue(rightRow.cells[columnIndex]?.innerText);
+                            const result = compareValues(left, right);
+                            return direction === 'asc' ? result : -result;
+                        });
+                        rows.forEach(row => body.appendChild(row));
+                        table.dispatchEvent(new CustomEvent('hotel:table-sorted'));
+                    };
+
+                    header.addEventListener('click', sortTable);
+                    header.addEventListener('keydown', event => {
+                        if (event.key !== 'Enter' && event.key !== ' ') return;
+                        event.preventDefault();
+                        sortTable();
+                    });
+                });
             });
         })();
     </script>

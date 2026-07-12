@@ -1,4 +1,4 @@
-<head th:fragment="head(title)">
+﻿<head th:fragment="head(title)">
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="_csrf" th:if="${_csrf != null}" th:content="${_csrf.token}">
@@ -12,6 +12,7 @@
                 const theme = savedTheme || (prefersDark ? 'dark' : 'light');
                 document.documentElement.dataset.theme = theme;
                 document.documentElement.classList.toggle('hotel-dark-mode', theme === 'dark');
+                document.documentElement.classList.toggle('hotel-sidebar-collapsed', localStorage.getItem('hotel-sidebar-collapsed') === 'true');
             } catch (error) {
                 document.documentElement.dataset.theme = 'light';
             }
@@ -71,7 +72,7 @@
             position: fixed;
             right: 0;
             top: 0;
-            z-index: 1100;
+            z-index: 1300;
         }
 
         .topbar-spacer {
@@ -133,8 +134,23 @@
             border-radius: 999px;
             display: inline-flex;
             gap: .45rem;
+            justify-content: center;
+            line-height: 1;
             min-height: 2.55rem;
             padding: .45rem .85rem;
+        }
+
+        .theme-toggle-btn i {
+            align-items: center;
+            display: inline-flex;
+            height: 1rem;
+            justify-content: center;
+            line-height: 1;
+            width: 1rem;
+        }
+
+        .theme-toggle-btn .theme-toggle-text {
+            line-height: 1;
         }
 
         .sidebar-collapse-btn {
@@ -208,6 +224,10 @@
             padding: .75rem 1rem 0;
         }
 
+        .sidebar-wrapper .menu {
+            padding: 0;
+        }
+
         .sidebar-wrapper .menu .sidebar-title {
             color: #98a4b5;
             font-size: .72rem;
@@ -220,12 +240,19 @@
             border-radius: .55rem;
             color: #4f5e72;
             font-weight: 700;
-            margin: .12rem .55rem;
+            margin: .12rem 0;
             padding: .72rem .65rem;
         }
 
         .sidebar-wrapper .menu .sidebar-link i {
+            align-items: center;
             color: var(--hotel-primary);
+            display: inline-flex;
+            flex: 0 0 1.25rem;
+            height: 1.25rem;
+            justify-content: center;
+            line-height: 1;
+            width: 1.25rem;
         }
 
         .sidebar-wrapper .menu .submenu-link i {
@@ -303,31 +330,38 @@
 
         @media (min-width: 1200px) {
             body.hotel-sidebar-collapsed #sidebar,
-            body.hotel-sidebar-collapsed .sidebar-wrapper {
+            html.hotel-sidebar-collapsed body #sidebar,
+            body.hotel-sidebar-collapsed .sidebar-wrapper,
+            html.hotel-sidebar-collapsed body .sidebar-wrapper {
                 width: 5.25rem;
             }
 
-            body.hotel-sidebar-collapsed #main {
+            body.hotel-sidebar-collapsed #main,
+            html.hotel-sidebar-collapsed body #main {
                 margin-left: 5.25rem;
             }
 
-            body.hotel-sidebar-collapsed .app-topbar {
+            body.hotel-sidebar-collapsed .app-topbar,
+            html.hotel-sidebar-collapsed body .app-topbar {
                 left: 0;
             }
 
-            body.hotel-sidebar-collapsed .sidebar-wrapper .sidebar-header {
+            body.hotel-sidebar-collapsed .sidebar-wrapper .sidebar-header,
+            html.hotel-sidebar-collapsed body .sidebar-wrapper .sidebar-header {
                 padding-left: .55rem;
                 padding-right: .55rem;
             }
 
-            body.hotel-sidebar-collapsed .brand-mark {
+            body.hotel-sidebar-collapsed .brand-mark,
+            html.hotel-sidebar-collapsed body .brand-mark {
                 font-size: .95rem;
                 min-height: 3.25rem;
                 overflow: hidden;
                 padding: .45rem .25rem;
             }
 
-            body.hotel-sidebar-collapsed .brand-mark span {
+            body.hotel-sidebar-collapsed .brand-mark span,
+            html.hotel-sidebar-collapsed body .brand-mark span {
                 max-width: 3.4rem;
                 opacity: 0;
                 overflow: hidden;
@@ -336,18 +370,22 @@
                 white-space: nowrap;
             }
 
-            body.hotel-sidebar-collapsed .sidebar-wrapper .sidebar-header .brand-mark img {
+            body.hotel-sidebar-collapsed .sidebar-wrapper .sidebar-header .brand-mark img,
+            html.hotel-sidebar-collapsed body .sidebar-wrapper .sidebar-header .brand-mark img {
                 height: 3.75rem;
                 width: 3.75rem;
             }
 
-            body.hotel-sidebar-collapsed .sidebar-wrapper .menu {
+            body.hotel-sidebar-collapsed .sidebar-wrapper .menu,
+            html.hotel-sidebar-collapsed body .sidebar-wrapper .menu {
                 padding-left: .45rem;
                 padding-right: .45rem;
             }
 
             body.hotel-sidebar-collapsed .sidebar-wrapper .menu .sidebar-title,
-            body.hotel-sidebar-collapsed .sidebar-wrapper .menu .sidebar-link span {
+            html.hotel-sidebar-collapsed body .sidebar-wrapper .menu .sidebar-title,
+            body.hotel-sidebar-collapsed .sidebar-wrapper .menu .sidebar-link span,
+            html.hotel-sidebar-collapsed body .sidebar-wrapper .menu .sidebar-link span {
                 margin-left: 0;
                 max-height: 0;
                 max-width: 0;
@@ -357,20 +395,24 @@
                 transform: translateX(-.45rem);
             }
 
-            body.hotel-sidebar-collapsed .sidebar-wrapper .menu .submenu {
+            body.hotel-sidebar-collapsed .sidebar-wrapper .menu .submenu,
+            html.hotel-sidebar-collapsed body .sidebar-wrapper .menu .submenu {
                 display: none !important;
             }
 
-            body.hotel-sidebar-collapsed .sidebar-wrapper .menu .sidebar-link:not(:has(i))::before {
+            body.hotel-sidebar-collapsed .sidebar-wrapper .menu .sidebar-link:not(:has(i))::before,
+            html.hotel-sidebar-collapsed body .sidebar-wrapper .menu .sidebar-link:not(:has(i))::before {
                 content: attr(data-menu-short);
                 font-weight: 900;
             }
 
-            body.hotel-sidebar-collapsed .sidebar-wrapper .menu .sidebar-link i {
+            body.hotel-sidebar-collapsed .sidebar-wrapper .menu .sidebar-link i,
+            html.hotel-sidebar-collapsed body .sidebar-wrapper .menu .sidebar-link i {
                 margin-right: 0;
             }
 
-            body.hotel-sidebar-collapsed .sidebar-wrapper .menu .sidebar-link {
+            body.hotel-sidebar-collapsed .sidebar-wrapper .menu .sidebar-link,
+            html.hotel-sidebar-collapsed body .sidebar-wrapper .menu .sidebar-link {
                 align-items: center;
                 display: flex;
                 justify-content: center;
@@ -380,11 +422,13 @@
                 padding: .7rem;
             }
 
-            body.hotel-sidebar-collapsed .sidebar-wrapper .menu .sidebar-item.has-sub > .sidebar-link::after {
+            body.hotel-sidebar-collapsed .sidebar-wrapper .menu .sidebar-item.has-sub > .sidebar-link::after,
+            html.hotel-sidebar-collapsed body .sidebar-wrapper .menu .sidebar-item.has-sub > .sidebar-link::after {
                 display: none;
             }
 
-            body.hotel-sidebar-collapsed .sidebar-collapse-btn i {
+            body.hotel-sidebar-collapsed .sidebar-collapse-btn i,
+            html.hotel-sidebar-collapsed body .sidebar-collapse-btn i {
                 transform: rotate(180deg);
             }
         }
@@ -734,6 +778,35 @@
             padding-left: 2.45rem;
         }
 
+        .report-filter-form .date-box {
+            position: relative;
+        }
+
+        .report-filter-form .date-box > i {
+            align-items: center;
+            color: var(--hotel-primary);
+            display: flex;
+            height: 100%;
+            left: .85rem;
+            pointer-events: none;
+            position: absolute;
+            top: 0;
+            z-index: 1;
+        }
+
+        .report-filter-form .hotel-calendar-input {
+            padding-left: 2.45rem;
+        }
+
+        .report-filter-form .hotel-calendar-popup {
+            left: 0;
+            top: 100%;
+        }
+
+        .report-payment-card .table-responsive {
+            overflow-x: auto;
+        }
+
         .booking-stay-form .price-field[readonly],
         .booking-stay-form .night-count-field[readonly] {
             background: #e9edf2;
@@ -938,12 +1011,34 @@
             box-shadow: 0 1.2rem 3rem rgba(23, 32, 51, .22);
         }
 
+        .modal.fade .modal-dialog {
+            opacity: 0;
+            transform: translateY(14px) scale(.985);
+            transition: opacity .18s ease, transform .18s ease;
+        }
+
+        .modal.show .modal-dialog {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+        }
+
+        .modal.modal-closing .modal-dialog {
+            opacity: 0;
+            transform: translateY(10px) scale(.97);
+        }
+
+        .guest-room-modal-dimmed .modal-content {
+            opacity: .38;
+            transform: scale(.985);
+            transition: opacity .16s ease, transform .16s ease;
+        }
+
         .modal {
-            z-index: 1200;
+            z-index: 2400;
         }
 
         .modal-backdrop {
-            z-index: 1190;
+            z-index: 2390;
         }
 
         .modal-body.row {
@@ -1040,12 +1135,88 @@
 
         .page-heading .btn i,
         .table-actions .btn i {
+            display: inline-block;
+            font-size: 1rem;
+            height: 1rem;
             line-height: 1;
+            text-align: center;
+            width: 1rem;
         }
 
         .table-actions {
             min-width: 6.25rem;
             white-space: nowrap;
+        }
+
+        .table-actions .btn {
+            align-items: center;
+            display: inline-flex;
+            height: 2.1rem;
+            justify-content: center;
+            min-width: 2.1rem;
+            padding: 0 .75rem;
+            vertical-align: middle;
+            white-space: nowrap;
+            width: auto;
+        }
+
+        .hotel-table-pagination {
+            align-items: center;
+            border-top: 1px solid var(--hotel-line);
+            display: flex;
+            flex-direction: column;
+            flex-wrap: wrap;
+            gap: .65rem;
+            justify-content: center;
+            margin-top: .75rem;
+            padding-top: .75rem;
+        }
+
+        .hotel-table-pagination .pagination {
+            margin-bottom: 0;
+        }
+
+        .hotel-table-page-info {
+            color: var(--hotel-muted);
+            font-weight: 700;
+            white-space: nowrap;
+            text-align: center;
+        }
+
+        .hotel-table-pagination .hotel-page-size-button {
+            margin-bottom: .15rem;
+        }
+
+        .hotel-table-pagination .hotel-page-list .page-link {
+            align-items: center;
+            display: inline-flex;
+            height: 2.25rem;
+            justify-content: center;
+            min-width: 2.25rem;
+            padding: 0;
+        }
+
+        table.table.hotel-pagination-pending tbody tr:nth-child(n+6) {
+            display: none;
+        }
+
+        .hotel-page-size-options {
+            display: grid;
+            gap: .75rem;
+            grid-template-columns: repeat(auto-fit, minmax(7.5rem, 1fr));
+        }
+
+        .btn-document-view {
+            background: #1447E6 !important;
+            border-color: #1447E6 !important;
+            color: #fff !important;
+        }
+
+        .btn-document-view:hover,
+        .btn-document-view:focus {
+            background: #0f36b8 !important;
+            border-color: #0f36b8 !important;
+            color: #fff !important;
         }
 
         .bill-view-action {
@@ -1342,6 +1513,24 @@
             align-items: end;
         }
 
+        .monthly-billing-empty-panel {
+            background: var(--hotel-panel);
+            border: 1px solid var(--hotel-line);
+            color: var(--hotel-muted);
+            font-weight: 800;
+        }
+
+        .booking-stay-info-panel {
+            background: var(--hotel-panel);
+            border: 1px solid var(--hotel-line);
+            color: var(--hotel-muted);
+            font-weight: 800;
+        }
+
+        .booking-stay-info-panel strong {
+            color: var(--hotel-ink);
+        }
+
         .monthly-billing-grid {
             grid-template-columns: repeat(6, minmax(0, 1fr));
         }
@@ -1519,6 +1708,38 @@
 
         .bill-slip-meta span::after {
             content: " :";
+        }
+
+        .table th.hotel-sortable {
+            cursor: pointer;
+            padding-right: 1.6rem;
+            position: relative;
+            user-select: none;
+            white-space: nowrap;
+        }
+
+        .table th.hotel-sortable::after {
+            border-bottom: 2px solid currentColor;
+            border-right: 2px solid currentColor;
+            color: #93a3b8;
+            content: "";
+            height: .42rem;
+            opacity: .55;
+            position: absolute;
+            right: .45rem;
+            top: 50%;
+            transform: translateY(-50%) rotate(45deg);
+            width: .42rem;
+        }
+
+        .table th.hotel-sortable.is-sorted-asc::after {
+            opacity: 1;
+            transform: translateY(-35%) rotate(225deg);
+        }
+
+        .table th.hotel-sortable.is-sorted-desc::after {
+            opacity: 1;
+            transform: translateY(-65%) rotate(45deg);
         }
 
         .monthly-bill-meta .bill-slip-meta-left,
@@ -1732,6 +1953,60 @@
         .hotel-toast-warning {
             background: #f2c94c;
             color: #332500;
+        }
+
+        .swal2-popup.hotel-swal-popup {
+            background: var(--hotel-panel);
+            border: 1px solid var(--hotel-line);
+            color: var(--hotel-ink);
+            box-shadow: 0 1.2rem 3rem rgba(23, 32, 51, .22);
+        }
+
+        .swal2-container {
+            z-index: 3000 !important;
+        }
+
+        html[data-theme="dark"] .swal2-popup,
+        .hotel-dark-mode .swal2-popup {
+            background: var(--hotel-panel) !important;
+            border: 1px solid var(--hotel-line) !important;
+            color: var(--hotel-ink) !important;
+            box-shadow: 0 1.2rem 3rem rgba(0, 0, 0, .36) !important;
+        }
+
+        html[data-theme="dark"] .swal2-title,
+        html[data-theme="dark"] .swal2-html-container,
+        .hotel-dark-mode .swal2-title,
+        .hotel-dark-mode .swal2-html-container {
+            color: var(--hotel-ink) !important;
+        }
+
+        html[data-theme="dark"] .swal2-icon.swal2-warning,
+        .hotel-dark-mode .swal2-icon.swal2-warning {
+            border-color: var(--hotel-orange) !important;
+            color: var(--hotel-orange) !important;
+        }
+
+        .swal2-title.hotel-swal-title,
+        .swal2-html-container.hotel-swal-text {
+            color: var(--hotel-ink);
+        }
+
+        .swal2-popup.hotel-swal-popup .swal2-icon.swal2-warning {
+            border-color: var(--hotel-orange);
+            color: var(--hotel-orange);
+        }
+
+        .swal2-confirm.hotel-swal-confirm {
+            background: #dc3545 !important;
+            border: 1px solid #dc3545 !important;
+            box-shadow: none !important;
+        }
+
+        .swal2-cancel.hotel-swal-cancel {
+            background: var(--hotel-gray) !important;
+            border: 1px solid var(--hotel-gray) !important;
+            box-shadow: none !important;
         }
 
         .hotel-loading-bar {
@@ -2229,3 +2504,4 @@
         }
     </style>
 </head>
+

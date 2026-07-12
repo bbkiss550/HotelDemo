@@ -2,6 +2,7 @@ package com.hotel.controller;
 
 import com.hotel.model.Payment;
 import com.hotel.model.StayType;
+import com.hotel.repository.BookingRepository;
 import com.hotel.repository.PaymentRepository;
 import java.math.BigDecimal;
 import java.time.temporal.ChronoUnit;
@@ -17,9 +18,11 @@ import org.springframework.web.bind.annotation.RequestMapping;
 @RequestMapping("/receipts")
 public class ReceiptController {
     private final PaymentRepository payments;
+    private final BookingRepository bookings;
 
-    public ReceiptController(PaymentRepository payments) {
+    public ReceiptController(PaymentRepository payments, BookingRepository bookings) {
         this.payments = payments;
+        this.bookings = bookings;
     }
 
     @GetMapping("/{id}")
@@ -29,6 +32,7 @@ public class ReceiptController {
         model.addAttribute("receiptNo", payment.getReciept() != null ? payment.getReciept().getRecieptNo() : null);
         model.addAttribute("receiptTypeName", payment.getReciept() != null && payment.getReciept().getType() != null ? payment.getReciept().getType().getName() : "-");
         model.addAttribute("billNumber", monthlyRentBillNumber(payment));
+        model.addAttribute("payerName", paymentPayerName(payment));
         model.addAttribute("receiptItems", receiptItems(payment));
         return "receipts/detail";
     }
@@ -44,6 +48,27 @@ public class ReceiptController {
         }
         String value = remark.substring(marker + 1).split("\\s|-", 2)[0].trim();
         return value.isBlank() ? "-" : value;
+    }
+
+    private String paymentPayerName(Payment payment) {
+        String bookingNumber = bookingNumberFromRemark(payment == null ? null : payment.getRemark());
+        if (bookingNumber != null) {
+            return bookings.findByBookingNumber(bookingNumber)
+                    .map(com.hotel.model.Booking::getCustomerName)
+                    .filter(name -> name != null && !name.isBlank())
+                    .orElse("-");
+        }
+        return payment != null && payment.getGuest() != null && payment.getGuest().getFullName() != null
+                ? payment.getGuest().getFullName()
+                : "-";
+    }
+
+    private String bookingNumberFromRemark(String remark) {
+        if (remark == null || remark.isBlank()) {
+            return null;
+        }
+        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("#(B\\d{10})").matcher(remark);
+        return matcher.find() ? matcher.group(1) : null;
     }
 
     private List<ReceiptLine> receiptItems(Payment payment) {

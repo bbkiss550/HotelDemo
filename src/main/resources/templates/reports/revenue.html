@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="th">
+<head th:replace="~{fragments/head :: head(${currentMenuName})}"></head>
+<body>
+<div id="app">
+    <div th:replace="~{fragments/nav :: nav}"></div>
+    <div id="main">
+        <header class="mb-3"><a href="#" class="burger-btn d-block d-xl-none"><i class="bi bi-justify fs-3"></i></a></header>
+        <div class="page-heading d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div><h3 th:text="${currentMenuName}">รายงานรายได้</h3></div>
+            <a class="btn btn-light-primary" th:href="@{${reportPdfAction}(startDate=${startDate},endDate=${endDate})}">
+                <i class="bi bi-file-earmark-pdf me-1"></i>Export PDF
+            </a>
+        </div>
+        <div class="page-content report-print-area">
+            <section class="section">
+                <div class="card">
+                    <div class="card-body">
+                        <form class="row g-3 align-items-end report-filter-form" method="get" th:action="${reportAction}">
+                            <div class="col-md-6">
+                                <label class="form-label">วันที่บันทึกเริ่มต้น</label>
+                                <div class="date-box">
+                                    <i class="bi bi-calendar-check"></i>
+                                    <input class="hotel-calendar-value" type="hidden" name="startDate" th:value="${startDate}" data-default-today="true">
+                                    <input class="form-control hotel-calendar-input" type="text" readonly data-calendar-for="startDate">
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">วันที่บันทึกสิ้นสุด</label>
+                                <div class="date-box">
+                                    <i class="bi bi-calendar-check"></i>
+                                    <input class="hotel-calendar-value" type="hidden" name="endDate" th:value="${endDate}" data-default-today="true">
+                                    <input class="form-control hotel-calendar-input" type="text" readonly data-calendar-for="endDate">
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="card report-payment-card">
+                    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <h5 class="mb-0">รายการชำระเงิน</h5>
+                        <span class="badge bg-light-primary" th:text="|${payments.size()} รายการ|"></span>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-hover mb-0">
+                                <thead>
+                                <tr>
+                                    <th>เลขใบเสร็จ</th>
+                                    <th>วันที่ใบเสร็จ</th>
+                                    <th>วันที่จ่าย</th>
+                                    <th>ผู้จ่าย</th>
+                                    <th>ประเภทใบเสร็จ</th>
+                                    <th>วิธีชำระ</th>
+                                    <th class="text-end">ยอดตามใบแจ้ง</th>
+                                </tr>
+                                </thead>
+                                <tbody>
+                                <tr th:each="p : ${payments}">
+                                    <td class="fw-bold" th:text="${paymentReceiptNumbers[p.id] != null ? paymentReceiptNumbers[p.id] : '-'}"></td>
+                                    <td th:text="${p.reciept != null ? @thaiDate.format(p.reciept.recieptDate) : '-'}"></td>
+                                    <td th:text="${@thaiDate.format(p.paymentDate)}"></td>
+                                    <td th:text="${paymentPayerNames[p.id] != null ? paymentPayerNames[p.id] : '-'}"></td>
+                                    <td>
+                                        <span class="badge receipt-type-badge"
+                                              th:classappend="${p.reciept != null and p.reciept.type != null and p.reciept.type.id == 1} ? ' receipt-type-opening-monthly' : (${p.reciept != null and p.reciept.type != null and p.reciept.type.id == 2} ? ' receipt-type-daily-service' : (${p.reciept != null and p.reciept.type != null and p.reciept.type.id == 3} ? ' receipt-type-monthly-rent' : ' receipt-type-unknown'))"
+                                              th:text="${p.reciept != null and p.reciept.type != null ? p.reciept.type.name : '-'}"></span>
+                                    </td>
+                                    <td th:text="${p.paymentMethod}"></td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(p.amount, 1, 'COMMA', 2, 'POINT')}"></td>
+                                </tr>
+                                <tr th:if="${payments.isEmpty()}">
+                                    <td colspan="7" class="text-center text-muted py-4">ยังไม่มีรายการชำระเงิน</td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+    </div>
+</div>
+<div th:replace="~{fragments/nav :: scripts}"></div>
+<script>
+(function () {
+    const thaiMonths = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
+    const thaiWeekdays = ['อา', 'จ', 'อ', 'พ', 'พฤ', 'ศ', 'ส'];
+    const parseIsoDate = (value) => {
+        if (!value) return null;
+        const parts = value.split('-').map(Number);
+        if (parts.length !== 3 || parts.some(Number.isNaN)) return null;
+        return new Date(parts[0], parts[1] - 1, parts[2]);
+    };
+    const toIsoDate = (date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    const toThaiDate = (date) => date ? `${String(date.getDate()).padStart(2, '0')}/${String(date.getMonth() + 1).padStart(2, '0')}/${date.getFullYear() + 543}` : '';
+    const closeCalendars = (except) => {
+        document.querySelectorAll('.hotel-calendar-popup').forEach(item => {
+            if (item !== except) item.classList.add('d-none');
+        });
+    };
+    const createCalendar = (hiddenInput, displayInput) => {
+        if (displayInput.dataset.calendarReady === 'true') return;
+        displayInput.dataset.calendarReady = 'true';
+        let selectedDate = parseIsoDate(hiddenInput.value);
+        let viewDate = selectedDate ? new Date(selectedDate) : new Date();
+        const popup = document.createElement('div');
+        popup.className = 'hotel-calendar-popup d-none';
+        displayInput.closest('.date-box')?.appendChild(popup);
+        const setValue = (date) => {
+            selectedDate = new Date(date);
+            hiddenInput.value = toIsoDate(selectedDate);
+            displayInput.value = toThaiDate(selectedDate);
+        };
+        if (selectedDate) setValue(selectedDate);
+        const render = () => {
+            popup.innerHTML = `
+                <div class="hotel-calendar-header">
+                    <button class="hotel-calendar-nav" type="button" data-nav="-1">‹</button>
+                    <div class="hotel-calendar-title">${thaiMonths[viewDate.getMonth()]} ${viewDate.getFullYear() + 543}</div>
+                    <button class="hotel-calendar-nav" type="button" data-nav="1">›</button>
+                </div>
+                <div class="hotel-calendar-weekdays">${thaiWeekdays.map(day => `<span>${day}</span>`).join('')}</div>
+                <div class="hotel-calendar-grid"></div>
+                <div class="hotel-calendar-footer"><button class="hotel-calendar-today" type="button">วันนี้</button></div>
+            `;
+            const grid = popup.querySelector('.hotel-calendar-grid');
+            const firstDay = new Date(viewDate.getFullYear(), viewDate.getMonth(), 1);
+            const startDate = new Date(firstDay);
+            startDate.setDate(firstDay.getDate() - firstDay.getDay());
+            for (let i = 0; i < 42; i += 1) {
+                const day = new Date(startDate);
+                day.setDate(startDate.getDate() + i);
+                const button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'hotel-calendar-day';
+                if (day.getMonth() !== viewDate.getMonth()) button.classList.add('is-muted');
+                if (selectedDate && toIsoDate(day) === toIsoDate(selectedDate)) button.classList.add('is-selected');
+                button.textContent = day.getDate();
+                button.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    setValue(day);
+                    popup.classList.add('d-none');
+                    hiddenInput.closest('form')?.requestSubmit();
+                });
+                grid.appendChild(button);
+            }
+            popup.querySelectorAll('[data-nav]').forEach(button => {
+                button.addEventListener('click', (event) => {
+                    event.preventDefault();
+                    event.stopPropagation();
+                    viewDate.setMonth(viewDate.getMonth() + Number(button.dataset.nav));
+                    render();
+                });
+            });
+            popup.querySelector('.hotel-calendar-today').addEventListener('click', (event) => {
+                event.stopPropagation();
+                const today = new Date();
+                viewDate = new Date(today);
+                setValue(today);
+                popup.classList.add('d-none');
+                hiddenInput.closest('form')?.requestSubmit();
+            });
+        };
+        render();
+        displayInput.addEventListener('click', (event) => {
+            event.stopPropagation();
+            closeCalendars(popup);
+            popup.classList.toggle('d-none');
+        });
+        popup.addEventListener('click', event => event.stopPropagation());
+    };
+    document.querySelectorAll('.report-filter-form .hotel-calendar-input').forEach(displayInput => {
+        const hiddenInput = displayInput.closest('form')?.querySelector(`.hotel-calendar-value[name="${displayInput.dataset.calendarFor}"]`);
+        if (hiddenInput) createCalendar(hiddenInput, displayInput);
+    });
+    document.addEventListener('click', () => closeCalendars());
+})();
+</script>
+</body>
+</html>

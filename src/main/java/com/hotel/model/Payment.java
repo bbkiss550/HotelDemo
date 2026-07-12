@@ -3,6 +3,7 @@ package com.hotel.model;
 import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "t_payment")
@@ -12,7 +13,7 @@ public class Payment {
     @Column(name = "`ID_payment`")
     private Long id;
 
-    @ManyToOne(optional = false)
+    @ManyToOne
     @JoinColumn(name = "`ID_room`", referencedColumnName = "`ID_room`")
     private Room room;
 
@@ -47,6 +48,16 @@ public class Payment {
     @Column(name = "p_status")
     private PaymentStatus status = PaymentStatus.UNPAID;
 
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt = LocalDateTime.now();
+
+    @PrePersist
+    void prePersist() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+    }
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public Room getRoom() { return room; }
@@ -72,4 +83,6 @@ public class Payment {
     public void setRemark(String remark) { this.remark = remark; }
     public PaymentStatus getStatus() { return status; }
     public void setStatus(PaymentStatus status) { this.status = status; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

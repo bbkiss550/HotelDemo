@@ -70,6 +70,10 @@ public class RecieptRecordService {
         return record(RecieptType.MONTHLY_RENT, payment == null ? BigDecimal.ZERO : payment.getTotalAmount(), payment);
     }
 
+    public Reciept recordBookingDeposit(Payment payment) {
+        return record(RecieptType.BOOKING_DEPOSIT, payment == null ? BigDecimal.ZERO : payment.getTotalAmount(), payment);
+    }
+
     private String nextRecieptNo(LocalDate date) {
         LocalDate recieptDate = date == null ? LocalDate.now() : date;
         String prefix = "P" + recieptDate.getYear();

@@ -76,7 +76,11 @@ public class RoomController {
     }
 
     @PostMapping
-    String save(@ModelAttribute Room room, @RequestParam Long floorId, @RequestParam Long roomTypeId, RedirectAttributes redirect) {
+    String save(@ModelAttribute Room room,
+                @RequestParam Long floorId,
+                @RequestParam Long roomTypeId,
+                @RequestParam(required = false, defaultValue = "false") boolean maintenanceMode,
+                RedirectAttributes redirect) {
         Room savedRoom = room.getId() == null ? room : rooms.findById(room.getId()).orElseThrow();
         boolean isNew = savedRoom.getId() == null;
         savedRoom.setRoomNumber(room.getRoomNumber());
@@ -87,6 +91,9 @@ public class RoomController {
         savedRoom.setMonthlyPrice(roomType.getMonthlyPrice());
         if (savedRoom.getStatus() == null) {
             savedRoom.setStatus(RoomStatus.AVAILABLE);
+        }
+        if (savedRoom.getStatus() == RoomStatus.AVAILABLE || savedRoom.getStatus() == RoomStatus.MAINTENANCE) {
+            savedRoom.setStatus(maintenanceMode ? RoomStatus.MAINTENANCE : RoomStatus.AVAILABLE);
         }
         rooms.save(savedRoom);
         redirect.addFlashAttribute("message", (isNew ? "บันทึกห้อง " : "แก้ไขห้อง ") + savedRoom.getRoomNumber() + " เรียบร้อย");

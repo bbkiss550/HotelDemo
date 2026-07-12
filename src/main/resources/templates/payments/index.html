@@ -10,13 +10,23 @@
             <div>
                 <h3 th:text="${currentMenuName}"></h3>
             </div>
-            <a class="btn btn-light-primary" th:href="@{/finance/monthly-rent/bills}">
-                <i class="bi bi-receipt me-1"></i>รายการบิล
-            </a>
+            <div class="d-flex flex-wrap gap-2">
+                <button class="btn btn-primary" type="button" data-bs-toggle="modal" data-bs-target="#payableBillPickerModal">
+                    <i class="bi bi-list-check me-1"></i>เลือกบิลรอชำระ
+                </button>
+            </div>
         </div>
         <div class="page-content">
             <section class="section">
-                <form class="floor-toolbar monthly-billing-filter payments-filter mb-3" method="get" th:action="@{/payments}">
+                <div class="modal fade" id="payableBillPickerModal" tabindex="-1" th:attr="data-auto-open=${billFilterApplied}">
+                    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                                <h5 class="modal-title">เลือกบิลรอชำระ</h5>
+                                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                            </div>
+                            <div class="modal-body">
+                <form class="floor-toolbar monthly-billing-filter payments-filter mb-3" id="payableBillFilterForm" method="get" th:action="@{/payments}">
                     <div class="billing-filter-controls">
                         <div>
                             <label class="form-label">เดือน</label>
@@ -61,10 +71,10 @@
                             <input class="form-control" name="guestName" th:value="${guestName}" placeholder="ชื่อผู้พัก">
                         </div>
                     </div>
-                    <button class="btn btn-light-primary" type="submit"><i class="bi bi-funnel me-1"></i>กรอง</button>
+                    <a class="btn btn-light-secondary" th:href="@{/payments}"><i class="bi bi-x-circle me-1"></i>ล้าง</a>
                 </form>
 
-                <div class="card mb-3">
+                <div class="card mb-0">
                     <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
                         <h5 class="mb-0">บิลรอชำระ</h5>
                         <span class="badge bg-light-primary" th:text="|${payableBills.size()} รายการ|"></span>
@@ -98,9 +108,9 @@
                                     <td class="table-actions">
                                         <button class="btn btn-sm btn-success"
                                                 type="button"
-                                                data-bs-toggle="modal"
-                                                th:attr="data-bs-target=${'#payMonthlyBillModal' + bill.id}">
-                                            <i class="bi bi-cash"></i>
+                                                data-payable-bill-pay="true"
+                                                th:attr="data-payment-modal-url=@{/payments/monthly-bill/{id}/payment-modal(id=${bill.id})}">
+                                            <i class="bi bi-cash me-1"></i>รับชำระ
                                         </button>
                                     </td>
                                 </tr>
@@ -112,15 +122,59 @@
                         </div>
                     </div>
                 </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
 
                 <div class="card">
-                    <div class="card-header"><h5 class="mb-0">รายการชำระล่าสุด</h5></div>
+                    <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                        <h5 class="mb-0">รายการชำระล่าสุด</h5>
+                        <span class="badge bg-light-primary" th:text="|${payments.size()} รายการ|"></span>
+                    </div>
                     <div class="card-body">
+                        <form class="floor-toolbar monthly-billing-filter payments-filter payment-search-form mb-3" method="get" th:action="@{/payments}">
+                            <div class="billing-filter-controls">
+                                <div>
+                                    <label class="form-label">เลขใบเสร็จ</label>
+                                    <input class="form-control" name="receiptNo" th:value="${receiptNo}" placeholder="เลขใบเสร็จ">
+                                </div>
+                                <div>
+                                    <label class="form-label">เลขที่เอกสารอ้างอิง</label>
+                                    <input class="form-control" name="referenceNo" th:value="${referenceNo}" placeholder="เลขที่เอกสารอ้างอิง">
+                                </div>
+                                <div>
+                                    <label class="form-label">วันที่ชำระ</label>
+                                    <div class="date-box">
+                                        <i class="bi bi-calendar-check"></i>
+                                        <input class="form-control hotel-calendar-input" type="text" readonly data-calendar-for="paymentDate">
+                                        <input class="hotel-calendar-value" type="hidden" name="paymentDate" th:value="${paymentDate}">
+                                    </div>
+                                </div>
+                                <div>
+                                    <label class="form-label">ชื่อผู้พัก</label>
+                                    <input class="form-control" name="paymentGuestName" th:value="${paymentGuestName}" placeholder="ชื่อผู้พัก">
+                                </div>
+                                <div>
+                                    <label class="form-label">ประเภทใบเสร็จ</label>
+                                    <select class="form-select" name="receiptTypeId">
+                                        <option value="" th:selected="${receiptTypeId == null}">ทั้งหมด</option>
+                                        <option th:each="type : ${recieptTypes}"
+                                                th:value="${type.id}"
+                                                th:text="${type.name}"
+                                                th:selected="${receiptTypeId == type.id}"></option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="d-flex flex-wrap gap-2">
+                                <a class="btn btn-light-secondary" th:href="@{/payments}"><i class="bi bi-x-circle me-1"></i>ล้าง</a>
+                            </div>
+                        </form>
                         <div class="table-responsive">
                             <table class="table table-hover mb-0">
                                 <thead>
                                 <tr>
-                                    <th class="table-actions"></th>
+                                    <th class="table-actions">จัดการ</th>
                                     <th>เลขใบเสร็จ</th>
                                     <th>เลขที่ใบแจ้งค่าเช่า</th>
                                     <th>วันที่</th>
@@ -137,14 +191,18 @@
                                 <tbody>
                                 <tr th:each="p : ${payments}" th:with="receiptNo=${paymentReceiptNumbers[p.id]}">
                                     <td class="table-actions">
-                                        <button class="btn btn-sm btn-warning" type="button" data-bs-toggle="modal" th:attr="data-bs-target=${'#paymentEditModal' + p.id}" title="แก้ไข"><i class="bi bi-pencil-square"></i></button>
-                                        <button class="btn btn-sm btn-light-primary" type="button" th:if="${receiptNo != null}" data-bs-toggle="modal" th:attr="data-bs-target=${'#paymentReceiptModal' + p.id}" title="ใบเสร็จ"><i class="bi bi-receipt"></i></button>
+                                        <button class="btn btn-sm btn-warning" type="button" th:attr="data-payment-modal-url=@{/payments/{id}/edit-modal(id=${p.id})}" title="แก้ไข"><i class="bi bi-pencil-square me-1"></i>แก้ไข</button>
+                                        <button class="btn btn-sm btn-document-view"
+                                                type="button"
+                                                th:if="${receiptNo != null}"
+                                                th:attr="data-payment-modal-url=@{/payments/{id}/receipt-modal(id=${p.id})},data-payment-fallback-url=@{/receipts/{id}(id=${p.id})}"
+                                                title="ใบเสร็จ"><i class="bi bi-receipt me-1"></i>ใบเสร็จ</button>
                                     </td>
                                     <td class="fw-bold" th:text="${receiptNo != null ? receiptNo : '-'}"></td>
                                     <td class="fw-bold" th:text="${paymentBillNumbers[p.id] != null ? paymentBillNumbers[p.id] : '-'}"></td>
                                     <td th:text="${@thaiDate.format(p.paymentDate)}"></td>
                                     <td><span class="badge bg-light-primary" th:text="${p.room != null ? p.room.roomNumber : '-'}"></span></td>
-                                    <td th:text="${p.guest != null ? p.guest.fullName : '-'}"></td>
+                                    <td th:text="${paymentPayerNames[p.id] != null ? paymentPayerNames[p.id] : '-'}"></td>
                                     <td>
                                         <span class="badge receipt-type-badge"
                                               th:classappend="${paymentReceiptTypeNames[p.id] == 'ค่าแรกเข้ารายเดือน'} ? ' receipt-type-opening-monthly' : (${paymentReceiptTypeNames[p.id] == 'ค่าบริการของลูกค้ารายวัน'} ? ' receipt-type-daily-service' : (${paymentReceiptTypeNames[p.id] == 'ค่าเช่ารายเดือน'} ? ' receipt-type-monthly-rent' : ' receipt-type-unknown'))"
@@ -167,227 +225,28 @@
             </section>
         </div>
 
-        <div class="modal fade"
-             th:each="bill : ${payableBills}"
-             th:id="${'payMonthlyBillModal' + bill.id}"
-             tabindex="-1">
-            <div class="modal-dialog modal-xl modal-dialog-centered">
-                <div class="modal-content">
-                    <form class="monthly-bill-payment-form" method="post" th:action="@{/payments/monthly-bill/{id}(id=${bill.id})}">
-                        <div class="modal-header">
-                            <h5 class="modal-title" th:text="|รับชำระบิล ${bill.displayBillNumber}|"></h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                        </div>
-                        <div class="modal-body">
-                            <div class="row g-3">
-                                <div class="col-lg-4 col-md-6"><strong>ห้อง</strong><div th:text="${bill.room != null ? bill.room.roomNumber : '-'}"></div></div>
-                                <div class="col-lg-4 col-md-6"><strong>ผู้เช่า</strong><div th:text="${bill.guest != null ? bill.guest.fullName : '-'}"></div></div>
-                                <div class="col-lg-4 col-md-6"><strong>เลขที่ใบแจ้งค่าเช่า</strong><div class="fw-bold" th:text="${bill.displayBillNumber}"></div></div>
-                                <div class="col-lg-4 col-md-6"><strong>ยอดบิลสุทธิ</strong><div th:text="|${#numbers.formatDecimal(bill.totalAmount, 1, 'COMMA', 2, 'POINT')} บาท|"></div></div>
-                                <div class="col-lg-4 col-md-6"><strong>คงเหลือ</strong><div class="text-primary fw-bold" th:text="|${#numbers.formatDecimal(bill.remainingAmount, 1, 'COMMA', 2, 'POINT')} บาท|"></div></div>
-                                <div class="col-lg-4 col-md-6">
-                                    <strong>วันที่กำหนด</strong>
-                                    <div class="payment-due-date"
-                                         th:attr="data-due-date=${bill.dueDate}"
-                                         th:text="${@thaiDate.format(bill.dueDate)}"></div>
-                                </div>
-                                <div class="col-lg-4 col-md-6">
-                                    <strong>เลยกำหนด</strong>
-                                    <div class="payment-overdue-days fw-bold text-danger">0 วัน</div>
-                                </div>
-                                <div class="col-lg-4 col-md-6">
-                                    <label class="form-label">ยอดรับชำระ</label>
-                                    <input class="form-control payment-base-amount" name="amount" type="number" min="0.01" step="0.01" th:value="${bill.remainingAmount}" readonly required>
-                                </div>
-                                <div class="col-lg-4 col-md-6">
-                                    <label class="form-label">ค่าปรับ</label>
-                                    <input class="form-control payment-fine-amount"
-                                           name="fineAmount"
-                                           type="number"
-                                           min="0"
-                                           step="0.01"
-                                           th:attr="data-default-fine=${defaultFineAmount}"
-                                           th:data-fine-interval-days="${fineIntervalDays}"
-                                           th:value="${bill.dueDate != null and today.isAfter(bill.dueDate) ? defaultFineAmount : 0}">
-                                </div>
-                                <div class="col-lg-4 col-md-6">
-                                    <label class="form-label">ยอดสุทธิ</label>
-                                    <input class="form-control payment-net-amount fw-bold text-primary" type="text" value="0.00" readonly>
-                                </div>
-                                <div class="col-lg-4 col-md-6">
-                                    <label class="form-label">วันที่ชำระ</label>
-                                    <div class="date-range-field search-date-field">
-                                        <div class="date-box">
-                                            <i class="bi bi-calendar-check"></i>
-                                            <input class="hotel-calendar-value" type="hidden" name="paymentDate" th:value="${today}" data-default-today="true" required>
-                                            <input class="form-control hotel-calendar-input" type="text" readonly data-calendar-for="paymentDate">
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-lg-4 col-md-6">
-                                    <label class="form-label">วิธีชำระ</label>
-                                    <select class="form-select" name="paymentMethod" required>
-                                        <option value="เงินสด">เงินสด</option>
-                                        <option value="เงินโอน">เงินโอน</option>
-                                        <option value="บัตรเครดิต">บัตรเครดิต</option>
-                                    </select>
-                                </div>
-                                <div class="col-12">
-                                    <label class="form-label">หมายเหตุ</label>
-                                    <textarea class="form-control" name="remark" rows="2"></textarea>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">ยกเลิก</button>
-                            <button type="submit" class="btn btn-success"><i class="bi bi-save me-1"></i>บันทึกชำระ</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
+        <div id="paymentLazyModalHost"></div>
+        <div id="paymentAutoReceipt"
+             th:if="${autoReceiptPaymentId != null}"
+             th:attr="data-payment-modal-url=@{/payments/{id}/receipt-modal(id=${autoReceiptPaymentId})}"
+             hidden></div>
 
-        <div class="modal fade"
-             th:each="p : ${payments}"
-             th:with="receiptNo=${paymentReceiptNumbers[p.id]}"
-             th:id="${'paymentEditModal' + p.id}"
-             tabindex="-1">
-            <div class="modal-dialog modal-xl modal-dialog-centered">
-                <div class="modal-content">
-                    <form class="payment-edit-form monthly-bill-payment-form" method="post" th:action="@{/payments}">
-                        <div class="modal-header">
-                            <h5 class="modal-title" th:text="|แก้ไขรายการชำระ ${receiptNo != null ? receiptNo : '#'+p.id}|"></h5>
-                            <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                        </div>
-                        <div class="modal-body">
-                            <input type="hidden" name="id" th:value="${p.id}">
-                            <input type="hidden" name="roomId" th:value="${p.room != null ? p.room.id : null}">
-                            <input type="hidden" name="guestId" th:value="${p.guest != null ? p.guest.id : null}">
-                            <input type="hidden" name="status" th:value="${p.status}">
-                            <input type="hidden" name="fineAmount" th:value="${p.fineAmount}">
-                            <div class="row g-3">
-                                <div class="col-lg-4 col-md-6"><strong>ห้อง</strong><div th:text="${p.room != null ? p.room.roomNumber : '-'}"></div></div>
-                                <div class="col-lg-4 col-md-6"><strong>ผู้เช่า</strong><div th:text="${p.guest != null ? p.guest.fullName : '-'}"></div></div>
-                                <div class="col-lg-4 col-md-6"><strong>เลขที่ใบแจ้งค่าเช่า</strong><div class="fw-bold" th:text="${paymentBillNumbers[p.id] != null ? paymentBillNumbers[p.id] : '-'}"></div></div>
-                                <div class="col-lg-4 col-md-6"><strong>ยอดสุทธิที่รับชำระ</strong><div th:text="|${#numbers.formatDecimal(p.totalAmount, 1, 'COMMA', 2, 'POINT')} บาท|"></div></div>
-                                <div class="col-lg-4 col-md-6"><strong>เลขใบเสร็จ</strong><div class="fw-bold" th:text="${receiptNo != null ? receiptNo : '-'}"></div></div>
-                                <div class="col-lg-4 col-md-6"><strong>ประเภทใบเสร็จ</strong><div><span class="badge receipt-type-badge"
-                                    th:classappend="${paymentReceiptTypeNames[p.id] == 'ค่าแรกเข้ารายเดือน'} ? ' receipt-type-opening-monthly' : (${paymentReceiptTypeNames[p.id] == 'ค่าบริการของลูกค้ารายวัน'} ? ' receipt-type-daily-service' : (${paymentReceiptTypeNames[p.id] == 'ค่าเช่ารายเดือน'} ? ' receipt-type-monthly-rent' : ' receipt-type-unknown'))"
-                                    th:text="${paymentReceiptTypeNames[p.id] != null ? paymentReceiptTypeNames[p.id] : '-'}"></span></div></div>
-                                <div class="col-lg-4 col-md-6"><strong>สถานะ</strong><div><span class="badge bg-light-success" th:text="${p.status.label}"></span></div></div>
-                                <input type="hidden" name="amount" th:value="${p.amount}">
-                                <div class="col-lg-4 col-md-6">
-                                    <label class="form-label">ยอดตามใบแจ้ง</label>
-                                    <input class="form-control payment-base-amount" type="number" min="0.01" step="0.01" th:value="${p.amount}" readonly>
-                                </div>
-                                <div class="col-lg-4 col-md-6">
-                                    <label class="form-label">ค่าปรับ</label>
-                                    <input class="form-control payment-fine-amount" type="number" min="0" step="0.01" th:value="${p.fineAmount}" disabled readonly>
-                                </div>
-                                <div class="col-lg-4 col-md-6">
-                                    <label class="form-label">ยอดสุทธิ</label>
-                                    <input class="form-control payment-net-amount fw-bold text-primary" type="text" value="0.00" readonly>
-                                </div>
-                                <div class="col-lg-4 col-md-6">
-                                    <label class="form-label">วันที่ชำระ</label>
-                                    <div class="date-range-field search-date-field">
-                                        <div class="date-box">
-                                            <i class="bi bi-calendar-check"></i>
-                                            <input class="hotel-calendar-value" type="hidden" name="paymentDate" th:value="${p.paymentDate}" required>
-                                            <input class="form-control hotel-calendar-input" type="text" readonly data-calendar-for="paymentDate">
-                                        </div>
-                                    </div>
-                                </div>
-                                <div class="col-lg-4 col-md-6">
-                                    <label class="form-label">วิธีชำระ</label>
-                                    <select class="form-select" name="paymentMethod" required>
-                                        <option value="เงินสด" th:selected="${p.paymentMethod == 'เงินสด'}">เงินสด</option>
-                                        <option value="เงินโอน" th:selected="${p.paymentMethod == 'เงินโอน'}">เงินโอน</option>
-                                        <option value="บัตรเครดิต" th:selected="${p.paymentMethod == 'บัตรเครดิต'}">บัตรเครดิต</option>
-                                    </select>
-                                </div>
-                                <div class="col-12">
-                                    <label class="form-label">หมายเหตุ</label>
-                                    <textarea class="form-control" name="remark" rows="2" th:text="${p.remark}"></textarea>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">ยกเลิก</button>
-                            <button class="btn btn-success" type="submit"><i class="bi bi-save me-1"></i>บันทึกชำระ</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-
-        <div class="modal fade monthly-bill-preview-modal payment-receipt-modal"
-             th:each="p : ${payments}"
-             th:with="receiptNo=${paymentReceiptNumbers[p.id]}"
-             th:if="${paymentReceiptNumbers[p.id] != null}"
-             th:id="${'paymentReceiptModal' + p.id}"
-             th:attr="data-auto-receipt=${autoReceiptPaymentId != null and autoReceiptPaymentId == p.id}"
-             tabindex="-1">
-            <div class="modal-dialog modal-dialog-centered modal-lg">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" th:text="|ใบเสร็จรับเงิน #${receiptNo}|">ใบเสร็จรับเงิน</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
-                    </div>
-                    <div class="modal-body monthly-bill-preview-wrap">
-                        <div th:if="${paymentBillItems[p.id] != null}"
-                             th:replace="~{finance/monthly-rent/bill-slip :: billSlip(${paymentBillItems[p.id]}, 'ใบเสร็จรับเงิน', ${receiptNo}, ${p.paymentDate}, ${p.fineAmount}, ${p.totalAmount})}"></div>
-                        <div class="monthly-bill-slip payment-receipt-slip" th:if="${paymentBillItems[p.id] == null}">
-                            <div class="bill-slip-header">
-                                <div><h4 th:text="${systemName}">BlueCatHotelDemo</h4><div>ใบเสร็จรับเงิน</div></div>
-                                <div class="bill-slip-number">
-                                    <strong th:text="|ห้อง ${p.room != null ? p.room.roomNumber : '-'}|"></strong>
-                                    <span th:text="|เลขใบเสร็จ #${receiptNo != null ? receiptNo : '-'}|"></span>
-                                </div>
-                            </div>
-                            <div class="bill-slip-meta">
-                                <div><span>รับจาก</span><strong th:text="${p.guest != null ? p.guest.fullName : '-'}"></strong></div>
-                                <div><span>วันที่ชำระ</span><strong th:text="${@thaiDate.format(p.paymentDate)}"></strong></div>
-                                <div><span>เบอร์โทร</span><strong th:text="${p.guest != null and p.guest.phone != null ? p.guest.phone : '-'}"></strong></div>
-                                <div class="bill-slip-due-date"><span>วิธีชำระ</span><strong th:text="${p.paymentMethod != null ? p.paymentMethod : '-'}"></strong></div>
-                            </div>
-                            <table class="bill-slip-table">
-                                <thead>
-                                <tr>
-                                    <th>รายการ</th>
-                                    <th class="text-end">จำนวนหน่วย</th>
-                                    <th class="text-end">ราคาต่อหน่วย</th>
-                                    <th class="text-end">จำนวนเงิน</th>
-                                </tr>
-                                </thead>
-                                <tbody>
-                                <tr th:each="item : ${paymentReceiptItems[p.id]}">
-                                    <td th:text="${item.label}">รายการ</td>
-                                    <td class="text-end" th:text="${#numbers.formatDecimal(item.units, 1, 'COMMA', 0, 'POINT')}">1</td>
-                                    <td class="text-end" th:text="${#numbers.formatDecimal(item.unitPrice, 1, 'COMMA', 2, 'POINT')}">0.00</td>
-                                    <td class="text-end" th:text="${#numbers.formatDecimal(item.amount, 1, 'COMMA', 2, 'POINT')}">0.00</td>
-                                </tr>
-                                </tbody>
-                                <tfoot>
-                                <tr class="bill-slip-total">
-                                    <th colspan="3">รวมรับชำระ</th>
-                                    <th class="text-end" th:text="|${#numbers.formatDecimal(p.amount, 1, 'COMMA', 2, 'POINT')} บาท|">0.00 บาท</th>
-                                </tr>
-                                </tfoot>
-                            </table>
-                        </div>
-                    </div>
-                    <div class="modal-footer">
-                        <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">ปิด</button>
-                        <button type="button" class="btn btn-primary payment-receipt-print-btn"><i class="bi bi-printer me-1"></i>พิมพ์ใบเสร็จนี้</button>
-                    </div>
-                </div>
-            </div>
-        </div>
     </div>
 </div>
 <div th:replace="~{fragments/nav :: scripts}"></div>
 <style>
+#payableBillPickerModal .modal-dialog {
+    max-height: calc(100vh - 2rem);
+}
+
+#payableBillPickerModal .modal-content {
+    min-height: calc(100vh - 2rem);
+}
+
+#payableBillPickerModal .modal-body {
+    max-height: calc(100vh - 8rem);
+}
+
 .payment-receipt-modal .monthly-bill-preview-wrap {
     overflow-x: hidden;
 }
@@ -399,6 +258,31 @@
 
 .payments-filter {
     overflow: hidden;
+}
+
+.payment-search-form {
+    overflow: visible;
+}
+
+.payment-search-form .date-box {
+    position: relative;
+}
+
+.payment-search-form .date-box i {
+    align-items: center;
+    color: var(--hotel-primary);
+    display: flex;
+    height: 100%;
+    left: .85rem;
+    pointer-events: none;
+    position: absolute;
+    top: 0;
+    z-index: 1;
+}
+
+.payment-search-form .hotel-calendar-popup {
+    left: 0;
+    top: 100%;
 }
 
 .payments-filter .billing-filter-controls {
@@ -488,10 +372,18 @@ const updatePaymentOverdueDays = (form) => {
 const createPaymentCalendar = (hiddenInput, displayInput) => {
     if (displayInput.dataset.calendarReady === 'true') return;
     displayInput.dataset.calendarReady = 'true';
+    const canClearDate = hiddenInput.dataset.defaultToday !== 'true';
     if (!hiddenInput.value && hiddenInput.dataset.defaultToday === 'true') hiddenInput.value = paymentToIsoDate(new Date());
-    let selectedDate = paymentParseIsoDate(hiddenInput.value) || new Date();
-    let viewDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
-    displayInput.value = paymentFormatDisplayDate(selectedDate);
+    let selectedDate = paymentParseIsoDate(hiddenInput.value);
+    let viewDate;
+    if (!selectedDate) {
+        selectedDate = new Date();
+        viewDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+        displayInput.value = '';
+    } else {
+        viewDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+        displayInput.value = paymentFormatDisplayDate(selectedDate);
+    }
 
     const popup = document.createElement('div');
     popup.className = 'hotel-calendar-popup d-none';
@@ -518,7 +410,10 @@ const createPaymentCalendar = (hiddenInput, displayInput) => {
             </div>
             <div class="hotel-calendar-weekdays">${paymentThaiWeekdays.map(day => `<span>${day}</span>`).join('')}</div>
             <div class="hotel-calendar-grid"></div>
-            <div class="hotel-calendar-footer"><button class="hotel-calendar-today" type="button">วันนี้</button></div>
+            <div class="hotel-calendar-footer">
+                ${canClearDate ? '<button class="hotel-calendar-clear" type="button">ล้างวันที่</button>' : ''}
+                <button class="hotel-calendar-today" type="button">วันนี้</button>
+            </div>
         `;
         const grid = popup.querySelector('.hotel-calendar-grid');
         for (let index = 0; index < 42; index++) {
@@ -529,13 +424,14 @@ const createPaymentCalendar = (hiddenInput, displayInput) => {
             button.className = 'hotel-calendar-day';
             if (date.getMonth() !== viewDate.getMonth()) button.classList.add('is-muted');
             if (date.getDay() === 0) button.classList.add('is-weekend');
-            if (paymentSameDate(date, selectedDate)) button.classList.add('is-selected');
+            if (hiddenInput.value && paymentSameDate(date, selectedDate)) button.classList.add('is-selected');
             button.textContent = date.getDate();
             button.addEventListener('click', () => selectDate(date));
             grid.appendChild(button);
         }
         popup.querySelectorAll('[data-nav]').forEach(button => {
-            button.addEventListener('click', () => {
+            button.addEventListener('click', event => {
+                event.stopPropagation();
                 viewDate.setMonth(viewDate.getMonth() + Number(button.dataset.nav));
                 render();
             });
@@ -544,6 +440,16 @@ const createPaymentCalendar = (hiddenInput, displayInput) => {
             const now = new Date();
             viewDate = new Date(now.getFullYear(), now.getMonth(), 1);
             selectDate(now);
+        });
+        popup.querySelector('.hotel-calendar-clear')?.addEventListener('click', () => {
+            hiddenInput.value = '';
+            displayInput.value = '';
+            selectedDate = new Date();
+            viewDate = new Date(selectedDate.getFullYear(), selectedDate.getMonth(), 1);
+            hiddenInput.dispatchEvent(new Event('change', { bubbles: true }));
+            updatePaymentOverdueDays(hiddenInput.closest('form'));
+            popup.classList.add('d-none');
+            render();
         });
     };
 
@@ -556,21 +462,36 @@ const createPaymentCalendar = (hiddenInput, displayInput) => {
     render();
 };
 
-document.querySelectorAll('.monthly-bill-payment-form .hotel-calendar-input, .payment-edit-form .hotel-calendar-input').forEach(displayInput => {
-    const hiddenInput = displayInput.closest('form')?.querySelector(`.hotel-calendar-value[name="${displayInput.dataset.calendarFor}"]`);
-    if (hiddenInput) {
-        createPaymentCalendar(hiddenInput, displayInput);
-        hiddenInput.addEventListener('change', () => updatePaymentOverdueDays(hiddenInput.closest('form')));
-        updatePaymentOverdueDays(hiddenInput.closest('form'));
-    }
-});
-
-document.querySelectorAll('.monthly-bill-payment-form').forEach(form => {
-    form.querySelectorAll('.payment-base-amount, .payment-fine-amount').forEach(input => {
-        input.addEventListener('input', () => updatePaymentNetAmount(form));
+const initPaymentCalendars = (root = document) => {
+    root.querySelectorAll('.monthly-bill-payment-form .hotel-calendar-input, .payment-edit-form .hotel-calendar-input, .payment-search-form .hotel-calendar-input').forEach(displayInput => {
+        const hiddenInput = displayInput.closest('form')?.querySelector(`.hotel-calendar-value[name="${displayInput.dataset.calendarFor}"]`);
+        if (hiddenInput) {
+            createPaymentCalendar(hiddenInput, displayInput);
+            if (hiddenInput.dataset.paymentChangeReady !== 'true') {
+                hiddenInput.dataset.paymentChangeReady = 'true';
+                hiddenInput.addEventListener('change', () => updatePaymentOverdueDays(hiddenInput.closest('form')));
+            }
+            updatePaymentOverdueDays(hiddenInput.closest('form'));
+        }
     });
-    updatePaymentNetAmount(form);
-});
+};
+
+const initPaymentForms = (root = document) => {
+    root.querySelectorAll('.monthly-bill-payment-form').forEach(form => {
+        if (form.dataset.paymentFormReady === 'true') {
+            updatePaymentNetAmount(form);
+            return;
+        }
+        form.dataset.paymentFormReady = 'true';
+        form.querySelectorAll('.payment-base-amount, .payment-fine-amount').forEach(input => {
+            input.addEventListener('input', () => updatePaymentNetAmount(form));
+        });
+        updatePaymentNetAmount(form);
+    });
+};
+
+initPaymentCalendars();
+initPaymentForms();
 
 document.addEventListener('click', event => {
     if (!event.target.closest('.date-box')) {
@@ -578,44 +499,257 @@ document.addEventListener('click', event => {
     }
 });
 
-document.querySelectorAll('.payment-receipt-print-btn').forEach(button => {
+const payableBillPickerModal = document.getElementById('payableBillPickerModal');
+if (payableBillPickerModal?.dataset.autoOpen === 'true') {
+    bootstrap.Modal.getOrCreateInstance(payableBillPickerModal).show();
+}
+
+const payableBillFilterForm = document.getElementById('payableBillFilterForm');
+if (payableBillFilterForm) {
+    let filterTimer = null;
+    const submitFilter = () => {
+        window.clearTimeout(filterTimer);
+        filterTimer = window.setTimeout(() => payableBillFilterForm.requestSubmit(), 350);
+    };
+    payableBillFilterForm.querySelectorAll('select').forEach(input => {
+        input.addEventListener('change', submitFilter);
+    });
+    payableBillFilterForm.querySelectorAll('input').forEach(input => {
+        input.addEventListener('input', submitFilter);
+    });
+}
+
+const paymentSearchForm = document.querySelector('.payment-search-form');
+if (paymentSearchForm) {
+    let paymentSearchTimer = null;
+    const submitPaymentSearch = () => {
+        window.clearTimeout(paymentSearchTimer);
+        paymentSearchTimer = window.setTimeout(() => paymentSearchForm.requestSubmit(), 350);
+    };
+    paymentSearchForm.querySelectorAll('select, .hotel-calendar-value').forEach(input => {
+        input.addEventListener('change', submitPaymentSearch);
+    });
+    paymentSearchForm.querySelectorAll('input:not(.hotel-calendar-value):not(.hotel-calendar-input)').forEach(input => {
+        input.addEventListener('input', submitPaymentSearch);
+    });
+}
+
+document.querySelectorAll('[data-payable-bill-pay="true"]').forEach(button => {
     button.addEventListener('click', () => {
-        const slip = button.closest('.modal')?.querySelector('.monthly-bill-slip');
-        if (!slip) return;
-        document.querySelector('.monthly-bill-print-root')?.remove();
-        const root = document.createElement('div');
-        root.className = 'monthly-bill-print-root';
-        const wrap = document.createElement('div');
-        wrap.className = 'monthly-bill-preview-wrap';
-        wrap.appendChild(slip.cloneNode(true));
-        root.appendChild(wrap);
-        document.body.appendChild(root);
-        document.body.classList.add('printing-monthly-bills');
-        window.print();
-        setTimeout(() => {
-            root.remove();
-            document.body.classList.remove('printing-monthly-bills');
-        }, 250);
+        if (!payableBillPickerModal) return;
+        bootstrap.Modal.getInstance(payableBillPickerModal)?.hide();
     });
 });
 
-document.querySelectorAll('.payment-receipt-modal').forEach(modal => {
-    modal.addEventListener('hidden.bs.modal', () => {
-        document.querySelector('.monthly-bill-print-root')?.remove();
+document.addEventListener('click', event => {
+    const button = event.target.closest('.payment-receipt-print-btn');
+    if (!button) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const slip = button.closest('.modal')?.querySelector('.monthly-bill-slip');
+    if (!slip) return;
+    document.querySelector('.monthly-bill-print-root')?.remove();
+    const root = document.createElement('div');
+    root.className = 'monthly-bill-print-root';
+    const wrap = document.createElement('div');
+    wrap.className = 'monthly-bill-preview-wrap';
+    wrap.appendChild(slip.cloneNode(true));
+    root.appendChild(wrap);
+    document.body.appendChild(root);
+    document.body.classList.add('printing-monthly-bills');
+    const cleanupPrint = () => {
+        root.remove();
         document.body.classList.remove('printing-monthly-bills');
-        if (!document.querySelector('.modal.show')) {
-            document.body.classList.remove('modal-open');
-            document.body.style.removeProperty('overflow');
-            document.body.style.removeProperty('padding-right');
-            document.querySelectorAll('.modal-backdrop').forEach(item => item.remove());
-        }
-    });
+        window.removeEventListener('afterprint', cleanupPrint);
+    };
+    window.addEventListener('afterprint', cleanupPrint, { once: true });
+    window.setTimeout(() => window.print(), 50);
+    window.setTimeout(cleanupPrint, 3000);
 });
 
-const autoReceiptModal = document.querySelector('.payment-receipt-modal[data-auto-receipt="true"]');
-if (autoReceiptModal) {
-    bootstrap.Modal.getOrCreateInstance(autoReceiptModal).show();
+const initPaymentReceiptModals = (root = document) => {
+    root.querySelectorAll('.payment-receipt-modal').forEach(modal => {
+        if (modal.dataset.receiptCleanupReady === 'true') return;
+        modal.dataset.receiptCleanupReady = 'true';
+        modal.addEventListener('hidden.bs.modal', () => {
+            modal.remove();
+            document.querySelector('.monthly-bill-print-root')?.remove();
+            document.body.classList.remove('printing-monthly-bills');
+            if (!document.querySelector('.modal.show')) {
+                document.body.classList.remove('modal-open');
+                document.body.style.removeProperty('overflow');
+                document.body.style.removeProperty('padding-right');
+                document.querySelectorAll('.modal-backdrop').forEach(item => item.remove());
+            }
+        });
+    });
+};
+
+const paymentLazyModalHost = document.getElementById('paymentLazyModalHost');
+const forceShowPaymentModalElement = (modal) => {
+    modal.style.display = 'block';
+    modal.style.zIndex = '2400';
+    modal.removeAttribute('aria-hidden');
+    modal.setAttribute('aria-modal', 'true');
+    modal.setAttribute('role', 'dialog');
+    modal.classList.add('show');
+    document.body.classList.add('modal-open');
+    let backdrop = document.querySelector('.payment-lazy-backdrop');
+    if (!backdrop) {
+        backdrop = document.createElement('div');
+        backdrop.className = 'modal-backdrop fade show payment-lazy-backdrop';
+        backdrop.style.zIndex = '2390';
+        document.body.appendChild(backdrop);
+    }
+    const closeModal = () => {
+        modal.classList.remove('show');
+        modal.style.display = 'none';
+        modal.style.removeProperty('z-index');
+        modal.setAttribute('aria-hidden', 'true');
+        modal.removeAttribute('aria-modal');
+        document.body.classList.remove('modal-open');
+        document.querySelectorAll('.payment-lazy-backdrop').forEach(item => item.remove());
+        modal.dispatchEvent(new Event('hidden.bs.modal'));
+    };
+    if (modal.dataset.paymentEscapeCloseReady !== 'true') {
+        modal.dataset.paymentEscapeCloseReady = 'true';
+        document.addEventListener('keydown', event => {
+            if (event.key === 'Escape' && modal.classList.contains('show') && !document.querySelector('.swal2-container.swal2-shown')) {
+                closeModal();
+            }
+        }, true);
+    }
+    if (backdrop.dataset.paymentFallbackCloseReady !== 'true') {
+        backdrop.dataset.paymentFallbackCloseReady = 'true';
+        backdrop.addEventListener('click', closeModal);
+    }
+    if (modal.dataset.paymentOutsideCloseReady !== 'true') {
+        modal.dataset.paymentOutsideCloseReady = 'true';
+        modal.addEventListener('mousedown', event => {
+            if (event.target === modal) closeModal();
+        });
+    }
+    modal.querySelectorAll('[data-bs-dismiss="modal"], .btn-close').forEach(button => {
+        if (button.dataset.paymentFallbackCloseReady === 'true') return;
+        button.dataset.paymentFallbackCloseReady = 'true';
+        button.addEventListener('click', closeModal);
+    });
+    return true;
+};
+
+const showPaymentModalElement = (modal) => {
+    if (!modal) return false;
+    modal.setAttribute('data-bs-backdrop', 'true');
+    modal.setAttribute('data-bs-keyboard', 'true');
+    try {
+        if (window.bootstrap && window.bootstrap.Modal) {
+            window.bootstrap.Modal.getOrCreateInstance(modal, { backdrop: true, keyboard: true }).show();
+            if (modal.dataset.paymentOutsideCloseReady !== 'true') {
+                modal.dataset.paymentOutsideCloseReady = 'true';
+                modal.addEventListener('mousedown', event => {
+                    if (event.target === modal) {
+                        window.bootstrap.Modal.getInstance(modal)?.hide();
+                    }
+                });
+            }
+            window.setTimeout(() => {
+                if (!modal.classList.contains('show')) forceShowPaymentModalElement(modal);
+            }, 80);
+            return true;
+        }
+    } catch (error) {
+        console.error('Bootstrap modal show failed:', error);
+    }
+    return forceShowPaymentModalElement(modal);
+};
+
+const requestPaymentModalHtml = (url) => {
+    if (typeof window.fetch === 'function') {
+        return fetch(url, {
+            credentials: 'same-origin',
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        }).then(response => {
+            if (!response.ok) throw new Error(`HTTP ${response.status}`);
+            return response.text();
+        });
+    }
+    return new Promise((resolve, reject) => {
+        const request = new XMLHttpRequest();
+        request.open('GET', url, true);
+        request.setRequestHeader('X-Requested-With', 'XMLHttpRequest');
+        request.onload = () => {
+            if (request.status >= 200 && request.status < 300) resolve(request.responseText);
+            else reject(new Error(`HTTP ${request.status}`));
+        };
+        request.onerror = () => reject(new Error('Network error'));
+        request.send();
+    });
+};
+
+const showPaymentFallbackModal = (url) => {
+    if (!url || !paymentLazyModalHost) return false;
+    paymentLazyModalHost.innerHTML = `
+        <div class="modal fade payment-receipt-modal" id="paymentReceiptFallbackModal" tabindex="-1">
+            <div class="modal-dialog modal-xl modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h5 class="modal-title">ใบเสร็จรับเงิน</h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body p-0" style="height: min(82vh, 56rem);">
+                        <iframe src="${url}" title="ใบเสร็จรับเงิน" style="border:0;height:100%;width:100%;"></iframe>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    const modal = paymentLazyModalHost.querySelector('.modal');
+    if (!modal) return false;
+    modal.addEventListener('hidden.bs.modal', () => modal.remove(), { once: true });
+    return showPaymentModalElement(modal);
+};
+
+const loadPaymentModal = async (url, fallbackUrl = '') => {
+    if (!url || !paymentLazyModalHost) return;
+    window.hotelLoading?.start();
+    try {
+        const html = await requestPaymentModalHtml(url);
+        paymentLazyModalHost.innerHTML = html;
+        initPaymentCalendars(paymentLazyModalHost);
+        initPaymentForms(paymentLazyModalHost);
+        initPaymentReceiptModals(paymentLazyModalHost);
+        const modal = paymentLazyModalHost.querySelector('.modal');
+        if (!modal) {
+            if (html.includes('name="username"') || html.includes('/login')) {
+                window.location.href = '/login';
+                return;
+            }
+            throw new Error('Modal markup not found');
+        }
+        showPaymentModalElement(modal);
+    } catch (error) {
+        console.error('Payment modal load failed:', error);
+        if (!showPaymentFallbackModal(fallbackUrl)) {
+            window.showAlert?.('warning', 'โหลดข้อมูลไม่สำเร็จ');
+        }
+    } finally {
+        window.hotelLoading?.finish();
+    }
+};
+
+document.addEventListener('click', event => {
+    const button = event.target.closest('[data-payment-modal-url]');
+    if (!button) return;
+    event.preventDefault();
+    loadPaymentModal(button.dataset.paymentModalUrl, button.dataset.paymentFallbackUrl || '');
+});
+
+initPaymentReceiptModals();
+
+const paymentAutoReceipt = document.getElementById('paymentAutoReceipt');
+if (paymentAutoReceipt?.dataset.paymentModalUrl) {
+    loadPaymentModal(paymentAutoReceipt.dataset.paymentModalUrl);
 }
 </script>
 </body>
 </html>
+

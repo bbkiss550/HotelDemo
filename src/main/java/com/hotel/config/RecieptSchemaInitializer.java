@@ -28,11 +28,16 @@ public class RecieptSchemaInitializer implements ApplicationRunner {
                     rec_no VARCHAR(30) UNIQUE,
                     "ID_payment" BIGINT,
                     "ID_rec_type" BIGINT NOT NULL REFERENCES t_reciept_type("ID_rec_type"),
-                    rec_amount NUMERIC(12,2) NOT NULL DEFAULT 0
+                    rec_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
                 )
                 """);
         jdbc.execute("ALTER TABLE t_reciept ADD COLUMN IF NOT EXISTS rec_no VARCHAR(30)");
+        jdbc.execute("ALTER TABLE t_reciept ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP");
         jdbc.execute("ALTER TABLE t_reciept ADD COLUMN IF NOT EXISTS \"ID_payment\" BIGINT");
+        jdbc.execute("ALTER TABLE t_payment ADD COLUMN IF NOT EXISTS created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP");
+        jdbc.execute("ALTER TABLE t_payment ALTER COLUMN \"ID_room\" DROP NOT NULL");
+        jdbc.execute("ALTER TABLE t_payment ALTER COLUMN \"ID_guest\" DROP NOT NULL");
         jdbc.execute("ALTER TABLE t_payment ADD COLUMN IF NOT EXISTS \"ID_reciept\" BIGINT");
         jdbc.execute("ALTER TABLE t_payment ADD COLUMN IF NOT EXISTS ID_monthly_rent_bill BIGINT");
         jdbc.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_t_reciept_rec_no ON t_reciept(rec_no)");
@@ -44,7 +49,8 @@ public class RecieptSchemaInitializer implements ApplicationRunner {
                 VALUES
                     (1, 'ค่าแรกเข้า รายเดือน'),
                     (2, 'ค่าบริการของลูกค้ารายวัน'),
-                    (3, 'ค่าเช่ารายเดือน')
+                    (3, 'ค่าเช่ารายเดือน'),
+                    (4, 'มัดจำจองห้อง')
                 ON CONFLICT ("ID_rec_type") DO UPDATE SET rec_type_name = EXCLUDED.rec_type_name
                 """);
         boolean hasPaymentReceiptNo = jdbc.queryForObject("""

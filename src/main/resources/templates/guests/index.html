@@ -162,7 +162,7 @@
                             <div class="modal-header"><h5 class="modal-title" th:text="${booking != null ? 'บันทึกเข้าพักจากการจอง ' + room.roomNumber : 'บันทึกเข้าพัก ' + room.roomNumber}">บันทึกเข้าพัก</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                             <div class="modal-body row g-3">
                                 <div class="col-12" th:if="${booking != null}">
-                                    <div class="alert alert-light-primary mb-0">
+                                    <div class="alert booking-stay-info-panel mb-0">
                                         <strong th:text="|เลขที่การจอง ${booking.bookingNumber != null ? booking.bookingNumber : '-'}|"></strong>
                                         <div>ระบบจะหักมัดจำค่าจอง <span th:text="${#numbers.formatDecimal(booking.depositAmount != null ? booking.depositAmount : 0, 1, 'COMMA', 2, 'POINT')}"></span> บาท จากยอดชำระแรกเข้า</div>
                                     </div>
@@ -227,7 +227,7 @@
                                 <div class="col-md-3 daily-fields"><label class="form-label">ราคารวม</label><input class="form-control gross-payment-field daily-control money-field" type="text" inputmode="decimal" readonly></div>
                                 <div class="col-md-3 daily-fields"><label class="form-label">มัดจำจอง</label><input class="form-control booking-deposit-display daily-control money-field" type="text" inputmode="decimal" th:value="${booking != null and booking.depositAmount != null ? booking.depositAmount : 0}"></div>
                                 <div class="col-md-3 daily-fields"><label class="form-label">ยอดต้องชำระสุทธิ</label><input class="form-control initial-payment-field daily-control money-field" type="text" inputmode="decimal" name="initialPayment" readonly></div>
-                                <div class="col-md-3 monthly-fields d-none"><label class="form-label">ค่าประกัน</label><input class="form-control deposit-field monthly-control" type="number" step="0.01" name="deposit" th:value="${defaultDepositAmount}" disabled></div>
+                                <div class="col-md-3 monthly-fields d-none"><label class="form-label">ค่าประกัน</label><input class="form-control deposit-field monthly-control" type="number" step="0.01" name="deposit" th:value="${monthlyDepositAmount}" disabled></div>
                                 <div class="col-md-3 monthly-fields d-none"><label class="form-label">ราคาต่อเดือน</label><input class="form-control price-field monthly-control" type="number" step="0.01" name="price" th:value="${room.roomType != null ? room.roomType.monthlyPrice : room.monthlyPrice}" disabled></div>
                                 <div class="col-md-3 monthly-fields d-none"><label class="form-label">ราคารวม</label><input class="form-control gross-payment-field monthly-control money-field" type="text" inputmode="decimal" readonly disabled></div>
                                 <div class="col-md-3 monthly-fields d-none"><label class="form-label">มัดจำจอง</label><input class="form-control booking-deposit-display monthly-control money-field" type="text" inputmode="decimal" th:value="${booking != null and booking.depositAmount != null ? booking.depositAmount : 0}" disabled></div>
@@ -282,17 +282,73 @@
                         </div>
                         <div class="modal-body" th:if="${guest == null}">ไม่มีข้อมูลผู้พักที่ยัง active สำหรับห้องนี้</div>
                         <div class="modal-footer justify-content-between">
-                            <button th:if="${guest != null}" class="btn btn-danger open-checkout-refund" type="button"
-                                    data-bs-toggle="modal"
-                                    th:attr="data-bs-target=${'#checkoutRefundModal' + room.id},data-target=${'#checkoutRefundModal' + room.id}">
-                                <i class="bi bi-box-arrow-right me-1"></i>เช็กเอาต์
-                            </button>
+                            <div class="d-flex flex-wrap gap-2">
+                                <button th:if="${guest != null}" class="btn btn-primary" type="button"
+                                        data-bs-toggle="modal"
+                                        th:attr="data-bs-target=${'#transferRoomModal' + room.id}">
+                                    <i class="bi bi-arrow-left-right me-1"></i>ย้ายห้อง
+                                </button>
+                                <button th:if="${guest != null}" class="btn btn-danger open-checkout-refund" type="button"
+                                        data-bs-toggle="modal"
+                                        th:attr="data-bs-target=${'#checkoutRefundModal' + room.id},data-target=${'#checkoutRefundModal' + room.id}">
+                                    <i class="bi bi-box-arrow-right me-1"></i>เช็กเอาต์
+                                </button>
+                            </div>
                             <div class="ms-auto d-flex gap-2">
                                 <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">ปิด</button>
                             </div>
                         </div>
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <div class="modal fade" th:each="room : ${rooms}"
+             th:if="${room.status.name() != 'AVAILABLE' and room.status.name() != 'RESERVED'}"
+             th:with="guest=${activeGuests[room.id]}"
+             th:id="${'transferRoomModal' + room.id}" tabindex="-1">
+            <div class="modal-dialog">
+                <form th:if="${guest != null}" class="modal-content" method="post" th:action="@{/guests/{id}/transfer-room(id=${guest.id})}">
+                    <div class="modal-header">
+                        <h5 class="modal-title">ย้ายห้อง <span th:text="${room.roomNumber}"></span></h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                    </div>
+                    <div class="modal-body">
+                        <input type="hidden" name="floorId" th:value="${room.floor != null ? room.floor.id : null}">
+                        <div class="alert booking-stay-info-panel mb-3">
+                            <strong th:text="${guest.fullName}"></strong>
+                            <div>จากห้อง <span class="fw-bold" th:text="${room.roomNumber}"></span> | <span th:text="${guest.stayType.label}"></span></div>
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-12">
+                                <label class="form-label">ประเภทห้อง</label>
+                                <select class="form-select transfer-room-type-filter" th:disabled="${#lists.isEmpty(availableRooms)}">
+                                    <option value="">ทั้งหมด</option>
+                                    <option th:each="rt : ${roomTypes}" th:value="${rt.id}" th:text="${rt.name}"></option>
+                                </select>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">ห้องปลายทาง</label>
+                                <select class="form-select transfer-room-select" name="toRoomId" th:disabled="${#lists.isEmpty(availableRooms)}" required>
+                                    <option value="">เลือกห้องว่าง</option>
+                                    <option th:each="target : ${availableRooms}"
+                                            th:value="${target.id}"
+                                            th:attr="data-room-type-id=${target.roomType != null ? target.roomType.id : ''}"
+                                            th:text="${target.roomNumber + ' - ' + (target.roomType != null ? target.roomType.name : target.legacyRoomType)}"></option>
+                                </select>
+                                <small class="text-muted" th:if="${#lists.isEmpty(availableRooms)}">ไม่มีห้องว่างสำหรับย้ายตอนนี้</small>
+                            </div>
+                            <div class="col-12">
+                                <label class="form-label">หมายเหตุ</label>
+                                <input class="form-control" name="remark" placeholder="หมายเหตุการย้ายห้อง">
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">ปิด</button>
+                        <button class="btn btn-primary" type="submit" th:disabled="${#lists.isEmpty(availableRooms)}" data-swal-confirm="ยืนยันย้ายห้อง?">ยืนยันย้ายห้อง</button>
+                    </div>
+                </form>
             </div>
         </div>
 
@@ -354,7 +410,7 @@
                                         <input class="form-control refund-deduct-amount" name="deductAmount" type="number" min="0" step="0.01" value="0">
                                     </div>
                                     <div class="col-md-1 d-grid">
-                                        <button class="btn btn-light-danger remove-refund-item" type="button"><i class="bi bi-trash"></i></button>
+                                        <button class="btn btn-light-danger remove-refund-item" type="button"><i class="bi bi-trash me-1"></i>ลบ</button>
                                     </div>
                                 </div>
                             </div>
@@ -438,7 +494,8 @@ const initUnassignedBookingCalendar = () => {
             button.addEventListener('click', () => selectDate(date));
             grid.appendChild(button);
         }
-        popup.querySelectorAll('[data-nav]').forEach(button => button.addEventListener('click', () => {
+        popup.querySelectorAll('[data-nav]').forEach(button => button.addEventListener('click', event => {
+            event.stopPropagation();
             viewDate.setMonth(viewDate.getMonth() + Number(button.dataset.nav));
             render();
         }));
@@ -575,7 +632,8 @@ document.querySelectorAll('.guest-stay-form').forEach((form) => {
                 grid.appendChild(button);
             }
             popup.querySelectorAll('[data-nav]').forEach(button => {
-                button.addEventListener('click', () => {
+                button.addEventListener('click', event => {
+                    event.stopPropagation();
                     viewDate.setMonth(viewDate.getMonth() + Number(button.dataset.nav));
                     render();
                 });
@@ -838,6 +896,44 @@ document.querySelectorAll('.checkout-refund-panel').forEach((panel) => {
     });
     panel.querySelectorAll('.refund-item').forEach(bindItem);
     updateTotals();
+});
+
+document.querySelectorAll('.transfer-room-type-filter').forEach((filter) => {
+    const modal = filter.closest('.modal');
+    const roomSelect = modal?.querySelector('.transfer-room-select');
+    if (!roomSelect) return;
+    const options = Array.from(roomSelect.querySelectorAll('option')).filter(option => option.value);
+    const applyFilter = () => {
+        const roomTypeId = filter.value || '';
+        let firstVisible = '';
+        options.forEach(option => {
+            const visible = !roomTypeId || option.dataset.roomTypeId === roomTypeId;
+            option.hidden = !visible;
+            option.disabled = !visible;
+            if (visible && !firstVisible) firstVisible = option.value;
+        });
+        if (roomSelect.value && roomSelect.selectedOptions[0]?.disabled) {
+            roomSelect.value = '';
+        }
+        if (!roomSelect.value && firstVisible) {
+            roomSelect.value = firstVisible;
+        }
+    };
+    filter.addEventListener('change', applyFilter);
+    applyFilter();
+});
+
+document.querySelectorAll('[id^="transferRoomModal"]').forEach((transferModal) => {
+    transferModal.addEventListener('show.bs.modal', () => {
+        document.querySelectorAll('[id^="guestRoomModal"].show').forEach((roomModal) => {
+            roomModal.classList.add('guest-room-modal-dimmed');
+        });
+    });
+    transferModal.addEventListener('hidden.bs.modal', () => {
+        document.querySelectorAll('.guest-room-modal-dimmed').forEach((roomModal) => {
+            roomModal.classList.remove('guest-room-modal-dimmed');
+        });
+    });
 });
 
 document.querySelectorAll('.floor-tab[data-floor-id]').forEach((tab) => {

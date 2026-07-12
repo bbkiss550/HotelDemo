@@ -4,13 +4,28 @@ import com.hotel.model.Payment;
 import com.hotel.model.PaymentStatus;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface PaymentRepository extends JpaRepository<Payment, Long> {
     long countByStatus(PaymentStatus status);
     List<Payment> findAllByOrderByPaymentDateDescIdDesc();
+    List<Payment> findByPaymentDateBetweenOrderByPaymentDateDescIdDesc(LocalDate startDate, LocalDate endDate);
+    @Query("""
+            select p from Payment p
+            left join p.reciept r
+            where p.createdAt >= :startDateTime
+              and p.createdAt < :endDateTime
+            order by
+              case when r.recieptNo is null then 1 else 0 end,
+              r.recieptNo asc,
+              p.paymentDate asc,
+              p.id asc
+            """)
+    List<Payment> findByCreatedAtBetweenOrderByReceiptNoAsc(LocalDateTime startDateTime, LocalDateTime endDateTime);
     @Query("""
             select p from Payment p
             left join p.reciept r
@@ -26,6 +41,7 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
             select coalesce(sum(p.amount), 0) from Payment p
             where p.status = com.hotel.model.PaymentStatus.PAID
               and p.paymentDate between :startDate and :endDate
-            """)
+    """)
     BigDecimal sumPaidBetween(LocalDate startDate, LocalDate endDate);
+    Optional<Payment> findFirstByRemarkContainingOrderByIdAsc(String marker);
 }

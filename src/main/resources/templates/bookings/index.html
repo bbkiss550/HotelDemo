@@ -49,10 +49,28 @@
                     <a class="btn btn-light-secondary flex-fill" th:href="@{/bookings}">ล้าง</a>
                 </div>
             </form>
-            <div class="table-responsive"><table class="table table-hover mb-0">
-                <thead><tr><th>เลขที่การจอง</th><th>วันเข้า</th><th>วันออก</th><th>ประเภทห้อง</th><th>ห้อง</th><th>ลูกค้า</th><th>เบอร์โทร</th><th>ประเภท</th><th>มัดจำ</th><th>สถานะ</th><th class="text-end">จัดการ</th></tr></thead>
+            <div class="table-responsive"><table class="table table-hover mb-0 hotel-pagination-pending">
+                <thead><tr><th class="table-actions">จัดการ</th><th>เลขที่การจอง</th><th>วันเข้า</th><th>วันออก</th><th>ประเภทห้อง</th><th>ห้อง</th><th>ลูกค้า</th><th>เบอร์โทร</th><th>ประเภท</th><th>มัดจำ</th><th>สถานะ</th></tr></thead>
                 <tbody>
                 <tr th:each="b : ${bookings}">
+                    <td class="table-actions">
+                        <div class="d-flex gap-2">
+                            <button th:if="${b.status.name() == 'CONFIRMED'}" class="btn btn-sm btn-warning" type="button" data-bs-toggle="modal" th:data-bs-target="|#bookingEditModal${b.id}|" title="แก้ไข">
+                                <i class="bi bi-pencil-square me-1"></i>แก้ไข
+                            </button>
+                            <button th:unless="${b.status.name() == 'CONFIRMED'}" class="btn btn-sm btn-secondary" type="button" title="แก้ไขไม่ได้" disabled>
+                                <i class="bi bi-pencil-square me-1"></i>แก้ไข
+                            </button>
+                            <form th:if="${b.status.name() == 'CONFIRMED'}" method="post" th:action="@{/bookings/{id}/cancel(id=${b.id})}">
+                                <button class="btn btn-sm btn-danger" type="submit" title="ยกเลิก">
+                                    <i class="bi bi-x-lg me-1"></i>ยกเลิก
+                                </button>
+                            </form>
+                            <button th:unless="${b.status.name() == 'CONFIRMED'}" class="btn btn-sm btn-secondary" type="button" title="ยกเลิกไม่ได้" disabled>
+                                <i class="bi bi-x-lg me-1"></i>ยกเลิก
+                            </button>
+                        </div>
+                    </td>
                     <td><span class="badge bg-light-secondary" th:text="${b.bookingNumber != null ? b.bookingNumber : '-'}"></span></td>
                     <td th:text="${@thaiDate.format(b.checkInDate)}"></td><td th:text="${b.checkOutDate != null ? @thaiDate.format(b.checkOutDate) : '-'}"></td>
                     <td><span class="badge bg-light-primary" th:text="${b.roomType != null ? b.roomType.name : (b.room != null and b.room.roomType != null ? b.room.roomType.name : '-')}"></span></td>
@@ -62,18 +80,6 @@
                     <td><span class="badge booking-status"
                               th:classappend="${'booking-status-' + #strings.toLowerCase(b.status.name())}"
                               th:text="${b.status.label}"></span></td>
-                    <td class="text-end">
-                        <div class="d-flex justify-content-end gap-2">
-                            <button class="btn btn-sm btn-outline-primary px-3" type="button" data-bs-toggle="modal" th:data-bs-target="|#bookingEditModal${b.id}|">
-                                <i class="bi bi-pencil-square me-1"></i>แก้ไข
-                            </button>
-                            <form th:if="${b.status.name() == 'CONFIRMED'}" method="post" th:action="@{/bookings/{id}/cancel(id=${b.id})}">
-                            <button class="btn btn-sm btn-outline-danger px-3" type="submit">
-                                <i class="bi bi-x-lg me-1"></i>ยกเลิก
-                            </button>
-                            </form>
-                        </div>
-                    </td>
                 </tr>
                 </tbody>
             </table></div>
@@ -344,7 +350,8 @@ const createHotelCalendar = (hiddenInput, displayInput) => {
             grid.appendChild(button);
         }
         popup.querySelectorAll('[data-nav]').forEach(button => {
-            button.addEventListener('click', () => {
+            button.addEventListener('click', event => {
+                event.stopPropagation();
                 viewDate.setMonth(viewDate.getMonth() + Number(button.dataset.nav));
                 render();
             });
@@ -483,7 +490,8 @@ root.querySelectorAll('.booking-stay-form').forEach((form) => {
                 grid.appendChild(button);
             }
             popup.querySelectorAll('[data-nav]').forEach(button => {
-                button.addEventListener('click', () => {
+                button.addEventListener('click', event => {
+                    event.stopPropagation();
                     viewDate.setMonth(viewDate.getMonth() + Number(button.dataset.nav));
                     render();
                 });

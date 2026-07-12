@@ -34,7 +34,7 @@
                                 <tbody>
                                 <tr th:each="refund : ${refunds}">
                                     <td class="table-actions">
-                                        <button class="btn btn-sm btn-light-primary refund-view-btn"
+                                        <button class="btn btn-sm btn-document-view refund-view-btn"
                                                 type="button"
                                                 data-bs-toggle="modal"
                                                 data-bs-target="#refundViewModal"
@@ -48,7 +48,7 @@
                                                          data-extra=${#numbers.formatDecimal(refund.extraChargeAmount, 1, 'COMMA', 2, 'POINT')},
                                                          data-method=${refund.refundMethod != null ? refund.refundMethod : '-'},
                                                          data-remark=${refund.remark != null and !#strings.isEmpty(refund.remark) ? refund.remark : '-'}">
-                                            <i class="bi bi-eye"></i>
+                                            <i class="bi bi-receipt me-1"></i>ดูใบสำคัญ
                                         </button>
                                         <span class="refund-item-source d-none"
                                               th:each="item : ${refund.items}"

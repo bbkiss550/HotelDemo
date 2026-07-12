@@ -6,22 +6,164 @@
     <div th:replace="~{fragments/nav :: nav}"></div>
     <div id="main">
         <header class="mb-3"><a href="#" class="burger-btn d-block d-xl-none"><i class="bi bi-justify fs-3"></i></a></header>
-        <div class="page-heading d-flex justify-content-between align-items-center">
+        <div class="page-heading d-flex flex-wrap justify-content-between align-items-center gap-3">
             <div><h3 th:text="${currentMenuName}"></h3></div>
-            <a class="btn btn-light-primary" th:href="@{/reports/payments.csv}"><i class="bi bi-filetype-csv me-1"></i>Export CSV</a>
+            <a class="btn btn-light-primary" th:href="@{/reports/revenue.pdf(startDate=${startDate},endDate=${endDate})}">
+                <i class="bi bi-file-earmark-pdf me-1"></i>Export PDF
+            </a>
         </div>
-        <div class="page-content"><section class="row g-3">
-            <div class="col-md-3"><div class="card"><div class="card-body"><h6 class="text-muted">ห้องทั้งหมด</h6><h3 th:text="${totalRooms}">0</h3></div></div></div>
-            <div class="col-md-3"><div class="card"><div class="card-body"><h6 class="text-muted">ห้องว่าง</h6><h3 th:text="${availableRooms}">0</h3></div></div></div>
-            <div class="col-md-3"><div class="card"><div class="card-body"><h6 class="text-muted">มีผู้พัก</h6><h3 th:text="${occupiedRooms}">0</h3></div></div></div>
-            <div class="col-md-3"><div class="card"><div class="card-body"><h6 class="text-muted">ค้างชำระ</h6><h3 th:text="${unpaidPayments}">0</h3></div></div></div>
-            <div class="col-md-6"><div class="card"><div class="card-body"><h6 class="text-muted">รายได้วันนี้</h6><h2 th:text="${#numbers.formatDecimal(todayRevenue, 1, 'COMMA', 2, 'POINT')}">0.00</h2></div></div></div>
-            <div class="col-md-6"><div class="card"><div class="card-body"><h6 class="text-muted">รายได้เดือนนี้</h6><h2 th:text="${#numbers.formatDecimal(monthRevenue, 1, 'COMMA', 2, 'POINT')}">0.00</h2></div></div></div>
-            <div class="col-lg-6"><div class="card"><div class="card-body"><h5>ผู้พักปัจจุบัน</h5><div class="table-responsive"><table class="table mb-0"><thead><tr><th>ห้อง</th><th>ผู้พัก</th><th>ประเภท</th><th>ยอดแรกเข้า</th></tr></thead><tbody><tr th:each="g : ${activeGuests}"><td th:text="${g.room.roomNumber}"></td><td th:text="${g.fullName}"></td><td th:text="${g.stayType.label}"></td><td th:text="${#numbers.formatDecimal(g.initialPayment, 1, 'COMMA', 2, 'POINT')}"></td></tr></tbody></table></div></div></div></div>
-            <div class="col-lg-6"><div class="card"><div class="card-body"><h5>การจอง</h5><div class="table-responsive"><table class="table mb-0"><thead><tr><th>วันเข้า</th><th>ประเภทห้อง</th><th>ลูกค้า</th><th>สถานะ</th></tr></thead><tbody><tr th:each="b : ${bookings}"><td th:text="${@thaiDate.format(b.checkInDate)}"></td><td th:text="${b.roomType != null ? b.roomType.name : (b.room != null and b.room.roomType != null ? b.room.roomType.name : '-')}"></td><td th:text="${b.customerName}"></td><td th:text="${b.status.label}"></td></tr></tbody></table></div></div></div></div>
-        </section></div>
+        <div class="page-content report-print-area">
+            <section class="section">
+                <div class="card">
+                    <div class="card-body">
+                        <form class="row g-3 align-items-end report-filter-form" method="get" th:action="@{/reports}">
+                            <div class="col-md-6">
+                                <label class="form-label">วันที่เริ่มต้น</label>
+                                <input class="form-control" type="date" name="startDate" th:value="${startDate}">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label">วันที่สิ้นสุด</label>
+                                <input class="form-control" type="date" name="endDate" th:value="${endDate}">
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-xl-3 col-md-6"><div class="card"><div class="card-body"><h6 class="text-muted">รายได้รวม</h6><h3 th:text="${#numbers.formatDecimal(totalRevenue, 1, 'COMMA', 2, 'POINT')}">0.00</h3></div></div></div>
+                    <div class="col-xl-3 col-md-6"><div class="card"><div class="card-body"><h6 class="text-muted">ค่าปรับ</h6><h3 th:text="${#numbers.formatDecimal(fineRevenue, 1, 'COMMA', 2, 'POINT')}">0.00</h3></div></div></div>
+                    <div class="col-xl-3 col-md-6"><div class="card"><div class="card-body"><h6 class="text-muted">ยอดค้างทั้งหมด</h6><h3 th:text="${#numbers.formatDecimal(outstandingAmount, 1, 'COMMA', 2, 'POINT')}">0.00</h3></div></div></div>
+                    <div class="col-xl-3 col-md-6"><div class="card"><div class="card-body"><h6 class="text-muted">คืนเงินประกัน</h6><h3 th:text="${#numbers.formatDecimal(refundAmount, 1, 'COMMA', 2, 'POINT')}">0.00</h3></div></div></div>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-lg-6">
+                        <div class="card h-100">
+                            <div class="card-header"><h5 class="mb-0">รายได้ตามประเภทใบเสร็จ</h5></div>
+                            <div class="card-body">
+                                <div class="table-responsive"><table class="table mb-0">
+                                    <thead><tr><th>ประเภท</th><th class="text-end">จำนวนเงิน</th></tr></thead>
+                                    <tbody>
+                                    <tr th:each="entry : ${revenueByType}">
+                                        <td th:text="${entry.key}"></td>
+                                        <td class="text-end fw-bold" th:text="${#numbers.formatDecimal(entry.value, 1, 'COMMA', 2, 'POINT')}"></td>
+                                    </tr>
+                                    <tr th:if="${revenueByType.isEmpty()}"><td colspan="2" class="text-center text-muted">ไม่มีข้อมูล</td></tr>
+                                    </tbody>
+                                </table></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="card h-100">
+                            <div class="card-header"><h5 class="mb-0">รายได้ตามวิธีชำระ</h5></div>
+                            <div class="card-body">
+                                <div class="table-responsive"><table class="table mb-0">
+                                    <thead><tr><th>วิธีชำระ</th><th class="text-end">จำนวนเงิน</th></tr></thead>
+                                    <tbody>
+                                    <tr th:each="entry : ${revenueByMethod}">
+                                        <td th:text="${entry.key}"></td>
+                                        <td class="text-end fw-bold" th:text="${#numbers.formatDecimal(entry.value, 1, 'COMMA', 2, 'POINT')}"></td>
+                                    </tr>
+                                    <tr th:if="${revenueByMethod.isEmpty()}"><td colspan="2" class="text-center text-muted">ไม่มีข้อมูล</td></tr>
+                                    </tbody>
+                                </table></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-lg-5">
+                        <div class="card h-100">
+                            <div class="card-header"><h5 class="mb-0">สถานะห้องพัก</h5></div>
+                            <div class="card-body">
+                                <div class="table-responsive"><table class="table mb-0">
+                                    <thead><tr><th>สถานะ</th><th class="text-end">จำนวนห้อง</th></tr></thead>
+                                    <tbody>
+                                    <tr th:each="entry : ${roomStatusCounts}">
+                                        <td th:text="${entry.key}"></td>
+                                        <td class="text-end fw-bold" th:text="${entry.value}"></td>
+                                    </tr>
+                                    </tbody>
+                                </table></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-7">
+                        <div class="card h-100">
+                            <div class="card-header"><h5 class="mb-0">ใบแจ้งค่าเช่าในช่วงวันที่</h5></div>
+                            <div class="card-body">
+                                <div class="table-responsive"><table class="table mb-0">
+                                    <thead><tr><th>เลขบิล</th><th>ห้อง</th><th>ผู้พัก</th><th class="text-end">ยอดสุทธิ</th><th class="text-end">คงเหลือ</th><th>สถานะ</th></tr></thead>
+                                    <tbody>
+                                    <tr th:each="bill : ${monthlyBills}">
+                                        <td class="fw-bold" th:text="${bill.displayBillNumber}"></td>
+                                        <td th:text="${bill.room != null ? bill.room.roomNumber : '-'}"></td>
+                                        <td th:text="${bill.guest != null ? bill.guest.fullName : '-'}"></td>
+                                        <td class="text-end" th:text="${#numbers.formatDecimal(bill.totalAmount, 1, 'COMMA', 2, 'POINT')}"></td>
+                                        <td class="text-end fw-bold" th:text="${#numbers.formatDecimal(bill.remainingAmount, 1, 'COMMA', 2, 'POINT')}"></td>
+                                        <td th:text="${bill.billStatus != null ? bill.billStatus.name : bill.status.label}"></td>
+                                    </tr>
+                                    <tr th:if="${monthlyBills.isEmpty()}"><td colspan="6" class="text-center text-muted">ไม่มีข้อมูล</td></tr>
+                                    </tbody>
+                                </table></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-lg-6">
+                        <div class="card h-100">
+                            <div class="card-header"><h5 class="mb-0">การจองในช่วงวันที่</h5></div>
+                            <div class="card-body">
+                                <div class="table-responsive"><table class="table mb-0">
+                                    <thead><tr><th>เลขที่จอง</th><th>วันเข้า</th><th>ผู้จอง</th><th>ประเภท</th><th>สถานะ</th></tr></thead>
+                                    <tbody>
+                                    <tr th:each="b : ${bookings}">
+                                        <td class="fw-bold" th:text="${b.bookingNumber != null ? b.bookingNumber : '-'}"></td>
+                                        <td th:text="${@thaiDate.format(b.checkInDate)}"></td>
+                                        <td th:text="${b.customerName}"></td>
+                                        <td th:text="${b.stayType.label}"></td>
+                                        <td th:text="${b.status.label}"></td>
+                                    </tr>
+                                    <tr th:if="${bookings.isEmpty()}"><td colspan="5" class="text-center text-muted">ไม่มีข้อมูล</td></tr>
+                                    </tbody>
+                                </table></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-lg-6">
+                        <div class="card h-100">
+                            <div class="card-header"><h5 class="mb-0">คืนเงินประกันในช่วงวันที่</h5></div>
+                            <div class="card-body">
+                                <div class="table-responsive"><table class="table mb-0">
+                                    <thead><tr><th>เลขเอกสาร</th><th>วันที่</th><th>ผู้รับเงิน</th><th class="text-end">หักรวม</th><th class="text-end">คืนสุทธิ</th></tr></thead>
+                                    <tbody>
+                                    <tr th:each="refund : ${depositRefunds}">
+                                        <td class="fw-bold" th:text="${refund.refundNo}"></td>
+                                        <td th:text="${@thaiDate.format(refund.refundDate)}"></td>
+                                        <td th:text="${refund.guest != null ? refund.guest.fullName : '-'}"></td>
+                                        <td class="text-end" th:text="${#numbers.formatDecimal(refund.totalDeductAmount, 1, 'COMMA', 2, 'POINT')}"></td>
+                                        <td class="text-end fw-bold" th:text="${#numbers.formatDecimal(refund.refundAmount, 1, 'COMMA', 2, 'POINT')}"></td>
+                                    </tr>
+                                    <tr th:if="${depositRefunds.isEmpty()}"><td colspan="5" class="text-center text-muted">ไม่มีข้อมูล</td></tr>
+                                    </tbody>
+                                </table></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
     </div>
 </div>
+<script>
+document.querySelectorAll('.report-filter-form input[type="date"]').forEach(input => {
+    input.addEventListener('change', () => input.closest('form')?.requestSubmit());
+});
+</script>
 <div th:replace="~{fragments/nav :: scripts}"></div>
 </body>
 </html>

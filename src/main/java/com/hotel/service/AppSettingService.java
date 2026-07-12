@@ -11,6 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AppSettingService {
     public static final String DEFAULT_DEPOSIT = "default_deposit";
+    public static final String MONTHLY_DEPOSIT = "monthly_deposit";
     public static final String ELECTRIC_RATE = "electric_rate";
     public static final String WATER_RATE = "water_rate";
     public static final String FINE_AMOUNT = "fine_amount";
@@ -32,6 +33,10 @@ public class AppSettingService {
 
     public BigDecimal defaultDeposit() {
         return value(DEFAULT_DEPOSIT);
+    }
+
+    public BigDecimal monthlyDeposit() {
+        return value(MONTHLY_DEPOSIT);
     }
 
     public BigDecimal electricRate() {
@@ -58,9 +63,10 @@ public class AppSettingService {
     }
 
     @Transactional
-    public void saveDefaults(String systemName, BigDecimal defaultDeposit, BigDecimal electricRate, BigDecimal waterRate, BigDecimal fineAmount, Integer fineIntervalDays) {
+    public void saveDefaults(String systemName, BigDecimal defaultDeposit, BigDecimal monthlyDeposit, BigDecimal electricRate, BigDecimal waterRate, BigDecimal fineAmount, Integer fineIntervalDays) {
         saveText(SYSTEM_NAME, "ชื่อระบบ", systemName == null || systemName.isBlank() ? DEFAULT_SYSTEM_NAME : systemName.trim());
-        save(DEFAULT_DEPOSIT, "ค่าประกัน", defaultDeposit);
+        save(DEFAULT_DEPOSIT, "ค่าประกันรายวัน", defaultDeposit);
+        save(MONTHLY_DEPOSIT, "ค่าประกันรายเดือน", monthlyDeposit);
         save(ELECTRIC_RATE, "หน่วยไฟ", electricRate);
         save(WATER_RATE, "หน่วยน้ำ", waterRate);
         save(FINE_AMOUNT, "ค่าปรับ", fineAmount);
@@ -94,6 +100,7 @@ public class AppSettingService {
     private Map<String, BigDecimal> defaults() {
         Map<String, BigDecimal> values = new LinkedHashMap<>();
         values.put(DEFAULT_DEPOSIT, BigDecimal.ZERO);
+        values.put(MONTHLY_DEPOSIT, BigDecimal.ZERO);
         values.put(ELECTRIC_RATE, BigDecimal.ZERO);
         values.put(WATER_RATE, BigDecimal.ZERO);
         values.put(FINE_AMOUNT, BigDecimal.ZERO);

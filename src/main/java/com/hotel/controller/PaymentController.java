@@ -7,6 +7,7 @@ import com.hotel.model.MonthlyRentBillStatus;
 import com.hotel.model.RecieptType;
 import com.hotel.model.StayType;
 import com.hotel.repository.BillStatusRepository;
+import com.hotel.repository.BookingRepository;
 import com.hotel.repository.GuestRepository;
 import com.hotel.repository.MonthlyRentBillRepository;
 import com.hotel.repository.PaymentRepository;
@@ -35,6 +36,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @RequestMapping("/payments")
 public class PaymentController {
     private final PaymentRepository payments;
+    private final BookingRepository bookings;
     private final MonthlyRentBillRepository monthlyBills;
     private final BillStatusRepository billStatuses;
     private final RoomRepository rooms;
@@ -44,8 +46,9 @@ public class PaymentController {
     private final RecieptRecordService recieptRecordService;
     private final AuditService audit;
 
-    public PaymentController(PaymentRepository payments, MonthlyRentBillRepository monthlyBills, BillStatusRepository billStatuses, RoomRepository rooms, GuestRepository guests, RecieptTypeRepository recieptTypes, AppSettingService settings, RecieptRecordService recieptRecordService, AuditService audit) {
+    public PaymentController(PaymentRepository payments, BookingRepository bookings, MonthlyRentBillRepository monthlyBills, BillStatusRepository billStatuses, RoomRepository rooms, GuestRepository guests, RecieptTypeRepository recieptTypes, AppSettingService settings, RecieptRecordService recieptRecordService, AuditService audit) {
         this.payments = payments;
+        this.bookings = bookings;
         this.monthlyBills = monthlyBills;
         this.billStatuses = billStatuses;
         this.rooms = rooms;
@@ -63,25 +66,36 @@ public class PaymentController {
                  @RequestParam(defaultValue = "") String billNo,
                  @RequestParam(defaultValue = "") String roomNo,
                  @RequestParam(defaultValue = "") String guestName,
+                 @RequestParam(defaultValue = "") String receiptNo,
+                 @RequestParam(defaultValue = "") String referenceNo,
+                 @RequestParam(required = false) LocalDate paymentDate,
+                 @RequestParam(defaultValue = "") String paymentGuestName,
+                 @RequestParam(required = false) Long receiptTypeId,
                  Model model) {
         YearMonth selectedPeriod = normalizePeriod(month, year);
         Integer selectedMonth = month == null || month < 1 || month > 12 ? null : selectedPeriod.getMonthValue();
         Integer selectedYear = year == null || year < 2000 ? null : selectedPeriod.getYear();
-        var paymentList = payments.findAllOrderByReceiptNoDesc();
+        var paymentList = payments.findAllOrderByReceiptNoDesc()
+                .stream()
+                .filter(payment -> containsIfPresent(payment.getReciept() == null ? null : payment.getReciept().getRecieptNo(), receiptNo))
+                .filter(payment -> containsIfPresent(monthlyRentBillNumber(payment), referenceNo))
+                .filter(payment -> paymentDate == null || paymentDate.equals(payment.getPaymentDate()))
+                .filter(payment -> containsIfPresent(payment.getGuest() == null ? null : payment.getGuest().getFullName(), paymentGuestName))
+                .filter(payment -> receiptTypeId == null
+                        || (payment.getReciept() != null
+                        && payment.getReciept().getType() != null
+                        && receiptTypeId.equals(payment.getReciept().getType().getId())))
+                .toList();
         Map<Long, String> paymentBillNumbers = paymentList.stream()
                 .collect(Collectors.toMap(Payment::getId, this::monthlyRentBillNumber, (left, right) -> left));
-        Map<Long, MonthlyRentBill> paymentBills = paymentList.stream()
-                .map(payment -> new AbstractMap.SimpleEntry<>(payment.getId(), monthlyRentBill(payment)))
-                .filter(entry -> entry.getValue() != null)
-                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (left, right) -> left));
-        Map<Long, MonthlyRentBillSlipItem> paymentBillItems = paymentBills.entrySet().stream()
-                .collect(Collectors.toMap(Map.Entry::getKey, entry -> new MonthlyRentBillSlipItem(entry.getValue()), (left, right) -> left));
-        Map<Long, List<ReceiptLine>> paymentReceiptItems = paymentList.stream()
-                .collect(Collectors.toMap(Payment::getId, this::receiptItems, (left, right) -> left));
+        Map<Long, String> paymentPayerNames = paymentList.stream()
+                .collect(Collectors.toMap(Payment::getId, this::paymentPayerName, (left, right) -> left));
         Map<Long, String> paymentReceiptNumbers = paymentList.stream()
-                .collect(Collectors.toMap(Payment::getId, payment -> payment.getReciept() != null
-                        ? payment.getReciept().getRecieptNo()
-                        : null, (left, right) -> left));
+                .map(payment -> new AbstractMap.SimpleEntry<>(payment.getId(), payment.getReciept() == null
+                        ? null
+                        : payment.getReciept().getRecieptNo()))
+                .filter(entry -> entry.getValue() != null && !entry.getValue().isBlank())
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (left, right) -> left));
         List<MonthlyRentBill> payableBills = monthlyBills.findByStatusIdInOrderByDueDateAscIdAsc(List.of(
                         MonthlyRentBillStatus.PENDING.getId(),
                         MonthlyRentBillStatus.PARTIAL_PAID.getId()))
@@ -97,9 +111,7 @@ public class PaymentController {
         model.addAttribute("payableBills", payableBills);
         model.addAttribute("payments", paymentList);
         model.addAttribute("paymentBillNumbers", paymentBillNumbers);
-        model.addAttribute("paymentBills", paymentBills);
-        model.addAttribute("paymentBillItems", paymentBillItems);
-        model.addAttribute("paymentReceiptItems", paymentReceiptItems);
+        model.addAttribute("paymentPayerNames", paymentPayerNames);
         model.addAttribute("paymentReceiptNumbers", paymentReceiptNumbers);
         model.addAttribute("paymentReceiptTypeNames", paymentReceiptTypeNames(paymentList));
         model.addAttribute("rooms", rooms.findAllByOrderByRoomNumber());
@@ -115,10 +127,44 @@ public class PaymentController {
         model.addAttribute("billNo", billNo);
         model.addAttribute("roomNo", roomNo);
         model.addAttribute("guestName", guestName);
+        model.addAttribute("receiptNo", receiptNo);
+        model.addAttribute("referenceNo", referenceNo);
+        model.addAttribute("paymentDate", paymentDate);
+        model.addAttribute("paymentGuestName", paymentGuestName);
+        model.addAttribute("receiptTypeId", receiptTypeId);
+        model.addAttribute("billFilterApplied", month != null
+                || year != null
+                || !"ALL".equals(status)
+                || !billNo.isBlank()
+                || !roomNo.isBlank()
+                || !guestName.isBlank());
         model.addAttribute("today", LocalDate.now());
         model.addAttribute("defaultFineAmount", settings.fineAmount());
         model.addAttribute("fineIntervalDays", settings.fineIntervalDays());
         return "payments/index";
+    }
+
+    @GetMapping("/{id}/edit-modal")
+    String editModal(@PathVariable Long id, Model model) {
+        Payment payment = payments.findById(id).orElseThrow();
+        addPaymentModalAttributes(model, payment);
+        return "payments/modal-fragments :: editModal";
+    }
+
+    @GetMapping("/{id}/receipt-modal")
+    String receiptModal(@PathVariable Long id, Model model) {
+        Payment payment = payments.findById(id).orElseThrow();
+        addPaymentModalAttributes(model, payment);
+        return "payments/modal-fragments :: receiptModal";
+    }
+
+    @GetMapping("/monthly-bill/{billId}/payment-modal")
+    String monthlyBillPaymentModal(@PathVariable Long billId, Model model) {
+        model.addAttribute("bill", monthlyBills.findById(billId).orElseThrow());
+        model.addAttribute("today", LocalDate.now());
+        model.addAttribute("defaultFineAmount", settings.fineAmount());
+        model.addAttribute("fineIntervalDays", settings.fineIntervalDays());
+        return "payments/modal-fragments :: monthlyBillPaymentModal";
     }
 
     @PostMapping("/monthly-bill/{billId}")
@@ -212,18 +258,32 @@ public class PaymentController {
 
     @PostMapping
     @Transactional
-    String save(@ModelAttribute Payment payment,
+    String save(@ModelAttribute Payment paymentForm,
                 @RequestParam(required = false) Long guestId,
-                @RequestParam Long roomId,
+                @RequestParam(required = false) Long roomId,
                 @RequestParam(defaultValue = "2") Long recieptTypeId,
                 RedirectAttributes redirect) {
-        boolean isNew = payment.getId() == null;
-        payment.setRoom(rooms.findById(roomId).orElseThrow());
-        if (guestId != null) {
-            payment.setGuest(guests.findById(guestId).orElse(null));
-        }
+        boolean isNew = paymentForm.getId() == null;
+        Payment payment = isNew
+                ? paymentForm
+                : payments.findById(paymentForm.getId()).orElseThrow();
+
+        payment.setRoom(roomId == null ? null : rooms.findById(roomId).orElseThrow());
+        payment.setGuest(guestId == null ? null : guests.findById(guestId).orElse(null));
+        payment.setAmount(money(paymentForm.getAmount()));
+        payment.setFineAmount(money(paymentForm.getFineAmount()));
+        payment.setPaymentDate(paymentForm.getPaymentDate() == null ? LocalDate.now() : paymentForm.getPaymentDate());
+        payment.setPaymentMethod(paymentForm.getPaymentMethod() == null || paymentForm.getPaymentMethod().isBlank()
+                ? "เงินสด"
+                : paymentForm.getPaymentMethod());
+        payment.setRemark(paymentForm.getRemark());
+        payment.setStatus(paymentForm.getStatus() == null ? PaymentStatus.PAID : paymentForm.getStatus());
+
         if (payment.getPaymentDate() == null) {
             payment.setPaymentDate(LocalDate.now());
+        }
+        if (!isNew && payment.getReciept() != null) {
+            payment.getReciept().setAmount(payment.getTotalAmount());
         }
         payment = payments.save(payment);
         if (isNew && payment.getGuest() != null && payment.getStatus() == PaymentStatus.PAID) {
@@ -235,7 +295,7 @@ public class PaymentController {
             payments.save(payment);
             redirect.addFlashAttribute("autoReceiptPaymentId", payment.getId());
         }
-        audit.record("PAYMENT", "Room " + payment.getRoom().getRoomNumber() + " amount " + payment.getAmount());
+        audit.record("PAYMENT", "Room " + (payment.getRoom() == null ? "-" : payment.getRoom().getRoomNumber()) + " amount " + payment.getAmount());
         redirect.addFlashAttribute("message", (isNew ? "บันทึกการชำระเงิน" : "แก้ไขการชำระเงิน") + "เรียบร้อย");
         redirect.addFlashAttribute("flashType", isNew ? "success" : "edit");
         return "redirect:/payments";
@@ -247,6 +307,17 @@ public class PaymentController {
         model.addAttribute("guests", guests.findByActiveTrueOrderByCheckInDateDescIdDesc());
         model.addAttribute("statuses", PaymentStatus.values());
         model.addAttribute("recieptTypes", recieptTypes.findAll());
+    }
+
+    private void addPaymentModalAttributes(Model model, Payment payment) {
+        MonthlyRentBill bill = monthlyRentBill(payment);
+        model.addAttribute("p", payment);
+        model.addAttribute("receiptNo", payment.getReciept() != null ? payment.getReciept().getRecieptNo() : null);
+        model.addAttribute("billNumber", monthlyRentBillNumber(payment));
+        model.addAttribute("billItem", bill == null ? null : new MonthlyRentBillSlipItem(bill));
+        model.addAttribute("receiptItems", receiptItems(payment));
+        model.addAttribute("receiptTypeName", paymentReceiptTypeName(payment));
+        model.addAttribute("payerName", paymentPayerName(payment));
     }
 
     private boolean matchesBillSearch(MonthlyRentBill bill, String billNo, String roomNo, String guestName) {
@@ -387,6 +458,43 @@ public class PaymentController {
         return payment != null && payment.getReciept() != null && payment.getReciept().getType() != null
                 ? payment.getReciept().getType().getName()
                 : "-";
+    }
+
+    private String paymentPayerName(Payment payment) {
+        String bookingNumber = bookingNumberFromRemark(payment == null ? null : payment.getRemark());
+        if (bookingNumber != null) {
+            return bookings.findByBookingNumber(bookingNumber)
+                    .map(com.hotel.model.Booking::getCustomerName)
+                    .filter(name -> name != null && !name.isBlank())
+                    .orElseGet(() -> bookingPayerNameFromRemark(payment.getRemark()));
+        }
+        String payerNameFromRemark = bookingPayerNameFromRemark(payment == null ? null : payment.getRemark());
+        if (!"-".equals(payerNameFromRemark)) {
+            return payerNameFromRemark;
+        }
+        return payment != null && payment.getGuest() != null && payment.getGuest().getFullName() != null
+                ? payment.getGuest().getFullName()
+                : "-";
+    }
+
+    private String bookingNumberFromRemark(String remark) {
+        if (remark == null || remark.isBlank()) {
+            return null;
+        }
+        java.util.regex.Matcher matcher = java.util.regex.Pattern.compile("#(B\\d{10})").matcher(remark);
+        return matcher.find() ? matcher.group(1) : null;
+    }
+
+    private String bookingPayerNameFromRemark(String remark) {
+        if (remark == null || remark.isBlank()) {
+            return "-";
+        }
+        int marker = remark.lastIndexOf(':');
+        if (marker < 0 || marker + 1 >= remark.length()) {
+            return "-";
+        }
+        String value = remark.substring(marker + 1).trim();
+        return value.isBlank() ? "-" : value;
     }
 
     public record ReceiptLine(String label, BigDecimal units, BigDecimal unitPrice, BigDecimal amount) {

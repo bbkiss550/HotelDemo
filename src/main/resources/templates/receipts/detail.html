@@ -28,9 +28,8 @@
                         </div>
 
                         <div class="bill-slip-meta">
-                            <div><span>รับจาก</span><strong th:text="${payment.guest != null ? payment.guest.fullName : '-'}"></strong></div>
+                            <div><span>รับจาก</span><strong th:text="${payerName != null ? payerName : '-'}"></strong></div>
                             <div><span>วันที่ชำระ</span><strong th:text="${@thaiDate.format(payment.paymentDate)}"></strong></div>
-                            <div><span>เบอร์โทร</span><strong th:text="${payment.guest != null and payment.guest.phone != null ? payment.guest.phone : '-'}"></strong></div>
                             <div class="bill-slip-due-date"><span>วิธีชำระ</span><strong th:text="${payment.paymentMethod != null ? payment.paymentMethod : '-'}"></strong></div>
                         </div>
 

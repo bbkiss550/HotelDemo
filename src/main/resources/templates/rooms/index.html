@@ -195,6 +195,12 @@
                             <div class="col-md-6"><label class="form-label">ราคาต่อคืน</label><input class="form-control money-field room-type-nightly-price" th:value="${#numbers.formatDecimal(room.roomType != null ? room.roomType.nightlyPrice : room.nightlyPrice, 1, 'COMMA', 2, 'POINT')}" readonly></div>
                             <div class="col-md-6"><label class="form-label">ราคาต่อเดือน</label><input class="form-control money-field room-type-monthly-price" th:value="${#numbers.formatDecimal(room.roomType != null ? room.roomType.monthlyPrice : room.monthlyPrice, 1, 'COMMA', 2, 'POINT')}" readonly></div>
                             <div class="col-12"><label class="form-label">รายละเอียดประเภทห้อง</label><textarea class="form-control room-type-detail" rows="3" th:text="${room.roomType != null ? room.roomType.detail : ''}" readonly></textarea></div>
+                            <div class="col-12" th:if="${room.status.name() == 'AVAILABLE' or room.status.name() == 'MAINTENANCE'}">
+                                <div class="form-check form-switch room-maintenance-switch">
+                                    <input class="form-check-input" type="checkbox" role="switch" name="maintenanceMode" value="true" th:id="${'maintenanceMode' + room.id}" th:checked="${room.status.name() == 'MAINTENANCE'}">
+                                    <label class="form-check-label fw-bold" th:for="${'maintenanceMode' + room.id}">ปิดปรับปรุง</label>
+                                </div>
+                            </div>
                         </div>
                         <div class="modal-footer justify-content-between">
                             <button class="btn btn-danger" type="submit" th:formaction="@{/rooms/{id}/delete(id=${room.id})}" formmethod="post" data-swal-confirm="ยืนยันการลบห้องนี้?">

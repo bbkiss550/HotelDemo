@@ -2,13 +2,17 @@ package com.hotel.controller;
 
 import com.hotel.model.Booking;
 import com.hotel.model.BookingStatus;
+import com.hotel.model.Payment;
+import com.hotel.model.PaymentStatus;
 import com.hotel.model.RoomStatus;
 import com.hotel.model.StayType;
 import com.hotel.repository.BookingRepository;
+import com.hotel.repository.PaymentRepository;
 import com.hotel.repository.RoomTypeRepository;
 import com.hotel.repository.RoomRepository;
 import com.hotel.service.AppSettingService;
 import com.hotel.service.AuditService;
+import com.hotel.service.RecieptRecordService;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -27,14 +31,18 @@ public class BookingController {
     private final BookingRepository bookings;
     private final RoomRepository rooms;
     private final RoomTypeRepository roomTypes;
+    private final PaymentRepository payments;
     private final AppSettingService settings;
+    private final RecieptRecordService recieptRecordService;
     private final AuditService audit;
 
-    public BookingController(BookingRepository bookings, RoomRepository rooms, RoomTypeRepository roomTypes, AppSettingService settings, AuditService audit) {
+    public BookingController(BookingRepository bookings, RoomRepository rooms, RoomTypeRepository roomTypes, PaymentRepository payments, AppSettingService settings, RecieptRecordService recieptRecordService, AuditService audit) {
         this.bookings = bookings;
         this.rooms = rooms;
         this.roomTypes = roomTypes;
+        this.payments = payments;
         this.settings = settings;
+        this.recieptRecordService = recieptRecordService;
         this.audit = audit;
     }
 
@@ -155,6 +163,7 @@ public class BookingController {
             selectedRoom.setStatus(RoomStatus.RESERVED);
             rooms.save(selectedRoom);
         }
+        createOrUpdateBookingDepositReceipt(savedBooking);
         audit.record("BOOKING", "Room type " + roomType.getName() + " customer " + savedBooking.getCustomerName());
         if (isAjax(requestedWith)) {
             return ResponseEntity.ok(Map.of(
@@ -230,6 +239,29 @@ public class BookingController {
             nextSequence = Integer.parseInt(maxBookingNumber.substring(prefix.length())) + 1;
         }
         return "%s%06d".formatted(prefix, nextSequence);
+    }
+
+    private void createOrUpdateBookingDepositReceipt(Booking booking) {
+        BigDecimal depositAmount = booking.getDepositAmount() == null ? BigDecimal.ZERO : booking.getDepositAmount();
+        if (depositAmount.compareTo(BigDecimal.ZERO) <= 0 || booking.getBookingNumber() == null || booking.getBookingNumber().isBlank()) {
+            return;
+        }
+        var marker = "#" + booking.getBookingNumber();
+        var payment = payments.findFirstByRemarkContainingOrderByIdAsc(marker).orElseGet(Payment::new);
+        payment.setRoom(booking.getRoom());
+        payment.setGuest(null);
+        payment.setAmount(depositAmount);
+        payment.setFineAmount(BigDecimal.ZERO);
+        payment.setPaymentDate(booking.getBookingDate() == null ? LocalDate.now() : booking.getBookingDate());
+        payment.setPaymentMethod("เงินสด");
+        payment.setStatus(PaymentStatus.PAID);
+        payment.setRemark("รับเงินมัดจำจองห้อง " + marker + " ผู้จอง: " + (booking.getCustomerName() == null ? "-" : booking.getCustomerName()));
+        payment = payments.save(payment);
+        recieptRecordService.recordBookingDeposit(payment);
+        if (payment.getReciept() != null) {
+            payment.getReciept().setAmount(payment.getTotalAmount());
+        }
+        payments.save(payment);
     }
 
     private long countAvailableRooms(com.hotel.model.RoomType roomType, LocalDate checkInDate, LocalDate checkOutDate, Long excludeId) {

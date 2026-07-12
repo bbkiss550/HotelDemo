@@ -7,7 +7,9 @@ import com.hotel.model.DepositRefund;
 import com.hotel.model.DepositRefundItem;
 import com.hotel.model.Payment;
 import com.hotel.model.PaymentStatus;
+import com.hotel.model.Room;
 import com.hotel.model.RoomStatus;
+import com.hotel.model.RoomTransfer;
 import com.hotel.model.StayType;
 import com.hotel.repository.BookingRepository;
 import com.hotel.repository.AdvanceLedgerRepository;
@@ -16,6 +18,7 @@ import com.hotel.repository.FloorRepository;
 import com.hotel.repository.GuestRepository;
 import com.hotel.repository.PaymentRepository;
 import com.hotel.repository.RoomRepository;
+import com.hotel.repository.RoomTransferRepository;
 import com.hotel.repository.RoomTypeRepository;
 import com.hotel.service.AdvanceBalanceService;
 import com.hotel.service.AppSettingService;
@@ -48,9 +51,10 @@ public class GuestController {
     private final AppSettingService settings;
     private final RecieptRecordService recieptRecordService;
     private final DepositRefundRepository depositRefunds;
+    private final RoomTransferRepository roomTransfers;
     private final AuditService audit;
 
-    public GuestController(GuestRepository guests, BookingRepository bookings, RoomRepository rooms, RoomTypeRepository roomTypes, FloorRepository floors, PaymentRepository payments, AdvanceLedgerRepository advanceLedgers, AdvanceBalanceService advanceBalanceService, AppSettingService settings, RecieptRecordService recieptRecordService, DepositRefundRepository depositRefunds, AuditService audit) {
+    public GuestController(GuestRepository guests, BookingRepository bookings, RoomRepository rooms, RoomTypeRepository roomTypes, FloorRepository floors, PaymentRepository payments, AdvanceLedgerRepository advanceLedgers, AdvanceBalanceService advanceBalanceService, AppSettingService settings, RecieptRecordService recieptRecordService, DepositRefundRepository depositRefunds, RoomTransferRepository roomTransfers, AuditService audit) {
         this.guests = guests;
         this.bookings = bookings;
         this.rooms = rooms;
@@ -62,6 +66,7 @@ public class GuestController {
         this.settings = settings;
         this.recieptRecordService = recieptRecordService;
         this.depositRefunds = depositRefunds;
+        this.roomTransfers = roomTransfers;
         this.audit = audit;
     }
 
@@ -109,6 +114,7 @@ public class GuestController {
         model.addAttribute("roomTypes", roomTypes.findAllByOrderByNameAsc());
         model.addAttribute("stayTypes", StayType.values());
         model.addAttribute("defaultDepositAmount", settings.defaultDeposit());
+        model.addAttribute("monthlyDepositAmount", settings.monthlyDeposit());
         return "guests/index";
     }
 
@@ -199,6 +205,59 @@ public class GuestController {
         return floorId == null ? "redirect:/guests" : "redirect:/guests?floorId=" + floorId;
     }
 
+    @PostMapping("/{id}/transfer-room")
+    @Transactional
+    String transferRoom(@PathVariable Long id,
+                        @RequestParam Long toRoomId,
+                        @RequestParam(required = false) Long floorId,
+                        @RequestParam(required = false) String remark,
+                        RedirectAttributes redirect) {
+        var guest = guests.findById(id).orElseThrow();
+        var fromRoom = guest.getRoom();
+        var toRoom = rooms.findById(toRoomId).orElseThrow();
+        if (!Boolean.TRUE.equals(guest.getActive()) || fromRoom == null) {
+            redirect.addFlashAttribute("error", "ไม่พบข้อมูลผู้เข้าพักที่ยังใช้งานอยู่");
+            redirect.addFlashAttribute("flashType", "warning");
+            return floorId == null ? "redirect:/guests" : "redirect:/guests?floorId=" + floorId;
+        }
+        if (fromRoom.getId().equals(toRoom.getId())) {
+            redirect.addFlashAttribute("error", "ห้องปลายทางต้องไม่ใช่ห้องเดิม");
+            redirect.addFlashAttribute("flashType", "warning");
+            return floorId == null ? "redirect:/guests" : "redirect:/guests?floorId=" + floorId;
+        }
+        if (toRoom.getStatus() != RoomStatus.AVAILABLE) {
+            redirect.addFlashAttribute("error", "ย้ายได้เฉพาะไปยังห้องว่างเท่านั้น");
+            redirect.addFlashAttribute("flashType", "warning");
+            return floorId == null ? "redirect:/guests" : "redirect:/guests?floorId=" + floorId;
+        }
+
+        RoomTransfer transfer = new RoomTransfer();
+        transfer.setGuest(guest);
+        transfer.setFromRoom(fromRoom);
+        transfer.setToRoom(toRoom);
+        transfer.setTransferDate(LocalDate.now());
+        transfer.setStayType(guest.getStayType());
+        transfer.setOldPrice(roomPriceForStay(fromRoom, guest.getStayType()));
+        transfer.setNewPrice(roomPriceForStay(toRoom, guest.getStayType()));
+        transfer.setRemark(remark);
+
+        fromRoom.setStatus(RoomStatus.AVAILABLE);
+        toRoom.setStatus(guest.getStayType() == StayType.MONTHLY ? RoomStatus.MONTHLY_OCCUPIED : RoomStatus.DAILY_OCCUPIED);
+        guest.setRoom(toRoom);
+        guest.setPrice(roomPriceForStay(toRoom, guest.getStayType()));
+
+        rooms.save(fromRoom);
+        rooms.save(toRoom);
+        guests.save(guest);
+        roomTransfers.save(transfer);
+
+        audit.record("TRANSFER_ROOM", "Guest " + guest.getFullName() + " room " + fromRoom.getRoomNumber() + " to " + toRoom.getRoomNumber());
+        redirect.addFlashAttribute("message", "ย้ายห้องจาก " + fromRoom.getRoomNumber() + " ไป " + toRoom.getRoomNumber() + " เรียบร้อย");
+        redirect.addFlashAttribute("flashType", "success");
+        Long targetFloorId = toRoom.getFloor() != null ? toRoom.getFloor().getId() : floorId;
+        return targetFloorId == null ? "redirect:/guests" : "redirect:/guests?floorId=" + targetFloorId;
+    }
+
     @GetMapping("/{id}")
     String detail(@PathVariable Long id, Model model) {
         var guest = guests.findById(id).orElseThrow();
@@ -236,6 +295,19 @@ public class GuestController {
         BigDecimal price = guest.getPrice() == null ? BigDecimal.ZERO : guest.getPrice();
         int months = guest.getAdvanceMonths() == null ? 1 : guest.getAdvanceMonths();
         return price.multiply(BigDecimal.valueOf(months));
+    }
+
+    private BigDecimal roomPriceForStay(Room room, StayType stayType) {
+        if (room == null) {
+            return BigDecimal.ZERO;
+        }
+        BigDecimal price;
+        if (stayType == StayType.MONTHLY) {
+            price = room.getRoomType() != null ? room.getRoomType().getMonthlyPrice() : room.getMonthlyPrice();
+        } else {
+            price = room.getRoomType() != null ? room.getRoomType().getNightlyPrice() : room.getNightlyPrice();
+        }
+        return price == null ? BigDecimal.ZERO : price;
     }
 
     private void recordDepositRefund(Guest guest, List<String> deductNames, List<String> deductAmounts, String refundMethod, String refundRemark) {

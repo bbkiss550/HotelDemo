@@ -105,7 +105,7 @@
                     </button>
                 </div>
 
-                <div class="alert alert-light-secondary mt-3" th:if="${items.isEmpty()}">
+                <div class="alert monthly-billing-empty-panel mt-3" th:if="${items.isEmpty()}">
                     ไม่พบห้องรายเดือนที่ตรงกับตัวกรอง
                 </div>
             </section>
@@ -514,7 +514,8 @@ const createBillingCalendar = (hiddenInput, displayInput) => {
             grid.appendChild(button);
         }
         popup.querySelectorAll('[data-nav]').forEach(button => {
-            button.addEventListener('click', () => {
+            button.addEventListener('click', event => {
+                event.stopPropagation();
                 viewDate.setMonth(viewDate.getMonth() + Number(button.dataset.nav));
                 render();
             });

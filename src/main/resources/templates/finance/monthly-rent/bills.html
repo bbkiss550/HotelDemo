@@ -86,11 +86,13 @@
                                     <th>ห้อง</th>
                                     <th>ผู้เช่า</th>
                                     <th class="text-end">ค่าเช่า</th>
-                                    <th class="text-end">น้ำ</th>
-                                    <th class="text-end">ไฟ</th>
-                                    <th class="text-end">ยอดสุทธิ</th>
-                                    <th class="text-end">ชำระแล้ว</th>
-                                    <th class="text-end">คงเหลือ</th>
+                                    <th class="text-end">ค่าน้ำ</th>
+                                    <th class="text-end">ค่าไฟ</th>
+                                    <th class="text-end">ค่าอื่น ๆ</th>
+                                    <th class="text-end">ส่วนลด</th>
+                                    <th class="text-end">ยอดรวม</th>
+                                    <th class="text-end">หักเงินล่วงหน้า</th>
+                                    <th class="text-end">ยอดชำระสุทธิ</th>
                                     <th>ครบกำหนด</th>
                                     <th>สถานะ</th>
                                 </tr>
@@ -103,12 +105,12 @@
                                                th:value="${item.bill.id}">
                                     </td>
                                     <td class="table-actions bill-view-action">
-                                        <button class="btn btn-sm btn-light-primary"
+                                        <button class="btn btn-sm btn-document-view"
                                                 type="button"
                                                 title="ดูบิล"
                                                 data-bs-toggle="modal"
                                                 th:attr="data-bs-target=${'#monthlyBillViewModal' + item.bill.id}">
-                                            <i class="bi bi-eye"></i>
+                                            <i class="bi bi-receipt me-1"></i>ดูบิล
                                         </button>
                                     </td>
                                     <td th:text="${item.bill.billNumber != null and !#strings.isEmpty(item.bill.billNumber) ? item.bill.billNumber : '-'}"></td>
@@ -118,14 +120,16 @@
                                     <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.rentAmount, 1, 'COMMA', 2, 'POINT')}"></td>
                                     <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.waterAmount, 1, 'COMMA', 2, 'POINT')}"></td>
                                     <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.electricAmount, 1, 'COMMA', 2, 'POINT')}"></td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.otherAmount, 1, 'COMMA', 2, 'POINT')}"></td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.discountAmount, 1, 'COMMA', 2, 'POINT')}"></td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.subtotalAmount, 1, 'COMMA', 2, 'POINT')}"></td>
+                                    <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.advanceAppliedAmount, 1, 'COMMA', 2, 'POINT')}"></td>
                                     <td class="text-end fw-bold" th:text="${#numbers.formatDecimal(item.bill.totalAmount, 1, 'COMMA', 2, 'POINT')}"></td>
-                                    <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.paidAmount, 1, 'COMMA', 2, 'POINT')}"></td>
-                                    <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.remainingAmount, 1, 'COMMA', 2, 'POINT')}"></td>
                                     <td th:text="${@thaiDate.format(item.bill.dueDate)}"></td>
                                     <td><span class="badge" th:classappend="${item.statusClass}" th:text="${item.statusLabel}"></span></td>
                                 </tr>
                                 <tr th:if="${bills.isEmpty()}">
-                                    <td colspan="14" class="text-center text-muted py-4">ไม่พบรายการบิลค่าเช่า</td>
+                                    <td colspan="16" class="text-center text-muted py-4">ไม่พบรายการบิลค่าเช่า</td>
                                 </tr>
                                 </tbody>
                             </table>

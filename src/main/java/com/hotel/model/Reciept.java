@@ -9,6 +9,7 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "t_reciept")
@@ -31,6 +32,19 @@ public class Reciept {
     @Column(name = "rec_amount", nullable = false)
     private BigDecimal amount = BigDecimal.ZERO;
 
+    @Column(name = "created_at", nullable = false)
+    private LocalDateTime createdAt = LocalDateTime.now();
+
+    @jakarta.persistence.PrePersist
+    void prePersist() {
+        if (createdAt == null) {
+            createdAt = LocalDateTime.now();
+        }
+        if (recieptDate == null) {
+            recieptDate = LocalDate.now();
+        }
+    }
+
     public Long getId() { return id; }
     public void setId(Long id) { this.id = id; }
     public LocalDate getRecieptDate() { return recieptDate; }
@@ -41,4 +55,6 @@ public class Reciept {
     public void setType(RecieptType type) { this.type = type; }
     public BigDecimal getAmount() { return amount; }
     public void setAmount(BigDecimal amount) { this.amount = amount; }
+    public LocalDateTime getCreatedAt() { return createdAt; }
+    public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

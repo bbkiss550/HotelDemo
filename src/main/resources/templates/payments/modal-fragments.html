@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="th" xmlns:th="http://www.thymeleaf.org">
+<body>
+<div th:fragment="monthlyBillPaymentModal"
+     class="modal fade"
+     th:id="${'payMonthlyBillModal' + bill.id}"
+     tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <form class="monthly-bill-payment-form" method="post" th:action="@{/payments/monthly-bill/{id}(id=${bill.id})}">
+                <div class="modal-header">
+                    <h5 class="modal-title" th:text="|รับชำระบิล ${bill.displayBillNumber}|"></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="row g-3">
+                        <div class="col-lg-4 col-md-6"><strong>ห้อง</strong><div th:text="${bill.room != null ? bill.room.roomNumber : '-'}"></div></div>
+                        <div class="col-lg-4 col-md-6"><strong>ผู้เช่า</strong><div th:text="${bill.guest != null ? bill.guest.fullName : '-'}"></div></div>
+                        <div class="col-lg-4 col-md-6"><strong>เลขที่ใบแจ้งค่าเช่า</strong><div class="fw-bold" th:text="${bill.displayBillNumber}"></div></div>
+                        <div class="col-lg-4 col-md-6"><strong>ยอดบิลสุทธิ</strong><div th:text="|${#numbers.formatDecimal(bill.totalAmount, 1, 'COMMA', 2, 'POINT')} บาท|"></div></div>
+                        <div class="col-lg-4 col-md-6"><strong>คงเหลือ</strong><div class="text-primary fw-bold" th:text="|${#numbers.formatDecimal(bill.remainingAmount, 1, 'COMMA', 2, 'POINT')} บาท|"></div></div>
+                        <div class="col-lg-4 col-md-6">
+                            <strong>วันที่กำหนด</strong>
+                            <div class="payment-due-date"
+                                 th:attr="data-due-date=${bill.dueDate}"
+                                 th:text="${@thaiDate.format(bill.dueDate)}"></div>
+                        </div>
+                        <div class="col-lg-4 col-md-6">
+                            <strong>เลยกำหนด</strong>
+                            <div class="payment-overdue-days fw-bold text-danger">0 วัน</div>
+                        </div>
+                        <div class="col-lg-4 col-md-6">
+                            <label class="form-label">ยอดรับชำระ</label>
+                            <input class="form-control payment-base-amount" name="amount" type="number" min="0.01" step="0.01" th:value="${bill.remainingAmount}" readonly required>
+                        </div>
+                        <div class="col-lg-4 col-md-6">
+                            <label class="form-label">ค่าปรับ</label>
+                            <input class="form-control payment-fine-amount"
+                                   name="fineAmount"
+                                   type="number"
+                                   min="0"
+                                   step="0.01"
+                                   th:attr="data-default-fine=${defaultFineAmount}"
+                                   th:data-fine-interval-days="${fineIntervalDays}"
+                                   th:value="${bill.dueDate != null and today.isAfter(bill.dueDate) ? defaultFineAmount : 0}">
+                        </div>
+                        <div class="col-lg-4 col-md-6">
+                            <label class="form-label">ยอดสุทธิ</label>
+                            <input class="form-control payment-net-amount fw-bold text-primary" type="text" value="0.00" readonly>
+                        </div>
+                        <div class="col-lg-4 col-md-6">
+                            <label class="form-label">วันที่ชำระ</label>
+                            <div class="date-range-field search-date-field">
+                                <div class="date-box">
+                                    <i class="bi bi-calendar-check"></i>
+                                    <input class="hotel-calendar-value" type="hidden" name="paymentDate" th:value="${today}" data-default-today="true" required>
+                                    <input class="form-control hotel-calendar-input" type="text" readonly data-calendar-for="paymentDate">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-4 col-md-6">
+                            <label class="form-label">วิธีชำระ</label>
+                            <select class="form-select" name="paymentMethod" required>
+                                <option value="เงินสด">เงินสด</option>
+                                <option value="เงินโอน">เงินโอน</option>
+                                <option value="บัตรเครดิต">บัตรเครดิต</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">หมายเหตุ</label>
+                            <textarea class="form-control" name="remark" rows="2"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button type="submit" class="btn btn-success"><i class="bi bi-save me-1"></i>บันทึกชำระ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div th:fragment="editModal"
+     class="modal fade"
+     th:id="${'paymentEditModal' + p.id}"
+     tabindex="-1">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <form class="payment-edit-form monthly-bill-payment-form" method="post" th:action="@{/payments}">
+                <div class="modal-header">
+                    <h5 class="modal-title" th:text="|แก้ไขรายการชำระ ${receiptNo != null ? receiptNo : '#'+p.id}|"></h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body">
+                    <input type="hidden" name="id" th:value="${p.id}">
+                    <input type="hidden" name="roomId" th:value="${p.room != null ? p.room.id : null}">
+                    <input type="hidden" name="guestId" th:value="${p.guest != null ? p.guest.id : null}">
+                    <input type="hidden" name="status" th:value="${p.status}">
+                    <input type="hidden" name="fineAmount" th:value="${p.fineAmount}">
+                    <div class="row g-3">
+                        <div class="col-lg-4 col-md-6"><strong>ห้อง</strong><div th:text="${p.room != null ? p.room.roomNumber : '-'}"></div></div>
+                        <div class="col-lg-4 col-md-6"><strong>ผู้เช่า/ผู้จอง</strong><div th:text="${payerName != null ? payerName : '-'}"></div></div>
+                        <div class="col-lg-4 col-md-6"><strong>เลขที่ใบแจ้งค่าเช่า</strong><div class="fw-bold" th:text="${billNumber != null ? billNumber : '-'}"></div></div>
+                        <div class="col-lg-4 col-md-6"><strong>ยอดสุทธิที่รับชำระ</strong><div th:text="|${#numbers.formatDecimal(p.totalAmount, 1, 'COMMA', 2, 'POINT')} บาท|"></div></div>
+                        <div class="col-lg-4 col-md-6"><strong>เลขใบเสร็จ</strong><div class="fw-bold" th:text="${receiptNo != null ? receiptNo : '-'}"></div></div>
+                        <div class="col-lg-4 col-md-6"><strong>ประเภทใบเสร็จ</strong><div><span class="badge receipt-type-badge"
+                            th:classappend="${receiptTypeName == 'ค่าแรกเข้ารายเดือน'} ? ' receipt-type-opening-monthly' : (${receiptTypeName == 'ค่าบริการของลูกค้ารายวัน'} ? ' receipt-type-daily-service' : (${receiptTypeName == 'ค่าเช่ารายเดือน'} ? ' receipt-type-monthly-rent' : ' receipt-type-unknown'))"
+                            th:text="${receiptTypeName != null ? receiptTypeName : '-'}"></span></div></div>
+                        <div class="col-lg-4 col-md-6"><strong>สถานะ</strong><div><span class="badge bg-light-success" th:text="${p.status.label}"></span></div></div>
+                        <input type="hidden" name="amount" th:value="${p.amount}">
+                        <div class="col-lg-4 col-md-6">
+                            <label class="form-label">ยอดตามใบแจ้ง</label>
+                            <input class="form-control payment-base-amount" type="number" min="0.01" step="0.01" th:value="${p.amount}" readonly>
+                        </div>
+                        <div class="col-lg-4 col-md-6">
+                            <label class="form-label">ค่าปรับ</label>
+                            <input class="form-control payment-fine-amount" type="number" min="0" step="0.01" th:value="${p.fineAmount}" disabled readonly>
+                        </div>
+                        <div class="col-lg-4 col-md-6">
+                            <label class="form-label">ยอดสุทธิ</label>
+                            <input class="form-control payment-net-amount fw-bold text-primary" type="text" value="0.00" readonly>
+                        </div>
+                        <div class="col-lg-4 col-md-6">
+                            <label class="form-label">วันที่ชำระ</label>
+                            <div class="date-range-field search-date-field">
+                                <div class="date-box">
+                                    <i class="bi bi-calendar-check"></i>
+                                    <input class="hotel-calendar-value" type="hidden" name="paymentDate" th:value="${p.paymentDate}" required>
+                                    <input class="form-control hotel-calendar-input" type="text" readonly data-calendar-for="paymentDate">
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-4 col-md-6">
+                            <label class="form-label">วิธีชำระ</label>
+                            <select class="form-select" name="paymentMethod" required>
+                                <option value="เงินสด" th:selected="${p.paymentMethod == 'เงินสด'}">เงินสด</option>
+                                <option value="เงินโอน" th:selected="${p.paymentMethod == 'เงินโอน'}">เงินโอน</option>
+                                <option value="บัตรเครดิต" th:selected="${p.paymentMethod == 'บัตรเครดิต'}">บัตรเครดิต</option>
+                            </select>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">หมายเหตุ</label>
+                            <textarea class="form-control" name="remark" rows="2" th:text="${p.remark}"></textarea>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+                    <button class="btn btn-success" type="submit"><i class="bi bi-save me-1"></i>บันทึกชำระ</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div th:fragment="receiptModal"
+     class="modal fade monthly-bill-preview-modal payment-receipt-modal"
+     th:id="${'paymentReceiptModal' + p.id}"
+     th:attr="data-auto-receipt=${autoReceiptPaymentId != null and autoReceiptPaymentId == p.id}"
+     tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" th:text="|ใบเสร็จรับเงิน #${receiptNo}|">ใบเสร็จรับเงิน</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body monthly-bill-preview-wrap">
+                <div th:if="${billItem != null}"
+                     th:replace="~{finance/monthly-rent/bill-slip :: billSlip(${billItem}, 'ใบเสร็จรับเงิน', ${receiptNo}, ${p.paymentDate}, ${p.fineAmount}, ${p.totalAmount})}"></div>
+                <div class="monthly-bill-slip payment-receipt-slip" th:if="${billItem == null}">
+                    <div class="bill-slip-header">
+                        <div><h4 th:text="${systemName}">BlueCatHotelDemo</h4><div>ใบเสร็จรับเงิน</div></div>
+                        <div class="bill-slip-number">
+                            <strong th:text="|ห้อง ${p.room != null ? p.room.roomNumber : '-'}|"></strong>
+                            <span th:text="|เลขใบเสร็จ #${receiptNo != null ? receiptNo : '-'}|"></span>
+                        </div>
+                    </div>
+                    <div class="bill-slip-meta">
+                        <div><span>รับจาก</span><strong th:text="${payerName != null ? payerName : '-'}"></strong></div>
+                        <div><span>วันที่ชำระ</span><strong th:text="${@thaiDate.format(p.paymentDate)}"></strong></div>
+                        <div class="bill-slip-due-date"><span>วิธีชำระ</span><strong th:text="${p.paymentMethod != null ? p.paymentMethod : '-'}"></strong></div>
+                    </div>
+                    <table class="bill-slip-table">
+                        <thead>
+                        <tr>
+                            <th>รายการ</th>
+                            <th class="text-end">จำนวนหน่วย</th>
+                            <th class="text-end">ราคาต่อหน่วย</th>
+                            <th class="text-end">จำนวนเงิน</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        <tr th:each="item : ${receiptItems}">
+                            <td th:text="${item.label}">รายการ</td>
+                            <td class="text-end" th:text="${#numbers.formatDecimal(item.units, 1, 'COMMA', 0, 'POINT')}">1</td>
+                            <td class="text-end" th:text="${#numbers.formatDecimal(item.unitPrice, 1, 'COMMA', 2, 'POINT')}">0.00</td>
+                            <td class="text-end" th:text="${#numbers.formatDecimal(item.amount, 1, 'COMMA', 2, 'POINT')}">0.00</td>
+                        </tr>
+                        </tbody>
+                        <tfoot>
+                        <tr class="bill-slip-total">
+                            <th colspan="3">รวมรับชำระ</th>
+                            <th class="text-end" th:text="|${#numbers.formatDecimal(p.amount, 1, 'COMMA', 2, 'POINT')} บาท|">0.00 บาท</th>
+                        </tr>
+                        </tfoot>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">ปิด</button>
+                <button type="button" class="btn btn-primary payment-receipt-print-btn"><i class="bi bi-printer me-1"></i>พิมพ์ใบเสร็จนี้</button>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

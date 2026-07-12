@@ -7,6 +7,7 @@ import com.hotel.model.RoomType;
 import com.hotel.model.StayType;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -14,9 +15,11 @@ import org.springframework.data.repository.query.Param;
 public interface BookingRepository extends JpaRepository<Booking, Long> {
     long countByStatus(BookingStatus status);
     List<Booking> findAllByOrderByCheckInDateAscIdDesc();
+    List<Booking> findByBookingDateBetweenOrderByBookingNumberAscIdAsc(LocalDate startDate, LocalDate endDate);
     List<Booking> findByRoomAndStatusIn(Room room, List<BookingStatus> statuses);
     List<Booking> findByRoomIsNullAndStatusOrderByCheckInDateAscIdDesc(BookingStatus status);
     java.util.Optional<Booking> findTopByRoomAndStatusOrderByCheckInDateDescIdDesc(Room room, BookingStatus status);
+    Optional<Booking> findByBookingNumber(String bookingNumber);
 
     @Query("select max(b.bookingNumber) from Booking b where b.bookingNumber like concat(:prefix, '%')")
     String findMaxBookingNumberByPrefix(@Param("prefix") String prefix);
@@ -32,7 +35,7 @@ public interface BookingRepository extends JpaRepository<Booking, Long> {
                    or (rt is not null and rt.id = :roomTypeId)
                    or (rt is null and r.roomType.id = :roomTypeId))
               and (:stayTypeFilter = false or b.stayType = :stayType)
-            order by b.checkInDate asc, b.id desc
+            order by b.bookingNumber desc nulls last, b.id desc
             """)
     List<Booking> searchBookings(@Param("customerName") String customerName,
                                  @Param("phone") String phone,
