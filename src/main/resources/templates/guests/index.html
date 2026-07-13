@@ -399,6 +399,34 @@
                                     <input class="form-control" name="refundRemark">
                                 </div>
                             </div>
+                            <div class="border rounded-3 p-3 mb-3 checkout-penalty-control"
+                                 th:if="${guest.stayType.name() == 'DAILY'}"
+                                 th:with="penaltyQuote=${activeGuestCheckoutPenaltyQuotes[guest.id]}"
+                                 th:attr="data-rule-amount=${penaltyQuote.amount}">
+                                <div class="form-check mb-3">
+                                    <input class="form-check-input checkout-penalty-enabled" name="applyCheckoutPenalty" type="checkbox" value="true"
+                                           th:id="${'applyCheckoutPenalty' + guest.id}"
+                                           th:checked="${penaltyQuote.amount > 0}">
+                                    <label class="form-check-label fw-bold" th:for="${'applyCheckoutPenalty' + guest.id}">คิดค่าปรับเช็คเอาต์</label>
+                                </div>
+                                <div class="row g-2 checkout-penalty-options">
+                                    <div class="col-md-6">
+                                        <label class="form-check border rounded-3 p-3 h-100 w-100">
+                                            <input class="form-check-input me-2 checkout-penalty-mode" name="checkoutPenaltyMode" type="radio" value="RULE" checked>
+                                            <span class="fw-bold">คิดตามกฎที่ตั้งไว้</span>
+                                            <span class="d-block text-muted small mt-1" th:text="${penaltyQuote.description}">ไม่พบกฎที่ตรงกัน</span>
+                                            <strong class="d-block mt-2 checkout-rule-amount" th:text="${#numbers.formatDecimal(penaltyQuote.amount, 1, 'COMMA', 2, 'POINT')}">0.00</strong>
+                                        </label>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <label class="form-check border rounded-3 p-3 h-100 w-100">
+                                            <input class="form-check-input me-2 checkout-penalty-mode" name="checkoutPenaltyMode" type="radio" value="MANUAL">
+                                            <span class="fw-bold">ระบุยอดเอง</span>
+                                            <input class="form-control mt-2 checkout-penalty-manual" name="checkoutPenaltyAmount" type="number" min="0" step="0.01" value="0" disabled>
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
                             <div class="refund-items">
                                 <div class="row g-2 align-items-end refund-item mb-2">
                                     <div class="col-md-7">
@@ -865,8 +893,21 @@ document.querySelectorAll('.checkout-refund-panel').forEach((panel) => {
     const deposit = Number(panel.dataset.deposit || 0);
     const moneyFormat = new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     const itemsContainer = panel.querySelector('.refund-items');
+    const penaltyControl = panel.querySelector('.checkout-penalty-control');
+    const penaltyEnabled = penaltyControl?.querySelector('.checkout-penalty-enabled');
+    const penaltyModes = Array.from(penaltyControl?.querySelectorAll('.checkout-penalty-mode') || []);
+    const manualPenalty = penaltyControl?.querySelector('.checkout-penalty-manual');
+    const rulePenalty = Number(penaltyControl?.dataset.ruleAmount || 0);
+    let checkoutPenalty = 0;
+    const updateCheckoutPenalty = () => {
+        const enabled = Boolean(penaltyEnabled?.checked);
+        const manualMode = penaltyModes.some(input => input.checked && input.value === 'MANUAL');
+        penaltyModes.forEach(input => input.disabled = !enabled);
+        if (manualPenalty) manualPenalty.disabled = !enabled || !manualMode;
+        checkoutPenalty = !enabled ? 0 : (manualMode ? (Number(manualPenalty?.value || 0) || 0) : rulePenalty);
+    };
     const updateTotals = () => {
-        const totalDeduct = Array.from(panel.querySelectorAll('.refund-deduct-amount'))
+        const totalDeduct = checkoutPenalty + Array.from(panel.querySelectorAll('.refund-deduct-amount'))
             .reduce((sum, input) => sum + (Number(input.value || 0) || 0), 0);
         panel.querySelector('.refund-deduct-total').value = moneyFormat.format(totalDeduct);
         panel.querySelector('.refund-net-total').value = moneyFormat.format(Math.max(deposit - totalDeduct, 0));
@@ -894,7 +935,20 @@ document.querySelectorAll('.checkout-refund-panel').forEach((panel) => {
         bindItem(item);
         updateTotals();
     });
+    penaltyEnabled?.addEventListener('change', () => {
+        updateCheckoutPenalty();
+        updateTotals();
+    });
+    penaltyModes.forEach(input => input.addEventListener('change', () => {
+        updateCheckoutPenalty();
+        updateTotals();
+    }));
+    manualPenalty?.addEventListener('input', () => {
+        updateCheckoutPenalty();
+        updateTotals();
+    });
     panel.querySelectorAll('.refund-item').forEach(bindItem);
+    updateCheckoutPenalty();
     updateTotals();
 });
 

@@ -65,21 +65,94 @@
                             </div>
                         </div>
 
-                        <div class="col-12">
-                            <div class="card">
+                        <div class="col-lg-6">
+                            <div class="card h-100">
                                 <div class="card-header">
-                                    <h5 class="mb-0">ค่าปรับ</h5>
+                                    <h5 class="mb-0">ค่าปรับห้องพักรายเดือน</h5>
                                 </div>
                                 <div class="card-body">
                                     <div class="row g-3">
                                         <div class="col-md-6">
-                                            <label class="form-label">ค่าปรับ</label>
+                                            <label class="form-label">ค่าปรับจ่ายบิลล่าช้า</label>
                                             <input class="form-control" name="fineAmount" type="number" min="0" step="0.01" th:value="${settings['fine_amount']}" required>
                                         </div>
                                         <div class="col-md-6">
                                             <label class="form-label">คิดค่าปรับทุกกี่วัน</label>
                                             <input class="form-control" name="fineIntervalDays" type="number" min="1" step="1" th:value="${fineIntervalDaysValue}" required>
                                         </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-lg-6">
+                            <div class="card h-100">
+                                <div class="card-header">
+                                    <h5 class="mb-0">ค่าปรับห้องพักรายวัน</h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label class="form-label">เวลาเช็คเอาต์</label>
+                                            <input class="form-control" name="dailyCheckoutTime" type="time" th:value="${#temporals.format(dailyCheckoutTime, 'HH:mm')}" required>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header d-flex flex-wrap align-items-center justify-content-between gap-2">
+                                    <div>
+                                        <h5 class="mb-1">กฎค่าปรับเช็คเอาต์รายวัน</h5>
+                                        <p class="text-muted mb-0">เรียงจากบนลงล่าง ระบบจะใช้กฎแรกที่ตรงกับเวลาเช็คเอาต์</p>
+                                    </div>
+                                    <button class="btn btn-light-primary" id="addDailyPenaltyRule" type="button" title="เพิ่มกฎค่าปรับ"><i class="bi bi-plus-lg"></i></button>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="table-responsive">
+                                        <table class="table mb-0 align-middle">
+                                            <thead>
+                                            <tr>
+                                                <th>เริ่มหลังวันกำหนดออก</th>
+                                                <th>เวลาเริ่ม</th>
+                                                <th>สิ้นสุดหลังวันกำหนดออก</th>
+                                                <th>เวลาสิ้นสุด</th>
+                                                <th>วิธีคิด</th>
+                                                <th>ค่า</th>
+                                                <th>ใช้</th>
+                                                <th></th>
+                                            </tr>
+                                            </thead>
+                                            <tbody id="dailyPenaltyRuleRows">
+                                            <tr class="daily-penalty-rule-row" th:each="rule, ruleStat : ${dailyCheckoutPenaltyRules}">
+                                                <td>
+                                                    <input name="ruleId" type="hidden" th:value="${rule.id}">
+                                                    <input class="form-control" name="ruleStartDayOffset" type="number" min="0" step="1" th:value="${rule.startDayOffset}" required>
+                                                </td>
+                                                <td><input class="form-control" name="ruleStartTime" type="time" th:value="${#temporals.format(rule.startTime, 'HH:mm')}" required></td>
+                                                <td><input class="form-control" name="ruleEndDayOffset" type="number" min="0" step="1" th:value="${rule.endDayOffset != null ? rule.endDayOffset : rule.startDayOffset}"></td>
+                                                <td><input class="form-control" name="ruleEndTime" type="time" th:value="${rule.endTime != null ? #temporals.format(rule.endTime, 'HH:mm') : ''}"></td>
+                                                <td>
+                                                    <select class="form-select" name="ruleChargeType">
+                                                        <option th:each="type : ${dailyCheckoutPenaltyChargeTypes}" th:value="${type.name()}" th:text="${type.label}" th:selected="${type == rule.chargeType}"></option>
+                                                    </select>
+                                                </td>
+                                                <td><input class="form-control" name="ruleChargeValue" type="number" min="0" step="0.01" th:value="${rule.chargeValue}" required></td>
+                                                <td class="text-center"><input class="form-check-input rule-enabled" name="ruleEnabled" type="checkbox" th:value="${ruleStat.index}" th:checked="${rule.enabled}"></td>
+                                                <td>
+                                                    <div class="d-flex gap-1">
+                                                        <button class="btn btn-sm btn-light-secondary move-penalty-rule" type="button" data-direction="up" title="เลื่อนขึ้น"><i class="bi bi-arrow-up"></i></button>
+                                                        <button class="btn btn-sm btn-light-secondary move-penalty-rule" type="button" data-direction="down" title="เลื่อนลง"><i class="bi bi-arrow-down"></i></button>
+                                                        <button class="btn btn-sm btn-light-danger remove-penalty-rule" type="button" title="ลบกฎ"><i class="bi bi-trash"></i></button>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                            <tr id="dailyPenaltyRuleEmpty" th:if="${#lists.isEmpty(dailyCheckoutPenaltyRules)}">
+                                                <td colspan="8" class="text-center text-muted py-4">ยังไม่มีกฎค่าปรับ กดปุ่มเพิ่มเพื่อกำหนดกฎแรก</td>
+                                            </tr>
+                                            </tbody>
+                                        </table>
                                     </div>
                                 </div>
                             </div>
@@ -94,5 +167,78 @@
     </div>
 </div>
 <div th:replace="~{fragments/nav :: scripts}"></div>
+<template id="dailyPenaltyRuleTemplate">
+    <tr class="daily-penalty-rule-row">
+        <td><input name="ruleId" type="hidden"><input class="form-control" name="ruleStartDayOffset" type="number" min="0" step="1" value="0" required></td>
+        <td><input class="form-control" name="ruleStartTime" type="time" required></td>
+        <td><input class="form-control" name="ruleEndDayOffset" type="number" min="0" step="1" value="0"></td>
+        <td><input class="form-control" name="ruleEndTime" type="time"></td>
+        <td>
+            <select class="form-select" name="ruleChargeType">
+                <option th:each="type : ${dailyCheckoutPenaltyChargeTypes}" th:value="${type.name()}" th:text="${type.label}"></option>
+            </select>
+        </td>
+        <td><input class="form-control" name="ruleChargeValue" type="number" min="0" step="0.01" value="0" required></td>
+        <td class="text-center"><input class="form-check-input rule-enabled" name="ruleEnabled" type="checkbox" checked></td>
+        <td>
+            <div class="d-flex gap-1">
+                <button class="btn btn-sm btn-light-secondary move-penalty-rule" type="button" data-direction="up" title="เลื่อนขึ้น"><i class="bi bi-arrow-up"></i></button>
+                <button class="btn btn-sm btn-light-secondary move-penalty-rule" type="button" data-direction="down" title="เลื่อนลง"><i class="bi bi-arrow-down"></i></button>
+                <button class="btn btn-sm btn-light-danger remove-penalty-rule" type="button" title="ลบกฎ"><i class="bi bi-trash"></i></button>
+            </div>
+        </td>
+    </tr>
+</template>
+<script>
+(() => {
+    const rows = document.getElementById('dailyPenaltyRuleRows');
+    const template = document.getElementById('dailyPenaltyRuleTemplate');
+    const addButton = document.getElementById('addDailyPenaltyRule');
+    if (!rows || !template || !addButton) return;
+
+    const ruleRows = () => Array.from(rows.querySelectorAll('.daily-penalty-rule-row'));
+    const refreshRuleIndexes = () => {
+        ruleRows().forEach((row, index) => {
+            const enabled = row.querySelector('.rule-enabled');
+            if (enabled) enabled.value = String(index);
+        });
+    };
+    const showEmptyState = () => {
+        if (ruleRows().length > 0 || rows.querySelector('#dailyPenaltyRuleEmpty')) return;
+        const empty = document.createElement('tr');
+        empty.id = 'dailyPenaltyRuleEmpty';
+        empty.innerHTML = '<td colspan="8" class="text-center text-muted py-4">ยังไม่มีกฎค่าปรับ กดปุ่มเพิ่มเพื่อกำหนดกฎแรก</td>';
+        rows.appendChild(empty);
+    };
+    const bindRuleRow = row => {
+        row.querySelector('.remove-penalty-rule')?.addEventListener('click', () => {
+            row.remove();
+            refreshRuleIndexes();
+            showEmptyState();
+        });
+        row.querySelectorAll('.move-penalty-rule').forEach(button => button.addEventListener('click', () => {
+            const ordered = ruleRows();
+            const currentIndex = ordered.indexOf(row);
+            const targetIndex = button.dataset.direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+            if (targetIndex < 0 || targetIndex >= ordered.length) return;
+            if (targetIndex < currentIndex) {
+                rows.insertBefore(row, ordered[targetIndex]);
+            } else {
+                rows.insertBefore(ordered[targetIndex], row);
+            }
+            refreshRuleIndexes();
+        }));
+    };
+    addButton.addEventListener('click', () => {
+        rows.querySelector('#dailyPenaltyRuleEmpty')?.remove();
+        const row = template.content.querySelector('.daily-penalty-rule-row').cloneNode(true);
+        rows.appendChild(row);
+        bindRuleRow(row);
+        refreshRuleIndexes();
+    });
+    ruleRows().forEach(bindRuleRow);
+    refreshRuleIndexes();
+})();
+</script>
 </body>
 </html>

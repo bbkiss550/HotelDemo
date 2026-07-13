@@ -2,6 +2,8 @@ package com.hotel.repository;
 
 import com.hotel.model.Guest;
 import com.hotel.model.Room;
+import com.hotel.model.StayType;
+import java.time.LocalDate;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 
@@ -21,4 +23,6 @@ public interface GuestRepository extends JpaRepository<Guest, Long> {
     Optional<Guest> findTopByRoomOrderByCheckInDateDescIdDesc(Room room);
     Optional<Guest> findTopByRoomAndActiveTrueOrderByCheckInDateDescIdDesc(Room room);
     List<Guest> findByActiveTrueOrderByCheckInDateDescIdDesc();
+    long countByActiveTrueAndStayTypeAndCheckOutDateBefore(StayType stayType, LocalDate date);
+    List<Guest> findTop5ByActiveTrueAndStayTypeAndCheckOutDateBeforeOrderByCheckOutDateAscIdAsc(StayType stayType, LocalDate date);
 }

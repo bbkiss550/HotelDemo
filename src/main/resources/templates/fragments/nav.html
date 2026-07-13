@@ -49,6 +49,57 @@
         <a class="topbar-system-name text-decoration-none" th:href="@{/}" th:text="${systemName}">BlueCatHotelDemo</a>
         <div class="topbar-spacer" aria-hidden="true"></div>
         <div class="topbar-actions">
+            <div class="dropdown">
+                <button class="btn topbar-notification-btn position-relative" type="button" id="hotelNotificationToggle"
+                        data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false"
+                        aria-label="การแจ้งเตือน" title="การแจ้งเตือน">
+                    <i class="bi bi-bell" aria-hidden="true"></i>
+                    <span class="notification-badge"
+                          th:if="${notificationSummary.totalCount > 0}"
+                          th:text="${notificationSummary.totalCount > 99 ? '99+' : notificationSummary.totalCount}">0</span>
+                </button>
+                <div class="dropdown-menu dropdown-menu-end notification-dropdown" aria-labelledby="hotelNotificationToggle">
+                    <div class="notification-dropdown-header">
+                        <div>
+                            <div class="fw-bold">การแจ้งเตือน</div>
+                            <small class="text-muted">รายการที่ต้องติดตาม</small>
+                        </div>
+                        <span class="badge bg-light-danger text-danger" th:text="${notificationSummary.totalCount}">0</span>
+                    </div>
+                    <div class="notification-section" th:if="${notificationSummary.overdueDailyStayCount > 0}">
+                        <a class="notification-section-title" th:href="@{/guests}">
+                            <span><i class="bi bi-door-open me-2 text-warning"></i>ห้องรายวันเกินกำหนด</span>
+                            <span class="badge bg-light-warning text-warning" th:text="${notificationSummary.overdueDailyStayCount}">0</span>
+                        </a>
+                        <a class="notification-item" th:each="guest : ${notificationSummary.overdueDailyGuests}" th:href="@{/guests}">
+                            <span class="notification-item-icon notification-item-icon-warning"><i class="bi bi-person-exclamation"></i></span>
+                            <span class="notification-item-content">
+                                <strong th:text="${guest.room.roomNumber}">101</strong>
+                                <span th:text="${guest.fullName}">ชื่อผู้พัก</span>
+                            </span>
+                            <small th:text="|ออก ${@thaiDate.format(guest.checkOutDate)}|">ออก</small>
+                        </a>
+                    </div>
+                    <div class="notification-section" th:if="${notificationSummary.overdueBillCount > 0}">
+                        <a class="notification-section-title" th:href="@{/finance/monthly-rent/bills(status='OVERDUE')}">
+                            <span><i class="bi bi-receipt-cutoff me-2 text-danger"></i>บิลค้างชำระ</span>
+                            <span class="badge bg-light-danger text-danger" th:text="${notificationSummary.overdueBillCount}">0</span>
+                        </a>
+                        <a class="notification-item" th:each="bill : ${notificationSummary.overdueBills}" th:href="@{/finance/monthly-rent/bills(status='OVERDUE')}">
+                            <span class="notification-item-icon notification-item-icon-danger"><i class="bi bi-receipt"></i></span>
+                            <span class="notification-item-content">
+                                <strong th:text="${bill.room.roomNumber}">101</strong>
+                                <span th:text="${bill.billNumber}">BILL-001</span>
+                            </span>
+                            <small th:text="|ครบกำหนด ${@thaiDate.format(bill.dueDate)}|">ครบกำหนด</small>
+                        </a>
+                    </div>
+                    <div class="notification-empty" th:if="${notificationSummary.totalCount == 0}">
+                        <i class="bi bi-bell-slash"></i>
+                        <span>ไม่มีรายการที่ต้องติดตาม</span>
+                    </div>
+                </div>
+            </div>
             <button class="btn btn-outline-secondary theme-toggle-btn" type="button" id="hotelThemeToggle" aria-label="Toggle dark mode">
                 <i class="bi bi-sun theme-light-icon" aria-hidden="true"></i>
                 <i class="bi bi-moon theme-dark-icon" aria-hidden="true"></i>

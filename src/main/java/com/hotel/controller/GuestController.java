@@ -23,6 +23,7 @@ import com.hotel.repository.RoomTypeRepository;
 import com.hotel.service.AdvanceBalanceService;
 import com.hotel.service.AppSettingService;
 import com.hotel.service.AuditService;
+import com.hotel.service.DailyCheckoutPenaltyService;
 import com.hotel.service.RecieptRecordService;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -52,9 +53,10 @@ public class GuestController {
     private final RecieptRecordService recieptRecordService;
     private final DepositRefundRepository depositRefunds;
     private final RoomTransferRepository roomTransfers;
+    private final DailyCheckoutPenaltyService checkoutPenalties;
     private final AuditService audit;
 
-    public GuestController(GuestRepository guests, BookingRepository bookings, RoomRepository rooms, RoomTypeRepository roomTypes, FloorRepository floors, PaymentRepository payments, AdvanceLedgerRepository advanceLedgers, AdvanceBalanceService advanceBalanceService, AppSettingService settings, RecieptRecordService recieptRecordService, DepositRefundRepository depositRefunds, RoomTransferRepository roomTransfers, AuditService audit) {
+    public GuestController(GuestRepository guests, BookingRepository bookings, RoomRepository rooms, RoomTypeRepository roomTypes, FloorRepository floors, PaymentRepository payments, AdvanceLedgerRepository advanceLedgers, AdvanceBalanceService advanceBalanceService, AppSettingService settings, RecieptRecordService recieptRecordService, DepositRefundRepository depositRefunds, RoomTransferRepository roomTransfers, DailyCheckoutPenaltyService checkoutPenalties, AuditService audit) {
         this.guests = guests;
         this.bookings = bookings;
         this.rooms = rooms;
@@ -67,6 +69,7 @@ public class GuestController {
         this.recieptRecordService = recieptRecordService;
         this.depositRefunds = depositRefunds;
         this.roomTransfers = roomTransfers;
+        this.checkoutPenalties = checkoutPenalties;
         this.audit = audit;
     }
 
@@ -83,6 +86,7 @@ public class GuestController {
         Map<Long, Guest> activeGuests = new HashMap<>();
         Map<Long, List<Payment>> activeGuestPayments = new HashMap<>();
         Map<Long, Long> activeGuestStayDays = new HashMap<>();
+        Map<Long, DailyCheckoutPenaltyService.PenaltyQuote> activeGuestCheckoutPenaltyQuotes = new HashMap<>();
         Map<Long, Booking> reservedBookings = new HashMap<>();
         for (var room : roomList) {
             guests.findTopByRoomAndActiveTrueOrderByCheckInDateDescIdDesc(room)
@@ -94,6 +98,7 @@ public class GuestController {
                             LocalDate checkOut = guest.getCheckOutDate() == null ? checkIn.plusDays(1) : guest.getCheckOutDate();
                             activeGuestStayDays.put(guest.getId(), Math.max(1, ChronoUnit.DAYS.between(checkIn, checkOut)));
                         }
+                        activeGuestCheckoutPenaltyQuotes.put(guest.getId(), checkoutPenalties.quote(guest));
                     });
             if (room.getStatus() == RoomStatus.RESERVED) {
                 bookings.findTopByRoomAndStatusOrderByCheckInDateDescIdDesc(room, BookingStatus.CONFIRMED)
@@ -108,6 +113,7 @@ public class GuestController {
         model.addAttribute("activeGuests", activeGuests);
         model.addAttribute("activeGuestPayments", activeGuestPayments);
         model.addAttribute("activeGuestStayDays", activeGuestStayDays);
+        model.addAttribute("activeGuestCheckoutPenaltyQuotes", activeGuestCheckoutPenaltyQuotes);
         model.addAttribute("reservedBookings", reservedBookings);
         model.addAttribute("unassignedBookings", bookings.findByRoomIsNullAndStatusOrderByCheckInDateAscIdDesc(BookingStatus.CONFIRMED));
         model.addAttribute("availableRooms", rooms.findByStatusOrderByRoomNumber(RoomStatus.AVAILABLE));
@@ -188,9 +194,13 @@ public class GuestController {
                     @RequestParam(required = false) List<String> deductAmount,
                     @RequestParam(defaultValue = "เงินสด") String refundMethod,
                     @RequestParam(required = false) String refundRemark,
+                    @RequestParam(defaultValue = "false") boolean applyCheckoutPenalty,
+                    @RequestParam(defaultValue = "RULE") String checkoutPenaltyMode,
+                    @RequestParam(defaultValue = "0") BigDecimal checkoutPenaltyAmount,
                     RedirectAttributes redirect) {
         var guest = guests.findById(id).orElseThrow();
-        recordDepositRefund(guest, deductName, deductAmount, refundMethod, refundRemark);
+        DailyCheckoutPenaltyService.PenaltyQuote checkoutPenalty = checkoutPenalty(guest, applyCheckoutPenalty, checkoutPenaltyMode, checkoutPenaltyAmount);
+        recordDepositRefund(guest, deductName, deductAmount, refundMethod, refundRemark, checkoutPenalty);
         guest.setActive(false);
         if (guest.getCheckOutDate() == null) {
             guest.setCheckOutDate(LocalDate.now());
@@ -310,7 +320,7 @@ public class GuestController {
         return price == null ? BigDecimal.ZERO : price;
     }
 
-    private void recordDepositRefund(Guest guest, List<String> deductNames, List<String> deductAmounts, String refundMethod, String refundRemark) {
+    private void recordDepositRefund(Guest guest, List<String> deductNames, List<String> deductAmounts, String refundMethod, String refundRemark, DailyCheckoutPenaltyService.PenaltyQuote checkoutPenalty) {
         BigDecimal deposit = guest.getDeposit() == null ? BigDecimal.ZERO : guest.getDeposit();
         deductNames = deductNames == null ? Collections.emptyList() : deductNames;
         deductAmounts = deductAmounts == null ? Collections.emptyList() : deductAmounts;
@@ -339,6 +349,15 @@ public class GuestController {
             totalDeduct = totalDeduct.add(amount);
         }
 
+        if (checkoutPenalty.amount().compareTo(BigDecimal.ZERO) > 0) {
+            DepositRefundItem item = new DepositRefundItem();
+            item.setItemName("ค่าปรับเช็คเอาต์: " + checkoutPenalty.description());
+            item.setItemAmount(checkoutPenalty.amount());
+            item.setSortOrder(refund.getItems().size() + 1);
+            refund.addItem(item);
+            totalDeduct = totalDeduct.add(checkoutPenalty.amount());
+        }
+
         refund.setTotalDeductAmount(totalDeduct);
         refund.setRefundAmount(deposit.subtract(totalDeduct).max(BigDecimal.ZERO));
         refund.setExtraChargeAmount(totalDeduct.subtract(deposit).max(BigDecimal.ZERO));
@@ -356,6 +375,20 @@ public class GuestController {
         } catch (NumberFormatException ex) {
             return BigDecimal.ZERO;
         }
+    }
+
+    private DailyCheckoutPenaltyService.PenaltyQuote checkoutPenalty(Guest guest,
+                                                                      boolean applyCheckoutPenalty,
+                                                                      String mode,
+                                                                      BigDecimal manualAmount) {
+        if (!applyCheckoutPenalty) {
+            return DailyCheckoutPenaltyService.PenaltyQuote.none();
+        }
+        if ("MANUAL".equalsIgnoreCase(mode)) {
+            BigDecimal amount = manualAmount == null ? BigDecimal.ZERO : manualAmount.max(BigDecimal.ZERO);
+            return new DailyCheckoutPenaltyService.PenaltyQuote(amount, null, "กำหนดยอดเอง");
+        }
+        return checkoutPenalties.quote(guest);
     }
 
     private synchronized String nextRefundNo(LocalDate date) {

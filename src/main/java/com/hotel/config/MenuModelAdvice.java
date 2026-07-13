@@ -3,6 +3,7 @@ package com.hotel.config;
 import com.hotel.model.Menu;
 import com.hotel.repository.MenuRepository;
 import com.hotel.service.AppSettingService;
+import com.hotel.service.HotelNotificationService;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -15,10 +16,12 @@ import org.springframework.web.bind.annotation.ModelAttribute;
 public class MenuModelAdvice {
     private final MenuRepository menus;
     private final AppSettingService settings;
+    private final HotelNotificationService notifications;
 
-    public MenuModelAdvice(MenuRepository menus, AppSettingService settings) {
+    public MenuModelAdvice(MenuRepository menus, AppSettingService settings, HotelNotificationService notifications) {
         this.menus = menus;
         this.settings = settings;
+        this.notifications = notifications;
     }
 
     @ModelAttribute("sidebarMenus")
@@ -44,6 +47,11 @@ public class MenuModelAdvice {
     @ModelAttribute("systemName")
     String systemName() {
         return settings.systemName();
+    }
+
+    @ModelAttribute("notificationSummary")
+    HotelNotificationService.NotificationSummary notificationSummary() {
+        return notifications.summary();
     }
 
     @ModelAttribute("currentMenuName")

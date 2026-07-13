@@ -2,6 +2,7 @@ package com.hotel.repository;
 
 import com.hotel.model.MonthlyRentBill;
 import com.hotel.model.Room;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -19,6 +20,8 @@ public interface MonthlyRentBillRepository extends JpaRepository<MonthlyRentBill
     Optional<MonthlyRentBill> findByRoomAndBillingMonthAndBillingYear(Room room, Integer billingMonth, Integer billingYear);
     List<MonthlyRentBill> findByBillingMonthAndBillingYear(Integer billingMonth, Integer billingYear);
     List<MonthlyRentBill> findByStatusIdInOrderByDueDateAscIdAsc(List<Long> statusIds);
+    long countByStatusIdInAndDueDateBefore(List<Long> statusIds, LocalDate date);
+    List<MonthlyRentBill> findTop5ByStatusIdInAndDueDateBeforeOrderByDueDateAscIdAsc(List<Long> statusIds, LocalDate date);
     @Query("""
             select b from MonthlyRentBill b
             where b.room = :room
