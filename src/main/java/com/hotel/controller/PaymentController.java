@@ -8,9 +8,11 @@ import com.hotel.model.RecieptType;
 import com.hotel.model.StayType;
 import com.hotel.repository.BillStatusRepository;
 import com.hotel.repository.BookingRepository;
+import com.hotel.repository.DepositRefundRepository;
 import com.hotel.repository.GuestRepository;
 import com.hotel.repository.MonthlyRentBillRepository;
 import com.hotel.repository.PaymentRepository;
+import com.hotel.repository.PaymentDetailRepository;
 import com.hotel.repository.RecieptTypeRepository;
 import com.hotel.repository.RoomRepository;
 import com.hotel.service.AppSettingService;
@@ -36,7 +38,9 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @RequestMapping("/payments")
 public class PaymentController {
     private final PaymentRepository payments;
+    private final PaymentDetailRepository paymentDetails;
     private final BookingRepository bookings;
+    private final DepositRefundRepository depositRefunds;
     private final MonthlyRentBillRepository monthlyBills;
     private final BillStatusRepository billStatuses;
     private final RoomRepository rooms;
@@ -46,9 +50,11 @@ public class PaymentController {
     private final RecieptRecordService recieptRecordService;
     private final AuditService audit;
 
-    public PaymentController(PaymentRepository payments, BookingRepository bookings, MonthlyRentBillRepository monthlyBills, BillStatusRepository billStatuses, RoomRepository rooms, GuestRepository guests, RecieptTypeRepository recieptTypes, AppSettingService settings, RecieptRecordService recieptRecordService, AuditService audit) {
+    public PaymentController(PaymentRepository payments, PaymentDetailRepository paymentDetails, BookingRepository bookings, DepositRefundRepository depositRefunds, MonthlyRentBillRepository monthlyBills, BillStatusRepository billStatuses, RoomRepository rooms, GuestRepository guests, RecieptTypeRepository recieptTypes, AppSettingService settings, RecieptRecordService recieptRecordService, AuditService audit) {
         this.payments = payments;
+        this.paymentDetails = paymentDetails;
         this.bookings = bookings;
+        this.depositRefunds = depositRefunds;
         this.monthlyBills = monthlyBills;
         this.billStatuses = billStatuses;
         this.rooms = rooms;
@@ -206,11 +212,7 @@ public class PaymentController {
         payment.setPaymentMethod(paymentMethod == null || paymentMethod.isBlank() ? "เงินสด" : paymentMethod);
         payment.setStatus(PaymentStatus.PAID);
         payment.setMonthlyRentBill(bill);
-        String billReference = "ชำระบิลค่าเช่ารายเดือน #" + bill.getDisplayBillNumber();
-        if (penaltyAmount.compareTo(BigDecimal.ZERO) > 0) {
-            billReference += " ค่าปรับ " + penaltyAmount;
-        }
-        payment.setRemark(remark == null || remark.isBlank() ? billReference : billReference + " - " + remark);
+        payment.setRemark(remark == null || remark.isBlank() ? null : remark.trim());
         payment = payments.save(payment);
 
         bill.setPaidAmount(money(bill.getPaidAmount()).add(paidAmount));
@@ -314,7 +316,7 @@ public class PaymentController {
         model.addAttribute("p", payment);
         model.addAttribute("receiptNo", payment.getReciept() != null ? payment.getReciept().getRecieptNo() : null);
         model.addAttribute("billNumber", monthlyRentBillNumber(payment));
-        model.addAttribute("billItem", bill == null ? null : new MonthlyRentBillSlipItem(bill));
+        model.addAttribute("billItem", null);
         model.addAttribute("receiptItems", receiptItems(payment));
         model.addAttribute("receiptTypeName", paymentReceiptTypeName(payment));
         model.addAttribute("payerName", paymentPayerName(payment));
@@ -425,6 +427,23 @@ public class PaymentController {
     }
 
     private List<ReceiptLine> receiptItems(Payment payment) {
+        if (payment == null || payment.getId() == null) {
+            return List.of();
+        }
+        return paymentDetails.findByPaymentIdOrderBySortOrderAscIdAsc(payment.getId()).stream()
+                .map(detail -> new ReceiptLine(
+                        detail.getItem().getName(),
+                        detail.getItem().getNameEn(),
+                        detail.getQuantity(),
+                        detail.getUnitPrice(),
+                        detail.getAmount()))
+                .toList();
+    }
+
+    private List<ReceiptLine> legacyReceiptItems(Payment payment) {
+        if (isPenaltyReceipt(payment)) {
+            return checkoutPenaltyReceiptItems(payment);
+        }
         if (payment == null || payment.getGuest() == null || payment.getGuest().getStayType() != StayType.DAILY) {
             return List.of(new ReceiptLine(paymentReceiptTypeName(payment), BigDecimal.ONE, payment == null ? BigDecimal.ZERO : payment.getAmount(), payment == null ? BigDecimal.ZERO : payment.getAmount()));
         }
@@ -454,6 +473,83 @@ public class PaymentController {
         return items;
     }
 
+    private List<ReceiptLine> checkoutPenaltyReceiptItems(Payment payment) {
+        var refund = payment.getDepositRefund() != null
+                ? payment.getDepositRefund()
+                : depositRefunds.findByRefundNo(refundNumberFromRemark(payment.getRemark())).orElse(null);
+        if (refund == null) {
+            return List.of(new ReceiptLine(paymentReceiptTypeName(payment), BigDecimal.ONE, money(payment.getAmount()), money(payment.getAmount())));
+        }
+        List<ReceiptLine> items = refund.getItems().stream()
+                .sorted(Comparator.comparing(item -> item.getSortOrder() == null ? 0 : item.getSortOrder()))
+                .map(item -> checkoutPenaltyReceiptLine(payment, item))
+                .collect(Collectors.toCollection(ArrayList::new));
+        BigDecimal deductedDeposit = money(refund.getDepositAmount()).min(money(refund.getTotalDeductAmount()));
+        if (deductedDeposit.compareTo(BigDecimal.ZERO) > 0) {
+            items.add(new ReceiptLine("หักค่าประกัน", "Deposit deduction", BigDecimal.ONE, deductedDeposit.negate(), deductedDeposit.negate()));
+        }
+        if (items.isEmpty()) {
+            items.add(new ReceiptLine(paymentReceiptTypeName(payment), BigDecimal.ONE, money(payment.getAmount()), money(payment.getAmount())));
+        }
+        return items;
+    }
+
+    private ReceiptLine checkoutPenaltyReceiptLine(Payment payment, com.hotel.model.DepositRefundItem item) {
+        String label = withoutPenaltyTimeRange(item.getItemName());
+        BigDecimal amount = money(item.getItemAmount());
+        if (isAdditionalNightCharge(label) && payment.getGuest() != null) {
+            BigDecimal nightlyPrice = money(payment.getGuest().getPrice());
+            if (nightlyPrice.compareTo(BigDecimal.ZERO) > 0) {
+                BigDecimal nights = amount.divide(nightlyPrice, 0, java.math.RoundingMode.HALF_UP).max(BigDecimal.ONE);
+                return new ReceiptLine(label, itemEnglishLabel(item), nights, nightlyPrice, amount);
+            }
+        }
+        return new ReceiptLine(label, itemEnglishLabel(item), BigDecimal.ONE, amount, amount);
+    }
+
+    private boolean isAdditionalNightCharge(String label) {
+        return label != null && (label.contains("เพิ่มค่าห้องเป็นจำนวนคืน")
+                || label.contains("คิดค่าห้องเพิ่มตามจำนวนคืน"));
+    }
+
+    private String itemEnglishLabel(com.hotel.model.DepositRefundItem item) {
+        if (item.getItemNameEn() != null && !item.getItemNameEn().isBlank()) {
+            return item.getItemNameEn();
+        }
+        String label = item.getItemName() == null ? "" : item.getItemName();
+        if (label.contains("เพิ่มค่าห้องเป็นจำนวนคืน") || label.contains("คิดค่าห้องเพิ่มตามจำนวนคืน")) {
+            return "Late check-out charge additional night";
+        }
+        if (label.startsWith("ค่าปรับเช็คเอาท์")) {
+            return "Late checkout penalty";
+        }
+        if (label.startsWith("ค่าเสียหาย")) {
+            return "Damage charge";
+        }
+        return "Deduction item";
+    }
+
+    private String withoutPenaltyTimeRange(String label) {
+        if (label == null) {
+            return "-";
+        }
+        return label.replaceAll("\\s*\\(\\d{1,2}:\\d{2}(?::\\d{2})?\\s*-\\s*\\d{1,2}:\\d{2}(?::\\d{2})?\\)", "").trim();
+    }
+
+    private boolean isPenaltyReceipt(Payment payment) {
+        return payment != null && payment.getReciept() != null && payment.getReciept().getType() != null
+                && RecieptType.PENALTY == payment.getReciept().getType().getId();
+    }
+
+    private String refundNumberFromRemark(String remark) {
+        String marker = "อ้างอิงใบสำคัญ ";
+        if (remark == null) {
+            return "";
+        }
+        int start = remark.indexOf(marker);
+        return start < 0 ? "" : remark.substring(start + marker.length()).trim().split("\\s+", 2)[0];
+    }
+
     private String paymentReceiptTypeName(Payment payment) {
         return payment != null && payment.getReciept() != null && payment.getReciept().getType() != null
                 ? payment.getReciept().getType().getName()
@@ -461,6 +557,11 @@ public class PaymentController {
     }
 
     private String paymentPayerName(Payment payment) {
+        if (payment != null && payment.getBooking() != null
+                && payment.getBooking().getCustomerName() != null
+                && !payment.getBooking().getCustomerName().isBlank()) {
+            return payment.getBooking().getCustomerName();
+        }
         String bookingNumber = bookingNumberFromRemark(payment == null ? null : payment.getRemark());
         if (bookingNumber != null) {
             return bookings.findByBookingNumber(bookingNumber)
@@ -497,6 +598,9 @@ public class PaymentController {
         return value.isBlank() ? "-" : value;
     }
 
-    public record ReceiptLine(String label, BigDecimal units, BigDecimal unitPrice, BigDecimal amount) {
+    public record ReceiptLine(String label, String englishLabel, BigDecimal units, BigDecimal unitPrice, BigDecimal amount) {
+        public ReceiptLine(String label, BigDecimal units, BigDecimal unitPrice, BigDecimal amount) {
+            this(label, null, units, unitPrice, amount);
+        }
     }
 }

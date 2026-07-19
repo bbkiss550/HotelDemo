@@ -141,6 +141,11 @@ public class ReportDataService {
     }
 
     private String paymentPayerName(Payment payment) {
+        if (payment != null && payment.getBooking() != null
+                && payment.getBooking().getCustomerName() != null
+                && !payment.getBooking().getCustomerName().isBlank()) {
+            return payment.getBooking().getCustomerName();
+        }
         String bookingNumber = bookingNumberFromRemark(payment == null ? null : payment.getRemark());
         if (bookingNumber != null) {
             return bookings.findByBookingNumber(bookingNumber)

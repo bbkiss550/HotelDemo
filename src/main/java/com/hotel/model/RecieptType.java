@@ -12,6 +12,7 @@ public class RecieptType {
     public static final long DAILY_SERVICE = 2L;
     public static final long MONTHLY_RENT = 3L;
     public static final long BOOKING_DEPOSIT = 4L;
+    public static final long PENALTY = 5L;
 
     @Id
     @Column(name = "`ID_rec_type`")

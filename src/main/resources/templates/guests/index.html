@@ -26,10 +26,11 @@
                     <button class="room-tile guest-room-tile"
                             th:each="room : ${rooms}"
                             th:if="${room.floor != null and room.floor.id == floor.id}"
+                            th:with="guest=${activeGuests[room.id]}"
                             th:attr="data-bs-target=${'#guestRoomModal' + room.id}"
                             data-bs-toggle="modal"
                             type="button"
-                            th:classappend="${room.status.name() == 'AVAILABLE'} ? ' status-available' : (${room.status.name() == 'MONTHLY_OCCUPIED'} ? ' status-monthly' : (${room.status.name() == 'DAILY_OCCUPIED'} ? ' status-daily' : (${room.status.name() == 'RESERVED'} ? ' status-reserved' : ' status-maintenance')))">
+                            th:classappend="(${room.status.name() == 'AVAILABLE'} ? ' status-available' : (${room.status.name() == 'MONTHLY_OCCUPIED'} ? ' status-monthly' : (${room.status.name() == 'DAILY_OCCUPIED'} ? ' status-daily' : (${room.status.name() == 'RESERVED'} ? ' status-reserved' : ' status-maintenance')))) + (${guest != null and guest.stayType.name() == 'DAILY' and guest.checkOutDate != null and guest.checkOutDate.isBefore(today)} ? ' room-overdue' : '')">
                         <span class="room-number" th:text="${room.roomNumber}"></span>
                         <span class="room-type" th:text="${room.roomType != null ? room.roomType.name : room.legacyRoomType}"></span>
                         <span class="room-status" th:text="${room.status.label}"></span>
@@ -359,7 +360,7 @@
             <div class="modal-dialog modal-lg">
                 <form th:if="${guest != null}" class="modal-content" method="post" th:id="${'checkoutForm' + guest.id}" th:action="@{/guests/{id}/checkout(id=${guest.id})}">
                     <div class="modal-header">
-                        <h5 class="modal-title">คืนค่าประกัน ห้อง <span th:text="${room.roomNumber}"></span></h5>
+                        <h5 class="modal-title">เช็คเอาท์ ห้อง <span th:text="${room.roomNumber}"></span></h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                     </div>
                     <div class="modal-body">
@@ -409,13 +410,21 @@
                                            th:checked="${penaltyQuote.amount > 0}">
                                     <label class="form-check-label fw-bold" th:for="${'applyCheckoutPenalty' + guest.id}">คิดค่าปรับเช็คเอาต์</label>
                                 </div>
+                                <div class="d-flex flex-wrap gap-3 small mb-3" th:if="${penaltyQuote.scheduledCheckout != null}">
+                                    <span>ครบกำหนด: <strong th:text="|${@thaiDate.format(penaltyQuote.scheduledCheckout)} เวลา ${#temporals.format(penaltyQuote.scheduledCheckout, 'HH:mm')} น.|">01/01/2569 เวลา 12:00 น.</strong></span>
+                                    <span>เกินกำหนด: <strong th:text="|${penaltyQuote.fullDayCount} วัน ${penaltyQuote.overdueHours} ชั่วโมง ${penaltyQuote.overdueRemainingMinutes} นาที|">0 วัน 0 ชั่วโมง 0 นาที</strong></span>
+                                </div>
                                 <div class="row g-2 checkout-penalty-options">
                                     <div class="col-md-6">
                                         <label class="form-check border rounded-3 p-3 h-100 w-100">
                                             <input class="form-check-input me-2 checkout-penalty-mode" name="checkoutPenaltyMode" type="radio" value="RULE" checked>
                                             <span class="fw-bold">คิดตามกฎที่ตั้งไว้</span>
                                             <span class="d-block text-muted small mt-1" th:text="${penaltyQuote.description}">ไม่พบกฎที่ตรงกัน</span>
-                                            <strong class="d-block mt-2 checkout-rule-amount" th:text="${#numbers.formatDecimal(penaltyQuote.amount, 1, 'COMMA', 2, 'POINT')}">0.00</strong>
+                                            <div class="row g-1 mt-2 small">
+                                                <div class="col-6">ครบวัน: <strong th:text="|${#numbers.formatDecimal(penaltyQuote.fullDayAmount, 1, 'COMMA', 2, 'POINT')} บาท|">0.00 บาท</strong></div>
+                                                <div class="col-6">ระหว่างวัน: <strong th:text="|${#numbers.formatDecimal(penaltyQuote.betweenDayAmount, 1, 'COMMA', 2, 'POINT')} บาท|">0.00 บาท</strong></div>
+                                            </div>
+                                            <strong class="d-block mt-2 checkout-rule-amount" th:text="|รวม ${#numbers.formatDecimal(penaltyQuote.amount, 1, 'COMMA', 2, 'POINT')} บาท|">รวม 0.00 บาท</strong>
                                         </label>
                                     </div>
                                     <div class="col-md-6">
@@ -429,11 +438,15 @@
                             </div>
                             <div class="refund-items">
                                 <div class="row g-2 align-items-end refund-item mb-2">
-                                    <div class="col-md-7">
+                                    <div class="col-md-4">
                                         <label class="form-label">รายการหัก/ค่าเสียหาย</label>
                                         <input class="form-control" name="deductName" placeholder="เช่น ค่าเสียหาย">
                                     </div>
                                     <div class="col-md-4">
+                                        <label class="form-label">รายการภาษาอังกฤษ</label>
+                                        <input class="form-control" name="deductNameEn" placeholder="e.g. Damage charge">
+                                    </div>
+                                    <div class="col-md-3">
                                         <label class="form-label">จำนวนเงิน</label>
                                         <input class="form-control refund-deduct-amount" name="deductAmount" type="number" min="0" step="0.01" value="0">
                                     </div>

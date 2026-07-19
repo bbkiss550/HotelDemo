@@ -4,6 +4,7 @@ import com.hotel.model.Payment;
 import com.hotel.model.StayType;
 import com.hotel.repository.BookingRepository;
 import com.hotel.repository.PaymentRepository;
+import com.hotel.repository.PaymentDetailRepository;
 import java.math.BigDecimal;
 import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
@@ -18,10 +19,12 @@ import org.springframework.web.bind.annotation.RequestMapping;
 @RequestMapping("/receipts")
 public class ReceiptController {
     private final PaymentRepository payments;
+    private final PaymentDetailRepository paymentDetails;
     private final BookingRepository bookings;
 
-    public ReceiptController(PaymentRepository payments, BookingRepository bookings) {
+    public ReceiptController(PaymentRepository payments, PaymentDetailRepository paymentDetails, BookingRepository bookings) {
         this.payments = payments;
+        this.paymentDetails = paymentDetails;
         this.bookings = bookings;
     }
 
@@ -38,6 +41,9 @@ public class ReceiptController {
     }
 
     private String monthlyRentBillNumber(Payment payment) {
+        if (payment != null && payment.getMonthlyRentBill() != null) {
+            return payment.getMonthlyRentBill().getDisplayBillNumber();
+        }
         String remark = payment == null ? null : payment.getRemark();
         if (remark == null || remark.isBlank()) {
             return "-";
@@ -51,6 +57,11 @@ public class ReceiptController {
     }
 
     private String paymentPayerName(Payment payment) {
+        if (payment != null && payment.getBooking() != null
+                && payment.getBooking().getCustomerName() != null
+                && !payment.getBooking().getCustomerName().isBlank()) {
+            return payment.getBooking().getCustomerName();
+        }
         String bookingNumber = bookingNumberFromRemark(payment == null ? null : payment.getRemark());
         if (bookingNumber != null) {
             return bookings.findByBookingNumber(bookingNumber)
@@ -72,6 +83,19 @@ public class ReceiptController {
     }
 
     private List<ReceiptLine> receiptItems(Payment payment) {
+        if (payment == null || payment.getId() == null) {
+            return List.of();
+        }
+        return paymentDetails.findByPaymentIdOrderBySortOrderAscIdAsc(payment.getId()).stream()
+                .map(detail -> new ReceiptLine(
+                        detail.getItem().getName(),
+                        detail.getQuantity(),
+                        detail.getUnitPrice(),
+                        detail.getAmount()))
+                .toList();
+    }
+
+    private List<ReceiptLine> legacyReceiptItems(Payment payment) {
         if (payment == null || payment.getGuest() == null || payment.getGuest().getStayType() != StayType.DAILY) {
             return List.of(new ReceiptLine(payment != null && payment.getReciept() != null && payment.getReciept().getType() != null ? payment.getReciept().getType().getName() : "-", BigDecimal.ONE, payment == null ? BigDecimal.ZERO : payment.getAmount(), payment == null ? BigDecimal.ZERO : payment.getAmount()));
         }

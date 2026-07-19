@@ -991,7 +991,11 @@
         }
 
         .unassigned-booking-backdrop {
-            z-index: 1205;
+            z-index: 2410;
+        }
+
+        #unassignedBookingModal {
+            z-index: 2420;
         }
 
         .unassigned-booking-select-wrap .choices {
@@ -1636,6 +1640,11 @@
         .status-reserved { background: linear-gradient(135deg, #4f73d9, #3859b5); }
         .status-maintenance { background: linear-gradient(135deg, #747b88, #555c68); }
 
+        .room-tile.room-overdue {
+            border: 3px solid #ef4444;
+            box-shadow: 0 0 0 2px rgba(239, 68, 68, .34), 0 .8rem 1.7rem rgba(23, 32, 51, .12);
+        }
+
         .billing-filter-controls {
             align-items: end;
             display: grid;
@@ -2011,7 +2020,7 @@
             position: fixed;
             transform: translateX(-50%);
             width: min(26rem, calc(100vw - 2.5rem));
-            z-index: 2200;
+            z-index: 3100;
         }
 
         .hotel-toast-item {
@@ -2101,6 +2110,26 @@
             z-index: 3000 !important;
         }
 
+        .document-bilingual-label,
+        .bill-slip-meta .document-bilingual-label,
+        .bill-slip-number .document-bilingual-label,
+        .bill-slip-note .document-bilingual-label {
+            display: inline-flex !important;
+            flex-direction: column;
+            line-height: 1.1;
+        }
+
+        .document-bilingual-label small {
+            font-size: .72em;
+            font-weight: inherit;
+            line-height: 1.1;
+        }
+
+        .bill-slip-meta .document-bilingual-label::after,
+        .bill-slip-meta .document-bilingual-label > span::after {
+            content: none;
+        }
+
         html[data-theme="dark"] .swal2-popup,
         .hotel-dark-mode .swal2-popup {
             background: var(--hotel-panel) !important;
@@ -2155,7 +2184,7 @@
             right: 0;
             top: 0;
             transition: opacity .18s ease;
-            z-index: 2300;
+            z-index: 3200;
         }
 
         .hotel-loading-bar::before {
@@ -2176,7 +2205,7 @@
             pointer-events: auto;
             position: fixed;
             touch-action: none;
-            z-index: 2299;
+            z-index: 3199;
         }
 
         .hotel-loading-panel {
@@ -2196,7 +2225,7 @@
             top: 50%;
             transform: translate(-50%, calc(-50% - .75rem));
             transition: opacity .18s ease, transform .18s ease;
-            z-index: 2301;
+            z-index: 3201;
         }
 
         .hotel-loading-panel .spinner-border {

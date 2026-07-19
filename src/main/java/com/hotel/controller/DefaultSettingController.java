@@ -48,16 +48,14 @@ public class DefaultSettingController {
                 @RequestParam(defaultValue = "0") BigDecimal checkoutOverdueFinePerHour,
                 @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.TIME) LocalTime dailyCheckoutTime,
                 @RequestParam(required = false) List<Long> ruleId,
-                @RequestParam(required = false) List<Integer> ruleStartDayOffset,
                 @RequestParam(required = false) List<String> ruleStartTime,
-                @RequestParam(required = false) List<Integer> ruleEndDayOffset,
                 @RequestParam(required = false) List<String> ruleEndTime,
                 @RequestParam(required = false) List<String> ruleChargeType,
                 @RequestParam(required = false) List<BigDecimal> ruleChargeValue,
                 @RequestParam(required = false) List<String> ruleEnabled,
                 RedirectAttributes redirect) {
         try {
-            checkoutPenalties.saveRules(ruleId, ruleStartDayOffset, ruleStartTime, ruleEndDayOffset, ruleEndTime, ruleChargeType, ruleChargeValue, ruleEnabled);
+            checkoutPenalties.saveRules(ruleId, ruleStartTime, ruleEndTime, ruleChargeType, ruleChargeValue, ruleEnabled);
             settings.saveDefaults(systemName, defaultDeposit, monthlyDeposit, electricRate, waterRate, fineAmount, fineIntervalDays, checkoutOverdueFinePerHour, dailyCheckoutTime);
         } catch (IllegalArgumentException ex) {
             redirect.addFlashAttribute("error", ex.getMessage());

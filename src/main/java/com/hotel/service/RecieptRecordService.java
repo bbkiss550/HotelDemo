@@ -14,10 +14,12 @@ import org.springframework.transaction.annotation.Transactional;
 public class RecieptRecordService {
     private final RecieptRepository reciepts;
     private final RecieptTypeRepository types;
+    private final PaymentDetailSnapshotService paymentDetails;
 
-    public RecieptRecordService(RecieptRepository reciepts, RecieptTypeRepository types) {
+    public RecieptRecordService(RecieptRepository reciepts, RecieptTypeRepository types, PaymentDetailSnapshotService paymentDetails) {
         this.reciepts = reciepts;
         this.types = types;
+        this.paymentDetails = paymentDetails;
     }
 
     @Transactional
@@ -32,6 +34,7 @@ public class RecieptRecordService {
             return null;
         }
         if (payment != null && payment.getReciept() != null) {
+            paymentDetails.snapshot(payment);
             return payment.getReciept();
         }
         Reciept reciept = new Reciept();
@@ -42,6 +45,7 @@ public class RecieptRecordService {
         Reciept saved = reciepts.save(reciept);
         if (payment != null) {
             payment.setReciept(saved);
+            paymentDetails.snapshot(payment);
         }
         return saved;
     }
@@ -72,6 +76,10 @@ public class RecieptRecordService {
 
     public Reciept recordBookingDeposit(Payment payment) {
         return record(RecieptType.BOOKING_DEPOSIT, payment == null ? BigDecimal.ZERO : payment.getTotalAmount(), payment);
+    }
+
+    public Reciept recordPenalty(Payment payment) {
+        return record(RecieptType.PENALTY, payment == null ? BigDecimal.ZERO : payment.getTotalAmount(), payment);
     }
 
     private String nextRecieptNo(LocalDate date) {

@@ -10,64 +10,63 @@
         <div class="bill-slip-header">
             <div>
                 <h4 th:text="${systemName}">BlueCatHotelDemo</h4>
-                <div th:text="${billSlipTitle}">ใบแจ้งค่าเช่ารายเดือน</div>
+                <div class="document-bilingual-label"><span th:text="${billSlipTitle}">ใบแจ้งค่าเช่ารายเดือน</span><small th:text="${billSlipReceiptNo != null and !#strings.isEmpty(billSlipReceiptNo) ? 'Receipt' : 'Monthly Rental Invoice'}"></small></div>
             </div>
             <div class="bill-slip-number">
-                <strong th:text="|ห้อง ${item.bill.room != null ? item.bill.room.roomNumber : '-'}|"></strong>
-                <span th:text="|เลขบิล #${item.bill.billNumber != null and !#strings.isEmpty(item.bill.billNumber) ? item.bill.billNumber : '-'}|"></span>
-                <span th:if="${billSlipReceiptNo != null and !#strings.isEmpty(billSlipReceiptNo)}"
-                      th:text="|เลขใบเสร็จ #${billSlipReceiptNo}|"></span>
+                <strong class="document-bilingual-label"><span th:text="|ห้อง ${item.bill.room != null ? item.bill.room.roomNumber : '-'}|"></span><small th:text="|Room ${item.bill.room != null ? item.bill.room.roomNumber : '-'}|"></small></strong>
+                <span class="document-bilingual-label"><span th:text="|เลขบิล #${item.bill.billNumber != null and !#strings.isEmpty(item.bill.billNumber) ? item.bill.billNumber : '-'}|"></span><small th:text="|Invoice No. #${item.bill.billNumber != null and !#strings.isEmpty(item.bill.billNumber) ? item.bill.billNumber : '-'}|"></small></span>
+                <span th:if="${billSlipReceiptNo != null and !#strings.isEmpty(billSlipReceiptNo)}" class="document-bilingual-label"><span th:text="|เลขใบเสร็จ #${billSlipReceiptNo}|"></span><small th:text="|Receipt No. #${billSlipReceiptNo}|"></small></span>
             </div>
         </div>
 
         <div class="bill-slip-meta monthly-bill-meta">
             <div class="bill-slip-meta-left">
-                <div class="bill-slip-meta-line"><span>ผู้เช่า</span><strong th:text="${item.bill.guest != null ? item.bill.guest.fullName : '-'}"></strong></div>
-                <div class="bill-slip-meta-line"><span>รอบบิล</span><strong th:text="${@thaiDate.monthYear(item.bill.billingMonth, item.bill.billingYear)}"></strong></div>
+                <div class="bill-slip-meta-line"><span class="document-bilingual-label"><span>ผู้เช่า</span><small>Tenant</small></span><strong th:text="${item.bill.guest != null ? item.bill.guest.fullName : '-'}"></strong></div>
+                <div class="bill-slip-meta-line"><span class="document-bilingual-label"><span>รอบบิล</span><small>Billing Period</small></span><strong th:text="${@thaiDate.monthYear(item.bill.billingMonth, item.bill.billingYear)}"></strong></div>
             </div>
             <div class="bill-slip-meta-right">
-                <div class="bill-slip-meta-line" th:if="${billSlipReceiptNo == null or #strings.isEmpty(billSlipReceiptNo)}"><span>วันที่ออกบิล</span><strong th:text="${@thaiDate.format(item.bill.issueDate)}"></strong></div>
-                <div class="bill-slip-meta-line" th:if="${billSlipReceiptNo != null and !#strings.isEmpty(billSlipReceiptNo)}"><span>วันที่ชำระ</span><strong th:text="${@thaiDate.format(billSlipPaymentDate)}"></strong></div>
-                <div class="bill-slip-meta-line" th:if="${billSlipReceiptNo == null or #strings.isEmpty(billSlipReceiptNo)}"><span>ครบกำหนด</span><strong th:text="${@thaiDate.format(item.bill.dueDate)}"></strong></div>
+                <div class="bill-slip-meta-line" th:if="${billSlipReceiptNo == null or #strings.isEmpty(billSlipReceiptNo)}"><span class="document-bilingual-label"><span>วันที่ออกบิล</span><small>Issue Date</small></span><strong th:text="${@thaiDate.format(item.bill.issueDate)}"></strong></div>
+                <div class="bill-slip-meta-line" th:if="${billSlipReceiptNo != null and !#strings.isEmpty(billSlipReceiptNo)}"><span class="document-bilingual-label"><span>วันที่ชำระ</span><small>Payment Date</small></span><strong th:text="${@thaiDate.format(billSlipPaymentDate)}"></strong></div>
+                <div class="bill-slip-meta-line" th:if="${billSlipReceiptNo == null or #strings.isEmpty(billSlipReceiptNo)}"><span class="document-bilingual-label"><span>ครบกำหนด</span><small>Due Date</small></span><strong th:text="${@thaiDate.format(item.bill.dueDate)}"></strong></div>
             </div>
         </div>
 
         <table class="bill-slip-table">
             <thead>
             <tr>
-                <th>รายการ</th>
-                <th class="text-end">จำนวนหน่วย</th>
-                <th class="text-end">ราคาต่อหน่วย</th>
-                <th class="text-end">จำนวนเงิน</th>
+                <th><span class="document-bilingual-label"><span>รายการ</span><small>Item</small></span></th>
+                <th class="text-end"><span class="document-bilingual-label text-end"><span>จำนวนหน่วย</span><small>Units</small></span></th>
+                <th class="text-end"><span class="document-bilingual-label text-end"><span>ราคาต่อหน่วย</span><small>Unit Price</small></span></th>
+                <th class="text-end"><span class="document-bilingual-label text-end"><span>จำนวนเงิน</span><small>Amount</small></span></th>
             </tr>
             </thead>
             <tbody>
             <tr>
-                <td>ค่าเช่าห้อง</td>
+                <td><span class="document-bilingual-label"><span>ค่าเช่าห้อง</span><small>Room Rent</small></span></td>
                 <td class="text-end">1</td>
                 <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.rentAmount, 1, 'COMMA', 2, 'POINT')}"></td>
                 <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.rentAmount, 1, 'COMMA', 2, 'POINT')}"></td>
             </tr>
             <tr>
-                <td>ค่าน้ำ</td>
+                <td><span class="document-bilingual-label"><span>ค่าน้ำ</span><small>Water Charge</small></span></td>
                 <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.waterUnit, 1, 'COMMA', 0, 'POINT')}"></td>
                 <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.waterRate, 1, 'COMMA', 2, 'POINT')}"></td>
                 <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.waterAmount, 1, 'COMMA', 2, 'POINT')}"></td>
             </tr>
             <tr>
-                <td>ค่าไฟ</td>
+                <td><span class="document-bilingual-label"><span>ค่าไฟ</span><small>Electricity Charge</small></span></td>
                 <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.electricUnit, 1, 'COMMA', 0, 'POINT')}"></td>
                 <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.electricRate, 1, 'COMMA', 2, 'POINT')}"></td>
                 <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.electricAmount, 1, 'COMMA', 2, 'POINT')}"></td>
             </tr>
             <tr th:if="${item.bill.otherAmount != null and item.bill.otherAmount > 0}">
-                <td>ค่าอื่น ๆ</td>
+                <td><span class="document-bilingual-label"><span>ค่าอื่น ๆ</span><small>Other Charges</small></span></td>
                 <td class="text-end">1</td>
                 <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.otherAmount, 1, 'COMMA', 2, 'POINT')}"></td>
                 <td class="text-end" th:text="${#numbers.formatDecimal(item.bill.otherAmount, 1, 'COMMA', 2, 'POINT')}"></td>
             </tr>
             <tr th:if="${item.bill.discountAmount != null and item.bill.discountAmount > 0}">
-                <td>ส่วนลด</td>
+                <td><span class="document-bilingual-label"><span>ส่วนลด</span><small>Discount</small></span></td>
                 <td class="text-end">1</td>
                 <td class="text-end" th:text="|-${#numbers.formatDecimal(item.bill.discountAmount, 1, 'COMMA', 2, 'POINT')}|"></td>
                 <td class="text-end" th:text="|-${#numbers.formatDecimal(item.bill.discountAmount, 1, 'COMMA', 2, 'POINT')}|"></td>
@@ -75,26 +74,26 @@
             </tbody>
             <tfoot>
             <tr>
-                <th colspan="3">รวมก่อนหักเครดิต</th>
+                <th colspan="3"><span class="document-bilingual-label"><span>รวมก่อนหักเครดิต</span><small>Subtotal</small></span></th>
                 <th class="text-end" th:text="${#numbers.formatDecimal(item.bill.subtotalAmount, 1, 'COMMA', 2, 'POINT')}"></th>
             </tr>
             <tr th:if="${item.bill.advanceAppliedAmount != null and item.bill.advanceAppliedAmount > 0}">
-                <th colspan="3">หักเงินล่วงหน้า</th>
+                <th colspan="3"><span class="document-bilingual-label"><span>หักเงินล่วงหน้า</span><small>Advance Deduction</small></span></th>
                 <th class="text-end" th:text="|-${#numbers.formatDecimal(item.bill.advanceAppliedAmount, 1, 'COMMA', 2, 'POINT')}|"></th>
             </tr>
             <tr th:if="${billSlipFineAmount > 0}">
-                <th colspan="3">ค่าปรับ</th>
+                <th colspan="3"><span class="document-bilingual-label"><span>ค่าปรับ</span><small>Penalty</small></span></th>
                 <th class="text-end" th:text="${#numbers.formatDecimal(billSlipFineAmount, 1, 'COMMA', 2, 'POINT')}"></th>
             </tr>
             <tr class="bill-slip-total">
-                <th colspan="3">ยอดสุทธิ</th>
+                <th colspan="3"><span class="document-bilingual-label"><span>ยอดสุทธิ</span><small>Net Total</small></span></th>
                 <th class="text-end" th:text="|${#numbers.formatDecimal(billSlipTotalAmount, 1, 'COMMA', 2, 'POINT')} บาท|"></th>
             </tr>
             </tfoot>
         </table>
 
         <div class="bill-slip-note" th:if="${item.bill.note != null and !#strings.isEmpty(item.bill.note)}">
-            <span>หมายเหตุ</span>
+            <span class="document-bilingual-label"><span>หมายเหตุ</span><small>Remark</small></span>
             <div th:text="${item.bill.note}"></div>
         </div>
 </div>

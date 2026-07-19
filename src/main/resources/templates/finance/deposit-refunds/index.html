@@ -53,6 +53,7 @@
                                         <span class="refund-item-source d-none"
                                               th:each="item : ${refund.items}"
                                               th:attr="data-name=${item.itemName},
+                                                       data-name-en=${item.itemNameEn},
                                                        data-amount=${#numbers.formatDecimal(item.itemAmount, 1, 'COMMA', 2, 'POINT')}"></span>
                                     </td>
                                     <td class="fw-bold" th:text="${refund.refundNo}"></td>
@@ -88,54 +89,54 @@
                             <div class="bill-slip-header">
                                 <div>
                                     <h4 th:text="${systemName}">BlueCatHotelDemo</h4>
-                                    <div>ใบสำคัญรับเงิน คืนค่าประกัน</div>
+                                    <div class="document-bilingual-label"><span>ใบสำคัญรับเงิน คืนค่าประกัน</span><small>Deposit Refund Voucher</small></div>
                                 </div>
                                 <div class="bill-slip-number">
-                                    <strong id="refundSlipRoom">ห้อง -</strong>
-                                    <span id="refundSlipNo">เลขที่ #-</span>
+                                    <strong class="document-bilingual-label"><span id="refundSlipRoom">ห้อง -</span><small id="refundSlipRoomEnglish">Room -</small></strong>
+                                    <span class="document-bilingual-label"><span id="refundSlipNo">เลขที่ #-</span><small id="refundSlipNoEnglish">Voucher No. #-</small></span>
                                 </div>
                             </div>
                             <div class="bill-slip-meta deposit-refund-meta">
-                                <div class="deposit-refund-meta-name"><span>ผู้รับเงิน</span><strong id="refundSlipGuest">-</strong></div>
+                                <div class="deposit-refund-meta-name"><span class="document-bilingual-label"><span>ผู้รับเงิน</span><small>Recipient</small></span><strong id="refundSlipGuest">-</strong></div>
                                 <div class="deposit-refund-meta-side">
-                                    <div><span>วันที่</span><strong id="refundSlipDate">-</strong></div>
-                                    <div><span>วิธีคืนเงิน</span><strong id="refundSlipMethod">-</strong></div>
+                                    <div><span class="document-bilingual-label"><span>วันที่</span><small>Date</small></span><strong id="refundSlipDate">-</strong></div>
+                                    <div><span class="document-bilingual-label"><span>วิธีคืนเงิน</span><small>Refund Method</small></span><strong id="refundSlipMethod">-</strong></div>
                                 </div>
                             </div>
                             <table class="bill-slip-table">
                                 <thead>
                                 <tr>
-                                    <th>รายการ</th>
-                                    <th class="text-end">จำนวนเงิน</th>
+                                    <th><span class="document-bilingual-label"><span>รายการ</span><small>Item</small></span></th>
+                                    <th class="text-end"><span class="document-bilingual-label text-end"><span>จำนวนเงิน</span><small>Amount</small></span></th>
                                 </tr>
                                 </thead>
                                 <tbody>
                                 <tr>
-                                    <td>ค่าประกันที่รับไว้</td>
+                                    <td><span class="document-bilingual-label"><span>ค่าประกันที่รับไว้</span><small>Deposit Received</small></span></td>
                                     <td class="text-end" id="refundSlipDeposit">0.00</td>
                                 </tr>
                                 <tr>
-                                    <td>หักรวม/ค่าเสียหาย</td>
+                                    <td><span class="document-bilingual-label"><span>หักรวม/ค่าเสียหาย</span><small>Deductions</small></span></td>
                                     <td class="text-end" id="refundSlipDeduct">0.00</td>
                                 </tr>
                                 <tr id="refundSlipNoDeductRow">
-                                    <td class="ps-4 text-muted">ไม่มีรายการหัก</td>
+                                    <td class="ps-4 text-muted"><span class="document-bilingual-label"><span>ไม่มีรายการหัก</span><small>No Deductions</small></span></td>
                                     <td class="text-end text-muted">0.00</td>
                                 </tr>
                                 <tr>
-                                    <td>เรียกเก็บเพิ่ม</td>
+                                    <td><span class="document-bilingual-label"><span>เรียกเก็บเพิ่ม</span><small>Additional Charge</small></span></td>
                                     <td class="text-end" id="refundSlipExtra">0.00</td>
                                 </tr>
                                 </tbody>
                                 <tfoot>
                                 <tr class="bill-slip-total">
-                                    <th>ยอดคืนสุทธิ</th>
+                                    <th><span class="document-bilingual-label"><span>ยอดคืนสุทธิ</span><small>Net Refund</small></span></th>
                                     <th class="text-end" id="refundSlipRefund">0.00 บาท</th>
                                 </tr>
                                 </tfoot>
                             </table>
                             <div class="bill-slip-note">
-                                <span>หมายเหตุ</span>
+                                <span class="document-bilingual-label"><span>หมายเหตุ</span><small>Remark</small></span>
                                 <small id="refundSlipRemark">-</small>
                             </div>
                         </div>
@@ -198,7 +199,9 @@
             document.querySelectorAll('.refund-slip-deduct-item').forEach(row => row.remove());
             setRefundText('refundModalNo', `#${no}`);
             setRefundText('refundSlipNo', `เลขที่ #${no}`);
+            setRefundText('refundSlipNoEnglish', `Voucher No. #${no}`);
             setRefundText('refundSlipRoom', `ห้อง ${button.dataset.room || '-'}`);
+            setRefundText('refundSlipRoomEnglish', `Room ${button.dataset.room || '-'}`);
             setRefundText('refundSlipGuest', button.dataset.guest);
             setRefundText('refundSlipDate', button.dataset.refundDate);
             setRefundText('refundSlipMethod', button.dataset.method);
@@ -215,7 +218,17 @@
                 row.className = 'refund-slip-deduct-item';
                 const nameCell = document.createElement('td');
                 nameCell.className = 'ps-4';
-                nameCell.textContent = `- ${item.dataset.name || '-'}`;
+                const label = document.createElement('span');
+                label.className = 'document-bilingual-label';
+                const name = document.createElement('span');
+                name.textContent = `- ${item.dataset.name || '-'}`;
+                label.append(name);
+                if (item.dataset.nameEn) {
+                    const nameEn = document.createElement('small');
+                    nameEn.textContent = item.dataset.nameEn;
+                    label.append(nameEn);
+                }
+                nameCell.append(label);
                 const amountCell = document.createElement('td');
                 amountCell.className = 'text-end';
                 amountCell.textContent = `-${item.dataset.amount || '0.00'}`;

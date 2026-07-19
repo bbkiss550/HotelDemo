@@ -74,7 +74,9 @@ public class GuestController {
     }
 
     @GetMapping
-    String index(@RequestParam(defaultValue = "") String q, @RequestParam(required = false) Long floorId, Model model) {
+    String index(@RequestParam(defaultValue = "") String q,
+                 @RequestParam(required = false) Long floorId,
+                 Model model) {
         var floorList = floors.findAllByOrderBySortOrderAscNumberAscNameAsc();
         var selectedFloor = floorId == null
                 ? floorList.stream().findFirst().orElse(null)
@@ -121,6 +123,7 @@ public class GuestController {
         model.addAttribute("stayTypes", StayType.values());
         model.addAttribute("defaultDepositAmount", settings.defaultDeposit());
         model.addAttribute("monthlyDepositAmount", settings.monthlyDeposit());
+        model.addAttribute("today", LocalDate.now());
         return "guests/index";
     }
 
@@ -168,7 +171,7 @@ public class GuestController {
             guest.setTotalPaid(bookingDeposit);
         }
         guests.save(guest);
-        createOpeningPayment(guest);
+        Payment openingPayment = createOpeningPayment(guest);
         if (guest.getStayType() == StayType.MONTHLY) {
             advanceBalanceService.addOpeningAdvance(guest, monthlyAdvanceAmount(guest));
         }
@@ -183,6 +186,10 @@ public class GuestController {
         audit.record("CHECK_IN", "Room " + room.getRoomNumber() + " guest " + guest.getFullName());
         redirect.addFlashAttribute("message", "บันทึกเข้าพักห้อง " + room.getRoomNumber() + " เรียบร้อย");
         redirect.addFlashAttribute("flashType", "success");
+        if (openingPayment != null) {
+            redirect.addFlashAttribute("autoReceiptPaymentId", openingPayment.getId());
+            return "redirect:/payments";
+        }
         return floorId == null ? "redirect:/guests" : "redirect:/guests?floorId=" + floorId;
     }
 
@@ -191,6 +198,7 @@ public class GuestController {
     String checkout(@PathVariable Long id,
                     @RequestParam(required = false) Long floorId,
                     @RequestParam(required = false) List<String> deductName,
+                    @RequestParam(required = false) List<String> deductNameEn,
                     @RequestParam(required = false) List<String> deductAmount,
                     @RequestParam(defaultValue = "เงินสด") String refundMethod,
                     @RequestParam(required = false) String refundRemark,
@@ -200,10 +208,28 @@ public class GuestController {
                     RedirectAttributes redirect) {
         var guest = guests.findById(id).orElseThrow();
         DailyCheckoutPenaltyService.PenaltyQuote checkoutPenalty = checkoutPenalty(guest, applyCheckoutPenalty, checkoutPenaltyMode, checkoutPenaltyAmount);
-        recordDepositRefund(guest, deductName, deductAmount, refundMethod, refundRemark, checkoutPenalty);
+        DepositRefund refund = recordDepositRefund(guest, deductName, deductNameEn, deductAmount, refundMethod, refundRemark, checkoutPenalty);
         guest.setActive(false);
         if (guest.getCheckOutDate() == null) {
             guest.setCheckOutDate(LocalDate.now());
+        }
+        Payment penaltyPayment = null;
+        if (refund != null && refund.getExtraChargeAmount() != null && refund.getExtraChargeAmount().compareTo(BigDecimal.ZERO) > 0) {
+            penaltyPayment = new Payment();
+            penaltyPayment.setRoom(guest.getRoom());
+            penaltyPayment.setGuest(guest);
+            penaltyPayment.setAmount(refund.getExtraChargeAmount());
+            penaltyPayment.setFineAmount(BigDecimal.ZERO);
+            penaltyPayment.setPaymentDate(LocalDate.now());
+            penaltyPayment.setPaymentMethod(refundMethod == null || refundMethod.isBlank() ? "เงินสด" : refundMethod);
+            penaltyPayment.setStatus(PaymentStatus.PAID);
+            penaltyPayment.setDepositRefund(refund);
+            penaltyPayment.setRemark(null);
+            penaltyPayment = payments.save(penaltyPayment);
+            recieptRecordService.recordPenalty(penaltyPayment);
+            payments.save(penaltyPayment);
+            BigDecimal totalPaid = guest.getTotalPaid() == null ? BigDecimal.ZERO : guest.getTotalPaid();
+            guest.setTotalPaid(totalPaid.add(penaltyPayment.getTotalAmount()));
         }
         guests.save(guest);
         var room = guest.getRoom();
@@ -212,6 +238,11 @@ public class GuestController {
         audit.record("CHECK_OUT", "Room " + room.getRoomNumber() + " guest " + guest.getFullName());
         redirect.addFlashAttribute("message", "เช็กเอาต์ห้อง " + room.getRoomNumber() + " เรียบร้อย");
         redirect.addFlashAttribute("flashType", "delete");
+        if (penaltyPayment != null) {
+            audit.record("CHECKOUT_PENALTY_PAYMENT", "Room " + room.getRoomNumber() + " payment " + penaltyPayment.getId());
+            redirect.addFlashAttribute("autoReceiptPaymentId", penaltyPayment.getId());
+            return "redirect:/payments";
+        }
         return floorId == null ? "redirect:/guests" : "redirect:/guests?floorId=" + floorId;
     }
 
@@ -320,9 +351,10 @@ public class GuestController {
         return price == null ? BigDecimal.ZERO : price;
     }
 
-    private void recordDepositRefund(Guest guest, List<String> deductNames, List<String> deductAmounts, String refundMethod, String refundRemark, DailyCheckoutPenaltyService.PenaltyQuote checkoutPenalty) {
+    private DepositRefund recordDepositRefund(Guest guest, List<String> deductNames, List<String> deductNamesEn, List<String> deductAmounts, String refundMethod, String refundRemark, DailyCheckoutPenaltyService.PenaltyQuote checkoutPenalty) {
         BigDecimal deposit = guest.getDeposit() == null ? BigDecimal.ZERO : guest.getDeposit();
         deductNames = deductNames == null ? Collections.emptyList() : deductNames;
+        deductNamesEn = deductNamesEn == null ? Collections.emptyList() : deductNamesEn;
         deductAmounts = deductAmounts == null ? Collections.emptyList() : deductAmounts;
 
         DepositRefund refund = new DepositRefund();
@@ -343,13 +375,28 @@ public class GuestController {
             }
             DepositRefundItem item = new DepositRefundItem();
             item.setItemName(name.trim());
+            String nameEn = index < deductNamesEn.size() ? deductNamesEn.get(index) : null;
+            item.setItemNameEn(nameEn == null || nameEn.isBlank() ? null : nameEn.trim());
             item.setItemAmount(amount);
             item.setSortOrder(index + 1);
             refund.addItem(item);
             totalDeduct = totalDeduct.add(amount);
         }
 
-        if (checkoutPenalty.amount().compareTo(BigDecimal.ZERO) > 0) {
+        if (checkoutPenalty.fullDayAmount().compareTo(BigDecimal.ZERO) > 0) {
+            addRefundItem(refund, "ค่าปรับเช็คเอาท์ช้า เกิน " + checkoutPenalty.fullDayCount() + " วัน", "Late checkout penalty over " + checkoutPenalty.fullDayCount() + " day(s)", checkoutPenalty.fullDayAmount());
+            totalDeduct = totalDeduct.add(checkoutPenalty.fullDayAmount());
+        }
+        if (checkoutPenalty.betweenDayAmount().compareTo(BigDecimal.ZERO) > 0) {
+            long overdueHours = Math.max(1, (checkoutPenalty.betweenDayMinutes() + 59) / 60);
+            String label = "ค่าปรับเช็คเอาท์ช้า เกิน " + overdueHours + " ชั่วโมง";
+            if (checkoutPenalty.fullDayCount() == 0 && checkoutPenalty.betweenDayMinutes() == 0) {
+                label = "ค่าปรับเช็คเอาท์ช้า (" + checkoutPenalty.description() + ")";
+            }
+            addRefundItem(refund, label, "Late checkout penalty over " + overdueHours + " hour(s)", checkoutPenalty.betweenDayAmount());
+            totalDeduct = totalDeduct.add(checkoutPenalty.betweenDayAmount());
+        }
+        if (checkoutPenalty.amount().compareTo(checkoutPenalty.fullDayAmount().add(checkoutPenalty.betweenDayAmount())) > 0) {
             DepositRefundItem item = new DepositRefundItem();
             item.setItemName("ค่าปรับเช็คเอาต์: " + checkoutPenalty.description());
             item.setItemAmount(checkoutPenalty.amount());
@@ -362,8 +409,18 @@ public class GuestController {
         refund.setRefundAmount(deposit.subtract(totalDeduct).max(BigDecimal.ZERO));
         refund.setExtraChargeAmount(totalDeduct.subtract(deposit).max(BigDecimal.ZERO));
         if (deposit.compareTo(BigDecimal.ZERO) > 0 || totalDeduct.compareTo(BigDecimal.ZERO) > 0) {
-            depositRefunds.save(refund);
+            return depositRefunds.save(refund);
         }
+        return null;
+    }
+
+    private void addRefundItem(DepositRefund refund, String name, String nameEn, BigDecimal amount) {
+        DepositRefundItem item = new DepositRefundItem();
+        item.setItemName(name);
+        item.setItemNameEn(nameEn);
+        item.setItemAmount(amount);
+        item.setSortOrder(refund.getItems().size() + 1);
+        refund.addItem(item);
     }
 
     private BigDecimal parseMoney(String value) {
@@ -408,10 +465,10 @@ public class GuestController {
         return prefix + String.format("%06d", nextNumber);
     }
 
-    private void createOpeningPayment(Guest guest) {
+    private Payment createOpeningPayment(Guest guest) {
         BigDecimal amount = guest.getInitialPayment() == null ? BigDecimal.ZERO : guest.getInitialPayment();
         if (amount.compareTo(BigDecimal.ZERO) <= 0) {
-            return;
+            return null;
         }
         Payment payment = new Payment();
         payment.setRoom(guest.getRoom());
@@ -421,7 +478,7 @@ public class GuestController {
         payment.setPaymentDate(guest.getCheckInDate() == null ? LocalDate.now() : guest.getCheckInDate());
         payment.setPaymentMethod("เงินสด");
         payment.setStatus(PaymentStatus.PAID);
-        payment.setRemark("ค่าแรกเข้า");
+        payment.setRemark(null);
         payment = payments.save(payment);
         if (guest.getStayType() == StayType.MONTHLY) {
             recieptRecordService.recordOpeningMonthly(payment, amount);
@@ -433,5 +490,6 @@ public class GuestController {
         BigDecimal totalPaid = guest.getTotalPaid() == null ? BigDecimal.ZERO : guest.getTotalPaid();
         guest.setTotalPaid(totalPaid.add(amount));
         guests.save(guest);
+        return payment;
     }
 }

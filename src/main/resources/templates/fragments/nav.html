@@ -275,10 +275,8 @@
                 if (form?.dataset?.swalConfirmed === 'true') {
                     delete form.dataset.swalConfirmed;
                 }
-                window.setTimeout(() => {
-                    if (!event.defaultPrevented) window.hotelLoading.start();
-                }, 0);
-            }, true);
+                if (!event.defaultPrevented) window.hotelLoading.start();
+            });
 
             document.addEventListener('click', event => {
                 const button = event.target.closest('[data-swal-confirm][type="submit"]');
@@ -293,17 +291,6 @@
                         delete button.dataset.swalConfirmed;
                     }
                 });
-            }, true);
-
-            document.addEventListener('click', event => {
-                const button = event.target.closest('button[type="submit"], input[type="submit"]');
-                if (!button || button.disabled) return;
-                const form = button.form;
-                if (!form || form.dataset.swalConfirm || button.dataset.swalConfirm) return;
-                if (typeof form.checkValidity === 'function' && !form.checkValidity()) return;
-                window.setTimeout(() => {
-                    if (!event.defaultPrevented) window.hotelLoading.start();
-                }, 0);
             }, true);
 
             document.addEventListener('click', event => {

@@ -43,5 +43,5 @@ public interface PaymentRepository extends JpaRepository<Payment, Long> {
               and p.paymentDate between :startDate and :endDate
     """)
     BigDecimal sumPaidBetween(LocalDate startDate, LocalDate endDate);
-    Optional<Payment> findFirstByRemarkContainingOrderByIdAsc(String marker);
+    Optional<Payment> findFirstByBookingIdOrderByIdAsc(Long bookingId);
 }

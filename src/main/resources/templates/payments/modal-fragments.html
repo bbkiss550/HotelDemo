@@ -170,29 +170,29 @@
                      th:replace="~{finance/monthly-rent/bill-slip :: billSlip(${billItem}, 'ใบเสร็จรับเงิน', ${receiptNo}, ${p.paymentDate}, ${p.fineAmount}, ${p.totalAmount})}"></div>
                 <div class="monthly-bill-slip payment-receipt-slip" th:if="${billItem == null}">
                     <div class="bill-slip-header">
-                        <div><h4 th:text="${systemName}">BlueCatHotelDemo</h4><div>ใบเสร็จรับเงิน</div></div>
+                        <div><h4 th:text="${systemName}">BlueCatHotelDemo</h4><div class="document-bilingual-label"><span>ใบเสร็จรับเงิน</span><small>Receipt</small></div></div>
                         <div class="bill-slip-number">
-                            <strong th:text="|ห้อง ${p.room != null ? p.room.roomNumber : '-'}|"></strong>
-                            <span th:text="|เลขใบเสร็จ #${receiptNo != null ? receiptNo : '-'}|"></span>
+                            <strong class="document-bilingual-label"><span th:text="|ห้อง ${p.room != null ? p.room.roomNumber : '-'}|"></span><small th:text="|Room ${p.room != null ? p.room.roomNumber : '-'}|"></small></strong>
+                            <span class="document-bilingual-label"><span th:text="|เลขใบเสร็จ #${receiptNo != null ? receiptNo : '-'}|"></span><small th:text="|Receipt No. #${receiptNo != null ? receiptNo : '-'}|"></small></span>
                         </div>
                     </div>
                     <div class="bill-slip-meta">
-                        <div><span>รับจาก</span><strong th:text="${payerName != null ? payerName : '-'}"></strong></div>
-                        <div><span>วันที่ชำระ</span><strong th:text="${@thaiDate.format(p.paymentDate)}"></strong></div>
-                        <div class="bill-slip-due-date"><span>วิธีชำระ</span><strong th:text="${p.paymentMethod != null ? p.paymentMethod : '-'}"></strong></div>
+                        <div><span class="document-bilingual-label"><span>รับจาก</span><small>Received From</small></span><strong th:text="${payerName != null ? payerName : '-'}"></strong></div>
+                        <div><span class="document-bilingual-label"><span>วันที่ชำระ</span><small>Payment Date</small></span><strong th:text="${@thaiDate.format(p.paymentDate)}"></strong></div>
+                        <div class="bill-slip-due-date"><span class="document-bilingual-label"><span>วิธีชำระ</span><small>Payment Method</small></span><strong th:text="${p.paymentMethod != null ? p.paymentMethod : '-'}"></strong></div>
                     </div>
                     <table class="bill-slip-table">
                         <thead>
                         <tr>
-                            <th>รายการ</th>
-                            <th class="text-end">จำนวนหน่วย</th>
-                            <th class="text-end">ราคาต่อหน่วย</th>
-                            <th class="text-end">จำนวนเงิน</th>
+                            <th><span class="document-bilingual-label"><span>รายการ</span><small>Item</small></span></th>
+                            <th class="text-end"><span class="document-bilingual-label text-end"><span>จำนวนหน่วย</span><small>Units</small></span></th>
+                            <th class="text-end"><span class="document-bilingual-label text-end"><span>ราคาต่อหน่วย</span><small>Unit Price</small></span></th>
+                            <th class="text-end"><span class="document-bilingual-label text-end"><span>จำนวนเงิน</span><small>Amount</small></span></th>
                         </tr>
                         </thead>
                         <tbody>
                         <tr th:each="item : ${receiptItems}">
-                            <td th:text="${item.label}">รายการ</td>
+                            <td><span class="document-bilingual-label"><span th:text="${item.label}">รายการ</span><small th:if="${item.englishLabel != null and !#strings.isEmpty(item.englishLabel)}" th:text="${item.englishLabel}"></small></span></td>
                             <td class="text-end" th:text="${#numbers.formatDecimal(item.units, 1, 'COMMA', 0, 'POINT')}">1</td>
                             <td class="text-end" th:text="${#numbers.formatDecimal(item.unitPrice, 1, 'COMMA', 2, 'POINT')}">0.00</td>
                             <td class="text-end" th:text="${#numbers.formatDecimal(item.amount, 1, 'COMMA', 2, 'POINT')}">0.00</td>
@@ -200,7 +200,7 @@
                         </tbody>
                         <tfoot>
                         <tr class="bill-slip-total">
-                            <th colspan="3">รวมรับชำระ</th>
+                            <th colspan="3"><span class="document-bilingual-label"><span>รวมรับชำระ</span><small>Total Received</small></span></th>
                             <th class="text-end" th:text="|${#numbers.formatDecimal(p.amount, 1, 'COMMA', 2, 'POINT')} บาท|">0.00 บาท</th>
                         </tr>
                         </tfoot>

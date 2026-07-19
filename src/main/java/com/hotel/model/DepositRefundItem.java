@@ -25,6 +25,9 @@ public class DepositRefundItem {
     @Column(name = "item_name", nullable = false)
     private String itemName;
 
+    @Column(name = "item_name_en")
+    private String itemNameEn;
+
     @Column(name = "item_amount", nullable = false)
     private BigDecimal itemAmount = BigDecimal.ZERO;
 
@@ -37,6 +40,8 @@ public class DepositRefundItem {
     public void setRefund(DepositRefund refund) { this.refund = refund; }
     public String getItemName() { return itemName; }
     public void setItemName(String itemName) { this.itemName = itemName; }
+    public String getItemNameEn() { return itemNameEn; }
+    public void setItemNameEn(String itemNameEn) { this.itemNameEn = itemNameEn; }
     public BigDecimal getItemAmount() { return itemAmount; }
     public void setItemAmount(BigDecimal itemAmount) { this.itemAmount = itemAmount; }
     public Integer getSortOrder() { return sortOrder; }

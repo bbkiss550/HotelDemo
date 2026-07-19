@@ -41,6 +41,14 @@ public class Payment {
     @JoinColumn(name = "ID_monthly_rent_bill", referencedColumnName = "ID_monthly_rent_bill")
     private MonthlyRentBill monthlyRentBill;
 
+    @ManyToOne
+    @JoinColumn(name = "`ID_booking`", referencedColumnName = "`ID_booking`")
+    private Booking booking;
+
+    @ManyToOne
+    @JoinColumn(name = "`ID_deposit_refund`", referencedColumnName = "`ID_deposit_refund`")
+    private DepositRefund depositRefund;
+
     @Column(name = "p_remark", length = 1000)
     private String remark;
 
@@ -79,6 +87,10 @@ public class Payment {
     public void setReciept(Reciept reciept) { this.reciept = reciept; }
     public MonthlyRentBill getMonthlyRentBill() { return monthlyRentBill; }
     public void setMonthlyRentBill(MonthlyRentBill monthlyRentBill) { this.monthlyRentBill = monthlyRentBill; }
+    public Booking getBooking() { return booking; }
+    public void setBooking(Booking booking) { this.booking = booking; }
+    public DepositRefund getDepositRefund() { return depositRefund; }
+    public void setDepositRefund(DepositRefund depositRefund) { this.depositRefund = depositRefund; }
     public String getRemark() { return remark; }
     public void setRemark(String remark) { this.remark = remark; }
     public PaymentStatus getStatus() { return status; }

@@ -40,17 +40,122 @@ public class RecieptSchemaInitializer implements ApplicationRunner {
         jdbc.execute("ALTER TABLE t_payment ALTER COLUMN \"ID_guest\" DROP NOT NULL");
         jdbc.execute("ALTER TABLE t_payment ADD COLUMN IF NOT EXISTS \"ID_reciept\" BIGINT");
         jdbc.execute("ALTER TABLE t_payment ADD COLUMN IF NOT EXISTS ID_monthly_rent_bill BIGINT");
+        jdbc.execute("ALTER TABLE t_payment ADD COLUMN IF NOT EXISTS \"ID_booking\" BIGINT");
+        jdbc.execute("ALTER TABLE t_payment ADD COLUMN IF NOT EXISTS \"ID_deposit_refund\" BIGINT");
+        jdbc.execute("""
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_t_payment_booking') THEN
+                        ALTER TABLE t_payment ADD CONSTRAINT fk_t_payment_booking
+                        FOREIGN KEY ("ID_booking") REFERENCES t_booking("ID_booking");
+                    END IF;
+                    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'fk_t_payment_deposit_refund') THEN
+                        ALTER TABLE t_payment ADD CONSTRAINT fk_t_payment_deposit_refund
+                        FOREIGN KEY ("ID_deposit_refund") REFERENCES t_deposit_refund("ID_deposit_refund");
+                    END IF;
+                END $$
+                """);
+        jdbc.execute("""
+                UPDATE t_payment p
+                SET "ID_booking" = b."ID_booking"
+                FROM t_booking b
+                WHERE p."ID_booking" IS NULL
+                  AND p.p_remark LIKE '%' || b.b_booking_number || '%'
+                """);
+        jdbc.execute("""
+                UPDATE t_payment p
+                SET "ID_deposit_refund" = r."ID_deposit_refund"
+                FROM t_deposit_refund r
+                WHERE p."ID_deposit_refund" IS NULL
+                  AND p.p_remark LIKE '%' || r.refund_no || '%'
+                """);
+        jdbc.execute("""
+                DO $$
+                BEGIN
+                    IF to_regclass('t_payemnt_item') IS NOT NULL
+                       AND to_regclass('t_payment_item') IS NULL THEN
+                        ALTER TABLE t_payemnt_item RENAME TO t_payment_item;
+                        ALTER TABLE t_payment_item RENAME COLUMN "ID_payemnt_item" TO "ID_payment_item";
+                        ALTER TABLE t_payment_detail RENAME COLUMN "ID_payemnt_item" TO "ID_payment_item";
+                    END IF;
+                END $$
+                """);
+        jdbc.execute("""
+                CREATE TABLE IF NOT EXISTS t_payment_item (
+                    "ID_payment_item" BIGSERIAL PRIMARY KEY,
+                    item_name VARCHAR(255) NOT NULL,
+                    item_name_en VARCHAR(255),
+                    is_active BOOLEAN NOT NULL DEFAULT TRUE,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+                """);
+        jdbc.execute("""
+                CREATE TABLE IF NOT EXISTS t_payment_detail (
+                    "ID_payment_detail" BIGSERIAL PRIMARY KEY,
+                    "ID_payment" BIGINT NOT NULL REFERENCES t_payment("ID_payment"),
+                    "ID_payment_item" BIGINT REFERENCES t_payment_item("ID_payment_item"),
+                    detail_quantity NUMERIC(12,2) NOT NULL DEFAULT 1,
+                    detail_unit_price NUMERIC(12,2) NOT NULL DEFAULT 0,
+                    detail_amount NUMERIC(12,2) NOT NULL DEFAULT 0,
+                    sort_order INTEGER NOT NULL DEFAULT 0,
+                    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                )
+                """);
+        jdbc.execute("ALTER TABLE t_payment_detail ADD COLUMN IF NOT EXISTS \"ID_payment_item\" BIGINT");
+        jdbc.execute("ALTER TABLE t_payment_detail DROP COLUMN IF EXISTS detail_remark");
+        jdbc.execute("ALTER TABLE t_payment_detail DROP COLUMN IF EXISTS detail_name");
+        jdbc.execute("ALTER TABLE t_payment_detail DROP COLUMN IF EXISTS detail_name_en");
+        jdbc.execute("""
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1 FROM pg_constraint
+                        WHERE conname = 'fk_t_payment_detail_item'
+                    ) THEN
+                        ALTER TABLE t_payment_detail
+                        ADD CONSTRAINT fk_t_payment_detail_item
+                        FOREIGN KEY ("ID_payment_item")
+                        REFERENCES t_payment_item("ID_payment_item");
+                    END IF;
+                END $$
+                """);
         jdbc.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_t_reciept_rec_no ON t_reciept(rec_no)");
         jdbc.execute("CREATE INDEX IF NOT EXISTS ix_t_reciept_payment ON t_reciept(\"ID_payment\")");
         jdbc.execute("CREATE INDEX IF NOT EXISTS ix_t_payment_reciept ON t_payment(\"ID_reciept\")");
         jdbc.execute("CREATE INDEX IF NOT EXISTS ix_t_payment_monthly_bill ON t_payment(ID_monthly_rent_bill)");
+        jdbc.execute("CREATE INDEX IF NOT EXISTS ix_t_payment_booking ON t_payment(\"ID_booking\")");
+        jdbc.execute("CREATE INDEX IF NOT EXISTS ix_t_payment_deposit_refund ON t_payment(\"ID_deposit_refund\")");
+        jdbc.execute("CREATE INDEX IF NOT EXISTS ix_t_payment_detail_payment ON t_payment_detail(\"ID_payment\")");
+        jdbc.execute("CREATE INDEX IF NOT EXISTS ix_t_payment_detail_item ON t_payment_detail(\"ID_payment_item\")");
+        jdbc.execute("CREATE UNIQUE INDEX IF NOT EXISTS ux_t_payment_item_name ON t_payment_item(item_name)");
+        jdbc.update("""
+                INSERT INTO t_payment_item (item_name, item_name_en)
+                VALUES
+                    ('ค่าเช่ารายเดือน', 'Monthly rent'),
+                    ('ค่าห้องรายวัน', 'Daily room charge'),
+                    ('ค่าน้ำ', 'Water charge'),
+                    ('ค่าไฟ', 'Electricity charge'),
+                    ('ค่าอื่น ๆ', 'Other charge'),
+                    ('ส่วนลด', 'Discount'),
+                    ('หักเงินล่วงหน้า', 'Advance payment deduction'),
+                    ('ค่าประกัน', 'Deposit'),
+                    ('หักค่าประกัน', 'Deposit deduction'),
+                    ('มัดจำจองห้อง', 'Booking deposit'),
+                    ('หักมัดจำจอง', 'Booking deposit deduction'),
+                    ('ค่าบริการของลูกค้ารายวัน', 'Daily guest service'),
+                    ('ค่าปรับ', 'Penalty'),
+                    ('ค่าปรับเช็กเอาต์ล่าช้า', 'Late check-out penalty'),
+                    ('ค่าเสียหาย', 'Damage charge')
+                ON CONFLICT (item_name) DO NOTHING
+                """);
         jdbc.update("""
                 INSERT INTO t_reciept_type ("ID_rec_type", rec_type_name)
                 VALUES
                     (1, 'ค่าแรกเข้า รายเดือน'),
                     (2, 'ค่าบริการของลูกค้ารายวัน'),
                     (3, 'ค่าเช่ารายเดือน'),
-                    (4, 'มัดจำจองห้อง')
+                    (4, 'มัดจำจองห้อง'),
+                    (5, 'ค่าปรับ')
                 ON CONFLICT ("ID_rec_type") DO UPDATE SET rec_type_name = EXCLUDED.rec_type_name
                 """);
         boolean hasPaymentReceiptNo = jdbc.queryForObject("""

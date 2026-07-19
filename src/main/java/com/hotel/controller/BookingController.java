@@ -246,8 +246,8 @@ public class BookingController {
         if (depositAmount.compareTo(BigDecimal.ZERO) <= 0 || booking.getBookingNumber() == null || booking.getBookingNumber().isBlank()) {
             return;
         }
-        var marker = "#" + booking.getBookingNumber();
-        var payment = payments.findFirstByRemarkContainingOrderByIdAsc(marker).orElseGet(Payment::new);
+        var payment = payments.findFirstByBookingIdOrderByIdAsc(booking.getId()).orElseGet(Payment::new);
+        payment.setBooking(booking);
         payment.setRoom(booking.getRoom());
         payment.setGuest(null);
         payment.setAmount(depositAmount);
@@ -255,7 +255,7 @@ public class BookingController {
         payment.setPaymentDate(booking.getBookingDate() == null ? LocalDate.now() : booking.getBookingDate());
         payment.setPaymentMethod("เงินสด");
         payment.setStatus(PaymentStatus.PAID);
-        payment.setRemark("รับเงินมัดจำจองห้อง " + marker + " ผู้จอง: " + (booking.getCustomerName() == null ? "-" : booking.getCustomerName()));
+        payment.setRemark(null);
         payment = payments.save(payment);
         recieptRecordService.recordBookingDeposit(payment);
         if (payment.getReciept() != null) {

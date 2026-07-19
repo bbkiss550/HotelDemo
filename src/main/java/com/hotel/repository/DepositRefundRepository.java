@@ -14,5 +14,7 @@ public interface DepositRefundRepository extends JpaRepository<DepositRefund, Lo
     List<DepositRefund> findByRefundDateBetweenOrderByRefundDateDescIdDesc(java.time.LocalDate startDate, java.time.LocalDate endDate);
     @EntityGraph(attributePaths = {"guest", "room", "items"})
     List<DepositRefund> findByCreatedAtGreaterThanEqualAndCreatedAtLessThanOrderByCreatedAtDescIdDesc(LocalDateTime startDateTime, LocalDateTime endDateTime);
+    @EntityGraph(attributePaths = {"guest", "room", "items"})
+    Optional<DepositRefund> findByRefundNo(String refundNo);
     Optional<DepositRefund> findTopByRefundNoStartingWithOrderByRefundNoDesc(String prefix);
 }

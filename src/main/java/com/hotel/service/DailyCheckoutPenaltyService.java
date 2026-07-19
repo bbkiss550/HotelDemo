@@ -40,37 +40,31 @@ public class DailyCheckoutPenaltyService {
         LocalDateTime actualCheckout = LocalDateTime.now();
         LocalDateTime scheduledCheckout = LocalDateTime.of(guest.getCheckOutDate(), settings.dailyCheckoutTime());
         if (!actualCheckout.isAfter(scheduledCheckout)) {
-            return PenaltyQuote.none();
+            return PenaltyQuote.none(scheduledCheckout);
         }
+        Duration overdue = Duration.between(scheduledCheckout, actualCheckout);
+        long fullDayCount = overdue.toDays();
+        LocalDateTime partialStart = scheduledCheckout.plusDays(fullDayCount);
+        long partialMinutes = overdueMinutes(partialStart, actualCheckout);
+        BigDecimal fullDayAmount = money(guest.getPrice()).multiply(BigDecimal.valueOf(fullDayCount));
+        PartialPenalty partialPenalty = partialMinutes == 0
+                ? PartialPenalty.none()
+                : partialPenalty(guest, actualCheckout);
 
-        for (DailyCheckoutPenaltyRule rule : rules()) {
-            if (!Boolean.TRUE.equals(rule.getEnabled()) || rule.getStartTime() == null) {
-                continue;
-            }
-            LocalDateTime startsAt = scheduledCheckout.toLocalDate()
-                    .plusDays(normalizedOffset(rule.getStartDayOffset()))
-                    .atTime(rule.getStartTime());
-            LocalDateTime endsAt = rule.getEndTime() == null
-                    ? null
-                    : scheduledCheckout.toLocalDate()
-                    .plusDays(normalizedOffset(rule.getEndDayOffset()))
-                    .atTime(rule.getEndTime());
-            if (actualCheckout.isBefore(startsAt) || (endsAt != null && !actualCheckout.isBefore(endsAt))) {
-                continue;
-            }
-            return new PenaltyQuote(
-                    amountFor(rule, guest, startsAt, actualCheckout),
-                    rule.getId(),
-                    describe(rule));
-        }
-        return PenaltyQuote.none();
+        return new PenaltyQuote(
+                fullDayAmount.add(partialPenalty.amount()),
+                partialPenalty.ruleId(),
+                partialPenalty.description(),
+                scheduledCheckout,
+                fullDayCount,
+                partialMinutes,
+                fullDayAmount,
+                partialPenalty.amount());
     }
 
     @Transactional
     public void saveRules(List<Long> ids,
-                          List<Integer> startDayOffsets,
                           List<String> startTimes,
-                          List<Integer> endDayOffsets,
                           List<String> endTimes,
                           List<String> chargeTypes,
                           List<BigDecimal> chargeValues,
@@ -89,15 +83,13 @@ public class DailyCheckoutPenaltyService {
             Long id = valueAt(ids, index);
             DailyCheckoutPenaltyRule rule = id == null ? new DailyCheckoutPenaltyRule() : existing.getOrDefault(id, new DailyCheckoutPenaltyRule());
             LocalTime endTime = parseTime(valueAt(endTimes, index));
-            int startOffset = Math.max(0, valueAt(startDayOffsets, index) == null ? 0 : valueAt(startDayOffsets, index));
-            int endOffset = Math.max(startOffset, valueAt(endDayOffsets, index) == null ? startOffset : valueAt(endDayOffsets, index));
-            if (endTime != null && endOffset == startOffset && !endTime.isAfter(startTime)) {
+            if (endTime != null && !endTime.isAfter(startTime)) {
                 throw new IllegalArgumentException("เวลาสิ้นสุดของกฎต้องอยู่หลังเวลาเริ่มต้น");
             }
 
-            rule.setStartDayOffset(startOffset);
+            rule.setStartDayOffset(0);
             rule.setStartTime(startTime);
-            rule.setEndDayOffset(endTime == null ? null : endOffset);
+            rule.setEndDayOffset(endTime == null ? null : 0);
             rule.setEndTime(endTime);
             rule.setChargeType(parseChargeType(valueAt(chargeTypes, index)));
             rule.setChargeValue(money(valueAt(chargeValues, index)));
@@ -136,13 +128,31 @@ public class DailyCheckoutPenaltyService {
         return Math.max(1, (minutes + 59) / 60);
     }
 
+    private long overdueMinutes(LocalDateTime scheduledCheckout, LocalDateTime actualCheckout) {
+        long seconds = Math.max(0, Duration.between(scheduledCheckout, actualCheckout).getSeconds());
+        return seconds == 0 ? 0 : (seconds + 59) / 60;
+    }
+
+    private PartialPenalty partialPenalty(Guest guest, LocalDateTime actualCheckout) {
+        for (DailyCheckoutPenaltyRule rule : rules()) {
+            if (!Boolean.TRUE.equals(rule.getEnabled()) || rule.getStartTime() == null) {
+                continue;
+            }
+            LocalDateTime startsAt = actualCheckout.toLocalDate().atTime(rule.getStartTime());
+            LocalDateTime endsAt = rule.getEndTime() == null
+                    ? actualCheckout.toLocalDate().atTime(LocalTime.MAX)
+                    : actualCheckout.toLocalDate().atTime(rule.getEndTime());
+            if (actualCheckout.isBefore(startsAt) || !actualCheckout.isBefore(endsAt)) {
+                continue;
+            }
+            return new PartialPenalty(amountFor(rule, guest, startsAt, actualCheckout), rule.getId(), describe(rule));
+        }
+        return PartialPenalty.none();
+    }
+
     private String describe(DailyCheckoutPenaltyRule rule) {
         String range = rule.getStartTime() + (rule.getEndTime() == null ? "+" : " - " + rule.getEndTime());
         return rule.getChargeType().getLabel() + " (" + range + ")";
-    }
-
-    private int normalizedOffset(Integer offset) {
-        return offset == null ? 0 : Math.max(0, offset);
     }
 
     private DailyCheckoutPenaltyChargeType parseChargeType(String value) {
@@ -172,9 +182,42 @@ public class DailyCheckoutPenaltyService {
         return values != null && index >= 0 && index < values.size() ? values.get(index) : null;
     }
 
-    public record PenaltyQuote(BigDecimal amount, Long ruleId, String description) {
+    public record PenaltyQuote(BigDecimal amount,
+                               Long ruleId,
+                               String description,
+                               LocalDateTime scheduledCheckout,
+                               long fullDayCount,
+                               long betweenDayMinutes,
+                               BigDecimal fullDayAmount,
+                               BigDecimal betweenDayAmount) {
+        public PenaltyQuote(BigDecimal amount, Long ruleId, String description) {
+            this(amount, ruleId, description, null, 0, 0, BigDecimal.ZERO, amount == null ? BigDecimal.ZERO : amount);
+        }
+
+        public long overdueDays() {
+            return fullDayCount;
+        }
+
+        public long overdueHours() {
+            return betweenDayMinutes / 60;
+        }
+
+        public long overdueRemainingMinutes() {
+            return betweenDayMinutes % 60;
+        }
+
         public static PenaltyQuote none() {
-            return new PenaltyQuote(BigDecimal.ZERO, null, "ไม่พบกฎที่ตรงกับเวลาเช็คเอาต์");
+            return none(null);
+        }
+
+        public static PenaltyQuote none(LocalDateTime scheduledCheckout) {
+            return new PenaltyQuote(BigDecimal.ZERO, null, "ยังไม่เกินเวลาเช็คเอาต์", scheduledCheckout, 0, 0, BigDecimal.ZERO, BigDecimal.ZERO);
+        }
+    }
+
+    private record PartialPenalty(BigDecimal amount, Long ruleId, String description) {
+        private static PartialPenalty none() {
+            return new PartialPenalty(BigDecimal.ZERO, null, "ไม่พบกฎสำหรับช่วงเวลาระหว่างวัน");
         }
     }
 }
