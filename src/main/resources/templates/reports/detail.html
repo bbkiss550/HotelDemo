@@ -8,7 +8,7 @@
         <header class="mb-3"><a href="#" class="burger-btn d-block d-xl-none"><i class="bi bi-justify fs-3"></i></a></header>
         <div class="page-heading d-flex flex-wrap justify-content-between align-items-center gap-3">
             <div><h3 th:text="${currentMenuName}">รายงาน</h3></div>
-            <a class="btn btn-light-primary" th:href="@{${reportPdfAction}(startDate=${startDate},endDate=${endDate})}">
+            <a class="btn btn-light-primary" download th:href="@{${reportPdfAction}(startDate=${startDate},endDate=${endDate})}">
                 <i class="bi bi-file-earmark-pdf me-1"></i>Export PDF
             </a>
         </div>
