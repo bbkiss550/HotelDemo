@@ -236,6 +236,85 @@
                 window.fetch = wrappedFetch;
             }
 
+            document.addEventListener('click', async event => {
+                const link = event.target.closest('.report-pdf-download');
+                if (!link || !window.fetch) return;
+                event.preventDefault();
+                window.hotelLoading.start();
+                try {
+                    const response = await window.fetch(link.href, { credentials: 'same-origin' });
+                    if (!response.ok) throw new Error('Unable to generate report PDF');
+                    const file = await response.blob();
+                    const downloadUrl = URL.createObjectURL(file);
+                    const anchor = document.createElement('a');
+                    anchor.href = downloadUrl;
+                    anchor.download = 'report.pdf';
+                    document.body.appendChild(anchor);
+                    anchor.click();
+                    anchor.remove();
+                    window.setTimeout(() => URL.revokeObjectURL(downloadUrl), 1000);
+                } catch (error) {
+                    if (window.Swal) {
+                        window.Swal.fire({ icon: 'error', title: 'ไม่สามารถสร้างรายงานได้' });
+                    }
+                } finally {
+                    window.hotelLoading.finish();
+                }
+            });
+
+            const legacyReportPreviewModal = () => {
+                let modal = document.getElementById('reportPdfPreviewModal');
+                if (modal) return modal;
+                modal = document.createElement('div');
+                modal.id = 'reportPdfPreviewModal';
+                modal.className = 'modal fade';
+                modal.tabIndex = -1;
+                modal.innerHTML = `
+                    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+                        <div class="modal-content">
+                            <div class="modal-header"><h5 class="modal-title">ดูตัวอย่างรายงาน</h5><button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button></div>
+                            <div class="modal-body p-0" style="height:75vh"><iframe class="report-pdf-frame" title="ตัวอย่างรายงาน PDF" style="width:100%;height:100%;border:0"></iframe></div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">ปิด</button>
+                                <a class="btn btn-primary report-pdf-save" download><i class="bi bi-download me-1"></i>บันทึกไฟล์</a>
+                                <button type="button" class="btn btn-light-primary report-pdf-print"><i class="bi bi-printer me-1"></i>พิมพ์</button>
+                            </div>
+                        </div>
+                    </div>`;
+                document.body.appendChild(modal);
+                modal.querySelector('.report-pdf-print').addEventListener('click', () => {
+                    modal.querySelector('.report-pdf-frame')?.contentWindow?.print();
+                });
+                modal.addEventListener('hidden.bs.modal', () => {
+                    modal.querySelector('.report-pdf-frame').src = 'about:blank';
+                });
+                return modal;
+            };
+
+            document.addEventListener('click', event => {
+                const button = event.target.closest('.legacy-report-pdf-preview');
+                if (!button) return;
+                event.preventDefault();
+                const downloadLink = document.querySelector('.report-pdf-download');
+                if (!downloadLink) return;
+                const pdfUrl = new URL(downloadLink.href, window.location.origin);
+                pdfUrl.searchParams.set('inline', 'true');
+                const modal = legacyReportPreviewModal();
+                const frame = modal.querySelector('.report-pdf-frame');
+                window.hotelLoading.start();
+                const finishLoading = () => window.hotelLoading.finish();
+                frame.addEventListener('load', finishLoading, { once: true });
+                frame.addEventListener('error', () => {
+                    window.hotelLoading.finish();
+                    if (window.Swal) {
+                        window.Swal.fire({ icon: 'error', title: 'ไม่สามารถสร้างตัวอย่างรายงานได้' });
+                    }
+                }, { once: true });
+                modal.querySelector('.report-pdf-save').href = downloadLink.href;
+                frame.src = pdfUrl;
+                if (window.bootstrap) window.bootstrap.Modal.getOrCreateInstance(modal).show();
+            });
+
             const confirmWithSweetAlert = (message) => {
                 if (!window.Swal) {
                     return Promise.resolve({ isConfirmed: window.confirm(message) });

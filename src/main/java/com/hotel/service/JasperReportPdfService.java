@@ -2,22 +2,40 @@ package com.hotel.service;
 
 import com.hotel.model.Payment;
 import java.awt.Color;
+import java.awt.Font;
+import java.awt.GraphicsEnvironment;
+import java.io.ByteArrayInputStream;
 import java.io.File;
+import java.io.IOException;
+import java.io.InputStream;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.time.LocalDate;
 import java.time.LocalTime;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
+import jakarta.annotation.PostConstruct;
 import net.sf.jasperreports.engine.JRException;
 import net.sf.jasperreports.engine.JRLineBox;
 import net.sf.jasperreports.engine.JasperCompileManager;
 import net.sf.jasperreports.engine.JasperExportManager;
 import net.sf.jasperreports.engine.JasperFillManager;
 import net.sf.jasperreports.engine.JasperPrint;
+import net.sf.jasperreports.engine.JasperReport;
+import net.sf.jasperreports.engine.util.JRLoader;
+import net.sf.jasperreports.engine.xml.JRXmlLoader;
 import net.sf.jasperreports.engine.data.JRMapCollectionDataSource;
 import net.sf.jasperreports.engine.design.JRDesignBand;
 import net.sf.jasperreports.engine.design.JRDesignExpression;
@@ -34,9 +52,11 @@ import net.sf.jasperreports.engine.type.ModeEnum;
 import net.sf.jasperreports.engine.type.OrientationEnum;
 import net.sf.jasperreports.engine.type.VerticalTextAlignEnum;
 import org.springframework.stereotype.Service;
+import org.springframework.core.io.ClassPathResource;
 
 @Service
 public class JasperReportPdfService {
+    private static final Pattern THAI_FONT_TAG = Pattern.compile("<font\\b[^>]*fontName=\\\"TH SarabunPSK\\\"[^>]*/>");
     private static final int PAGE_WIDTH = 842;
     private static final int PAGE_HEIGHT = 595;
     private static final int MARGIN = 24;
@@ -45,9 +65,21 @@ public class JasperReportPdfService {
     private static final String WINDOWS_THAI_FONT_PATH = "C:/Windows/Fonts/tahoma.ttf";
 
     private final ThaiDateFormatter thaiDate;
+    private final Map<String, Path> compiledTemplates = new ConcurrentHashMap<>();
 
     public JasperReportPdfService(ThaiDateFormatter thaiDate) {
         this.thaiDate = thaiDate;
+    }
+
+    @PostConstruct
+    void compileTemplates() {
+        try {
+            compiledReport("reports/revenue-report.jrxml");
+            compiledReport("reports/monthly-bills-report.jrxml");
+            compiledReport("reports/bookings-report.jrxml");
+        } catch (JRException ex) {
+            throw new IllegalStateException("Cannot compile Jasper report templates", ex);
+        }
     }
 
     public byte[] revenuePdf(ReportDataService.DateRange range, ReportDataService.RevenueReport report) throws JRException {
@@ -62,50 +94,176 @@ public class JasperReportPdfService {
                         "amount", money(payment.getAmount())
                 ))
                 .toList();
-        return tablePdf(
-                "รายงานรายได้",
-                "วันที่บันทึก " + thaiDate.format(range.start()) + " - " + thaiDate.format(range.end()),
-                List.of(
-                        column("receiptNo", "เลขใบเสร็จ", 105, false),
-                        column("receiptDate", "วันที่ใบเสร็จ", 90, false),
-                        column("paymentDate", "วันที่จ่าย", 90, false),
-                        column("payerName", "ผู้จ่าย", 170, false),
-                        column("receiptType", "ประเภทใบเสร็จ", 150, false),
-                        column("paymentMethod", "วิธีชำระ", 80, false),
-                        column("amount", "ยอดตามใบแจ้ง", 105, true)
-                ),
-                rows
-        );
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("REPORT_TITLE", "รายงานรายได้");
+        parameters.put("REPORT_SUBTITLE", "วันที่บันทึก " + thaiDate.format(range.start()) + " - " + thaiDate.format(range.end()));
+        parameters.put("PRINTED_AT", printedAt());
+        parameters.put("TOTAL_AMOUNT", money(rows.stream().map(row -> decimalValue(row.get("amount"))).reduce(BigDecimal.ZERO, BigDecimal::add)));
+        JasperPrint print = JasperFillManager.fillReport(
+                compiledReport("reports/revenue-report.jrxml"), parameters,
+                new JRMapCollectionDataSource(new ArrayList<>(rows)));
+        return JasperExportManager.exportReportToPdf(print);
+    }
+
+    private JasperReport compiledReport(String templatePath) throws JRException {
+        try {
+            Path compiledPath = compiledTemplates.computeIfAbsent(templatePath, path -> {
+                Path workspaceTemplate = Path.of("src", "main", "resources").resolve(path);
+                try (InputStream source = Files.isRegularFile(workspaceTemplate)
+                        ? Files.newInputStream(workspaceTemplate)
+                        : new ClassPathResource(path).getInputStream()) {
+                    FontConfig font = fontConfig();
+                    ThaiFontConfig thaiFont = thaiReportFontConfig();
+                    if (font.path() == null || thaiFont.normalPath() == null) {
+                        throw new IllegalStateException("Thai PDF font is not available for Jasper report generation");
+                    }
+                    String pdfFontPath = font.path().replace('\\', '/');
+                    String reportXml = new String(source.readAllBytes(), StandardCharsets.UTF_8)
+                            .replace("fontName=\"Tahoma\"", "fontName=\"" + font.name()
+                                    + "\" pdfFontName=\"" + pdfFontPath
+                                    + "\" pdfEncoding=\"Identity-H\" isPdfEmbedded=\"true\"");
+                    reportXml = applyThaiReportFonts(reportXml, thaiFont);
+                    Path output = Files.createTempFile("hotel-" + path.substring(path.lastIndexOf('/') + 1, path.length() - 6), ".jasper");
+                    JasperCompileManager.compileReportToFile(
+                            JRXmlLoader.load(new ByteArrayInputStream(reportXml.getBytes(StandardCharsets.UTF_8))),
+                            output.toString());
+                    return output;
+                } catch (Exception ex) {
+                    throw new IllegalStateException("Cannot compile Jasper template " + path, ex);
+                }
+            });
+            return (JasperReport) JRLoader.loadObject(compiledPath.toFile());
+        } catch (IllegalStateException ex) {
+            if (ex.getCause() instanceof JRException jasperException) throw jasperException;
+            throw ex;
+        }
     }
 
     public byte[] monthlyBillsPdf(ReportDataService.DateRange range, ReportDataService.MonthlyBillReport report) throws JRException {
+        return monthlyBillsPdf(range, report, false);
+    }
+
+    public byte[] monthlyBillsPdf(ReportDataService.DateRange range,
+                                  ReportDataService.MonthlyBillReport report,
+                                  boolean showPeriodSummary) throws JRException {
+        return monthlyBillsPdf(range, report, showPeriodSummary,
+                "วันที่บันทึก " + thaiDate.format(range.start()) + " - " + thaiDate.format(range.end()));
+    }
+
+    public byte[] monthlyBillsPdf(ReportDataService.DateRange range,
+                                  ReportDataService.MonthlyBillReport report,
+                                  boolean showPeriodSummary,
+                                  String reportSubtitle) throws JRException {
         List<Map<String, ?>> rows = report.monthlyBills().stream()
                 .<Map<String, ?>>map(bill -> row(
                         "billNo", value(bill.getDisplayBillNumber()),
                         "billingPeriod", monthYear(bill.getBillingMonth(), bill.getBillingYear()),
                         "roomNo", bill.getRoom() == null ? "-" : value(bill.getRoom().getRoomNumber()),
                         "guestName", bill.getGuest() == null ? "-" : value(bill.getGuest().getFullName()),
+                        "rentAmount", money(bill.getRentAmount()),
+                        "waterAmount", money(bill.getWaterAmount()),
+                        "electricAmount", money(bill.getElectricAmount()),
+                        "otherAmount", money(bill.getOtherAmount()),
+                        "discountAmount", money(bill.getDiscountAmount()),
+                        "subtotalAmount", money(bill.getSubtotalAmount()),
+                        "advanceAppliedAmount", money(bill.getAdvanceAppliedAmount()),
                         "totalAmount", money(bill.getTotalAmount()),
-                        "remainingAmount", money(bill.getRemainingAmount()),
-                        "dueDate", date(bill.getDueDate()),
                         "status", bill.getBillStatus() != null ? value(bill.getBillStatus().getName()) : bill.getStatus().getLabel()
                 ))
                 .toList();
-        return tablePdf(
-                "รายงานใบแจ้งค่าเช่า",
-                "วันที่บันทึก " + thaiDate.format(range.start()) + " - " + thaiDate.format(range.end()),
-                List.of(
-                        column("billNo", "เลขบิล", 105, false),
-                        column("billingPeriod", "รอบบิล", 95, false),
-                        column("roomNo", "ห้อง", 60, false),
-                        column("guestName", "ผู้พัก", 170, false),
-                        column("totalAmount", "ยอดสุทธิ", 90, true),
-                        column("remainingAmount", "คงเหลือ", 90, true),
-                        column("dueDate", "ครบกำหนด", 90, false),
-                        column("status", "สถานะ", 80, false)
-                ),
-                rows
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("REPORT_TITLE", "รายงานใบแจ้งค่าเช่า");
+        parameters.put("REPORT_SUBTITLE", reportSubtitle);
+        parameters.put("PRINTED_AT", printedAt());
+        parameters.put("SHOW_PERIOD_SUMMARY", showPeriodSummary);
+        PeriodSummaryColumns summaryColumns = showPeriodSummary
+                ? periodSummaryColumns(report)
+                : PeriodSummaryColumns.empty();
+        parameters.put("PERIOD_SUMMARY_PERIOD", summaryColumns.period());
+        parameters.put("PERIOD_SUMMARY_COUNT", summaryColumns.count());
+        parameters.put("PERIOD_SUMMARY_RENT", summaryColumns.rent());
+        parameters.put("PERIOD_SUMMARY_WATER", summaryColumns.water());
+        parameters.put("PERIOD_SUMMARY_ELECTRIC", summaryColumns.electric());
+        parameters.put("PERIOD_SUMMARY_OTHER", summaryColumns.other());
+        parameters.put("PERIOD_SUMMARY_DISCOUNT", summaryColumns.discount());
+        parameters.put("PERIOD_SUMMARY_SUBTOTAL", summaryColumns.subtotal());
+        parameters.put("PERIOD_SUMMARY_ADVANCE", summaryColumns.advance());
+        parameters.put("PERIOD_SUMMARY_TOTAL", summaryColumns.total());
+        parameters.put("TOTAL_RENT", money(rows.stream().map(row -> decimalValue(row.get("rentAmount"))).reduce(BigDecimal.ZERO, BigDecimal::add)));
+        parameters.put("TOTAL_WATER", money(rows.stream().map(row -> decimalValue(row.get("waterAmount"))).reduce(BigDecimal.ZERO, BigDecimal::add)));
+        parameters.put("TOTAL_ELECTRIC", money(rows.stream().map(row -> decimalValue(row.get("electricAmount"))).reduce(BigDecimal.ZERO, BigDecimal::add)));
+        parameters.put("TOTAL_OTHER", money(rows.stream().map(row -> decimalValue(row.get("otherAmount"))).reduce(BigDecimal.ZERO, BigDecimal::add)));
+        parameters.put("TOTAL_DISCOUNT", money(rows.stream().map(row -> decimalValue(row.get("discountAmount"))).reduce(BigDecimal.ZERO, BigDecimal::add)));
+        parameters.put("TOTAL_SUBTOTAL", money(rows.stream().map(row -> decimalValue(row.get("subtotalAmount"))).reduce(BigDecimal.ZERO, BigDecimal::add)));
+        parameters.put("TOTAL_ADVANCE", money(rows.stream().map(row -> decimalValue(row.get("advanceAppliedAmount"))).reduce(BigDecimal.ZERO, BigDecimal::add)));
+        parameters.put("TOTAL_AMOUNT", money(rows.stream()
+                .map(row -> decimalValue(row.get("totalAmount")))
+                .reduce(BigDecimal.ZERO, BigDecimal::add)));
+        JasperPrint print = JasperFillManager.fillReport(
+                compiledReport("reports/monthly-bills-report.jrxml"), parameters,
+                new JRMapCollectionDataSource(new ArrayList<>(rows)));
+        return JasperExportManager.exportReportToPdf(print);
+    }
+
+    private PeriodSummaryColumns periodSummaryColumns(ReportDataService.MonthlyBillReport report) {
+        Map<YearMonth, PeriodSummary> summaries = new LinkedHashMap<>();
+        report.monthlyBills().forEach(bill -> {
+            YearMonth period = YearMonth.of(bill.getBillingYear(), bill.getBillingMonth());
+            PeriodSummary current = summaries.getOrDefault(period, new PeriodSummary());
+            current.count++;
+            current.rentAmount = current.rentAmount.add(decimalValue(bill.getRentAmount()));
+            current.waterAmount = current.waterAmount.add(decimalValue(bill.getWaterAmount()));
+            current.electricAmount = current.electricAmount.add(decimalValue(bill.getElectricAmount()));
+            current.otherAmount = current.otherAmount.add(decimalValue(bill.getOtherAmount()));
+            current.discountAmount = current.discountAmount.add(decimalValue(bill.getDiscountAmount()));
+            current.subtotalAmount = current.subtotalAmount.add(decimalValue(bill.getSubtotalAmount()));
+            current.advanceAmount = current.advanceAmount.add(decimalValue(bill.getAdvanceAppliedAmount()));
+            current.totalAmount = current.totalAmount.add(decimalValue(bill.getTotalAmount()));
+            summaries.put(period, current);
+        });
+        if (summaries.isEmpty()) {
+            return PeriodSummaryColumns.empty();
+        }
+        return new PeriodSummaryColumns(
+                columnText("รอบบิล", summaries.keySet().stream().map(period -> monthYear(period.getMonthValue(), period.getYear())).toList()),
+                columnText("จำนวน", summaries.values().stream().map(summary -> summary.count + " รายการ").toList()),
+                columnText("ค่าเช่า", summaries.values().stream().map(summary -> amountWithUnit(summary.rentAmount)).toList()),
+                columnText("ค่าน้ำ", summaries.values().stream().map(summary -> amountWithUnit(summary.waterAmount)).toList()),
+                columnText("ค่าไฟ", summaries.values().stream().map(summary -> amountWithUnit(summary.electricAmount)).toList()),
+                columnText("ค่าอื่น ๆ", summaries.values().stream().map(summary -> amountWithUnit(summary.otherAmount)).toList()),
+                columnText("ส่วนลด", summaries.values().stream().map(summary -> amountWithUnit(summary.discountAmount)).toList()),
+                columnText("ยอดรวม", summaries.values().stream().map(summary -> amountWithUnit(summary.subtotalAmount)).toList()),
+                columnText("หักเงินล่วงหน้า", summaries.values().stream().map(summary -> amountWithUnit(summary.advanceAmount)).toList()),
+                columnText("ยอดชำระสุทธิ", summaries.values().stream().map(summary -> amountWithUnit(summary.totalAmount)).toList())
         );
+    }
+
+    private String columnText(String header, java.util.Collection<String> values) {
+        return header + "\n" + String.join("\n", values);
+    }
+
+    private String amountWithUnit(BigDecimal amount) {
+        return money(amount) + " บาท";
+    }
+
+    private static final class PeriodSummary {
+        private int count;
+        private BigDecimal rentAmount = BigDecimal.ZERO;
+        private BigDecimal waterAmount = BigDecimal.ZERO;
+        private BigDecimal electricAmount = BigDecimal.ZERO;
+        private BigDecimal otherAmount = BigDecimal.ZERO;
+        private BigDecimal discountAmount = BigDecimal.ZERO;
+        private BigDecimal subtotalAmount = BigDecimal.ZERO;
+        private BigDecimal advanceAmount = BigDecimal.ZERO;
+        private BigDecimal totalAmount = BigDecimal.ZERO;
+    }
+
+    private record PeriodSummaryColumns(String period, String count, String rent, String water,
+                                        String electric, String other, String discount, String subtotal,
+                                        String advance, String total) {
+        private static PeriodSummaryColumns empty() {
+            return new PeriodSummaryColumns("", "", "", "", "", "", "", "", "", "");
+        }
     }
 
     public byte[] roomsPdf(ReportDataService.RoomReport report) throws JRException {
@@ -135,20 +293,17 @@ public class JasperReportPdfService {
                         "status", booking.getStatus() == null ? "-" : booking.getStatus().getLabel()
                 ))
                 .toList();
-        return tablePdf(
-                "รายงานการจอง",
-                "วันที่บันทึก " + thaiDate.format(range.start()) + " - " + thaiDate.format(range.end()),
-                List.of(
-                        column("bookingNo", "เลขที่จอง", 120, false),
-                        column("checkInDate", "วันที่เข้า", 95, false),
-                        column("checkOutDate", "วันที่ออก", 95, false),
-                        column("customerName", "ผู้จอง", 210, false),
-                        column("stayType", "ประเภท", 80, false),
-                        column("depositAmount", "มัดจำ", 95, true),
-                        column("status", "สถานะ", 95, false)
-                ),
-                rows
-        );
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("REPORT_TITLE", "รายงานการจอง");
+        parameters.put("REPORT_SUBTITLE", "วันที่บันทึก " + thaiDate.format(range.start()) + " - " + thaiDate.format(range.end()));
+        parameters.put("PRINTED_AT", printedAt());
+        parameters.put("TOTAL_AMOUNT", money(rows.stream()
+                .map(row -> decimalValue(row.get("depositAmount")))
+                .reduce(BigDecimal.ZERO, BigDecimal::add)));
+        JasperPrint print = JasperFillManager.fillReport(
+                compiledReport("reports/bookings-report.jrxml"), parameters,
+                new JRMapCollectionDataSource(new ArrayList<>(rows)));
+        return JasperExportManager.exportReportToPdf(print);
     }
 
     public byte[] depositRefundsPdf(ReportDataService.DateRange range, ReportDataService.DepositRefundReport report) throws JRException {
@@ -580,6 +735,46 @@ public class JasperReportPdfService {
         return new FontConfig("SansSerif", null);
     }
 
+    private ThaiFontConfig thaiReportFontConfig() {
+        try {
+            Path normalPath = thaiFontPath("THSarabun.ttf");
+            Path boldPath = thaiFontPath("THSarabun Bold.ttf");
+            Font normalFont = Font.createFont(Font.TRUETYPE_FONT, normalPath.toFile());
+            Font boldFont = Font.createFont(Font.TRUETYPE_FONT, boldPath.toFile());
+            GraphicsEnvironment.getLocalGraphicsEnvironment().registerFont(normalFont);
+            GraphicsEnvironment.getLocalGraphicsEnvironment().registerFont(boldFont);
+            return new ThaiFontConfig(normalFont.getFamily(), normalPath.toAbsolutePath().toString(), boldPath.toAbsolutePath().toString());
+        } catch (Exception ex) {
+            FontConfig fallback = fontConfig();
+            return new ThaiFontConfig(fallback.name(), fallback.path(), fallback.path());
+        }
+    }
+
+    private Path thaiFontPath(String fontName) throws IOException {
+        Path workspaceFont = Path.of("src", "main", "resources", "fonts", fontName);
+        if (Files.isRegularFile(workspaceFont)) return workspaceFont;
+        Path fontPath = Files.createTempFile("hotel-th-sarabun-", ".ttf");
+        try (InputStream font = new ClassPathResource("fonts/" + fontName).getInputStream()) {
+            Files.copy(font, fontPath, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+        }
+        fontPath.toFile().deleteOnExit();
+        return fontPath;
+    }
+
+    private String applyThaiReportFonts(String reportXml, ThaiFontConfig thaiFont) {
+        Matcher matcher = THAI_FONT_TAG.matcher(reportXml);
+        StringBuffer result = new StringBuffer();
+        while (matcher.find()) {
+            String fontTag = matcher.group();
+            String fontPath = (fontTag.contains("isBold=\"true\"") ? thaiFont.boldPath() : thaiFont.normalPath()).replace('\\', '/');
+            String replacement = fontTag.replace("fontName=\"TH SarabunPSK\"", "fontName=\"" + thaiFont.name()
+                    + "\" pdfFontName=\"" + fontPath + "\" pdfEncoding=\"Identity-H\" isPdfEmbedded=\"true\"");
+            matcher.appendReplacement(result, Matcher.quoteReplacement(replacement));
+        }
+        matcher.appendTail(result);
+        return result.toString();
+    }
+
     private String printedAt() {
         return "พิมพ์เมื่อ " + thaiDate.format(LocalDate.now()) + " เวลา "
                 + LocalTime.now().format(DateTimeFormatter.ofPattern("HH:mm")) + " น.";
@@ -620,5 +815,8 @@ public class JasperReportPdfService {
     }
 
     private record FontConfig(String name, String path) {
+    }
+
+    private record ThaiFontConfig(String name, String normalPath, String boldPath) {
     }
 }

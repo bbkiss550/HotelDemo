@@ -19,6 +19,9 @@ public interface MonthlyRentBillRepository extends JpaRepository<MonthlyRentBill
     boolean existsByBillNumber(String billNumber);
     Optional<MonthlyRentBill> findByRoomAndBillingMonthAndBillingYear(Room room, Integer billingMonth, Integer billingYear);
     List<MonthlyRentBill> findByBillingMonthAndBillingYear(Integer billingMonth, Integer billingYear);
+    List<MonthlyRentBill> findByBillingYearOrderByBillingMonthDescIdDesc(Integer billingYear);
+    @Query("select distinct b.billingYear, b.billingMonth from MonthlyRentBill b order by b.billingYear desc, b.billingMonth desc")
+    List<Object[]> findDistinctBillingPeriods();
     List<MonthlyRentBill> findByStatusIdInOrderByDueDateAscIdAsc(List<Long> statusIds);
     long countByStatusIdInAndDueDateBefore(List<Long> statusIds, LocalDate date);
     List<MonthlyRentBill> findTop5ByStatusIdInAndDueDateBeforeOrderByDueDateAscIdAsc(List<Long> statusIds, LocalDate date);

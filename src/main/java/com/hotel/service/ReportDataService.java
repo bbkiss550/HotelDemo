@@ -77,6 +77,30 @@ public class ReportDataService {
         return new MonthlyBillReport(billList, outstandingAmount);
     }
 
+    public MonthlyBillReport monthlyBills(int billingMonth, int billingYear) {
+        var billList = monthlyBills.findByBillingMonthAndBillingYear(billingMonth, billingYear);
+        BigDecimal outstandingAmount = billList.stream()
+                .map(bill -> bill.getRemainingAmount() == null ? BigDecimal.ZERO : bill.getRemainingAmount())
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        return new MonthlyBillReport(billList, outstandingAmount);
+    }
+
+    public MonthlyBillReport monthlyBills() {
+        var billList = monthlyBills.findAllByOrderByBillingYearDescBillingMonthDescIdDesc();
+        BigDecimal outstandingAmount = billList.stream()
+                .map(bill -> bill.getRemainingAmount() == null ? BigDecimal.ZERO : bill.getRemainingAmount())
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        return new MonthlyBillReport(billList, outstandingAmount);
+    }
+
+    public MonthlyBillReport monthlyBillsByYear(int billingYear) {
+        var billList = monthlyBills.findByBillingYearOrderByBillingMonthDescIdDesc(billingYear);
+        BigDecimal outstandingAmount = billList.stream()
+                .map(bill -> bill.getRemainingAmount() == null ? BigDecimal.ZERO : bill.getRemainingAmount())
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        return new MonthlyBillReport(billList, outstandingAmount);
+    }
+
     public RoomReport rooms() {
         return new RoomReport(
                 rooms.count(),

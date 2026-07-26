@@ -30,6 +30,9 @@ public class Menu {
     @Column(name = "m_sort_order", nullable = false)
     private Integer sortOrder;
 
+    @Column(name = "m_status", nullable = false, length = 1)
+    private String status = "A";
+
     @Column(name = "`ID_parent_menu`")
     private Long parentId;
 
@@ -46,6 +49,8 @@ public class Menu {
     public void setLink(String link) { this.link = link; }
     public Integer getSortOrder() { return sortOrder; }
     public void setSortOrder(Integer sortOrder) { this.sortOrder = sortOrder; }
+    public String getStatus() { return status; }
+    public void setStatus(String status) { this.status = status; }
     public Long getParentId() { return parentId; }
     public void setParentId(Long parentId) { this.parentId = parentId; }
     public List<Menu> getChildren() { return children; }

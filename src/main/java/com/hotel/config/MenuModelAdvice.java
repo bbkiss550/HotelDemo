@@ -26,7 +26,9 @@ public class MenuModelAdvice {
 
     @ModelAttribute("sidebarMenus")
     List<Menu> sidebarMenus() {
-        List<Menu> allMenus = menus.findAllByOrderByParentIdAscSortOrderAscIdAsc();
+        List<Menu> allMenus = menus.findAllByOrderByParentIdAscSortOrderAscIdAsc().stream()
+                .filter(menu -> "A".equalsIgnoreCase(menu.getStatus()))
+                .toList();
         Map<Long, Menu> byId = new LinkedHashMap<>();
         allMenus.forEach(menu -> {
             menu.setChildren(new ArrayList<>());

@@ -55,6 +55,11 @@ public class Booking {
     @Column(name = "b_status")
     private BookingStatus status = BookingStatus.CONFIRMED;
 
+    /** Master-table relation. b_status remains for backward-compatible business code. */
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "id_booking_status", insertable = false, updatable = false)
+    private BookingStatusMaster statusMaster;
+
     @Column(name = "b_note", length = 1000)
     private String note;
 
@@ -86,6 +91,7 @@ public class Booking {
     public void setDepositAmount(BigDecimal depositAmount) { this.depositAmount = depositAmount; }
     public BookingStatus getStatus() { return status; }
     public void setStatus(BookingStatus status) { this.status = status; }
+    public BookingStatusMaster getStatusMaster() { return statusMaster; }
     public String getNote() { return note; }
     public void setNote(String note) { this.note = note; }
 }

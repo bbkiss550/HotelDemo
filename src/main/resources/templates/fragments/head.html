@@ -4,6 +4,7 @@
     <meta name="_csrf" th:if="${_csrf != null}" th:content="${_csrf.token}">
     <meta name="_csrf_header" th:if="${_csrf != null}" th:content="${_csrf.headerName}">
     <title th:text="${title + ' - ' + (systemName != null ? systemName : 'BlueCatHotelDemo')}">BlueCatHotelDemo</title>
+    <link rel="icon" type="image/png" th:href="@{/mazer/dist/assets/images/logo/logo-web.png}">
     <script>
         (function () {
             try {

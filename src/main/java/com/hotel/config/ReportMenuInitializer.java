@@ -16,11 +16,13 @@ public class ReportMenuInitializer implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
+        jdbc.execute("ALTER TABLE t_menu ADD COLUMN IF NOT EXISTS m_status VARCHAR(1) NOT NULL DEFAULT 'A'");
+        jdbc.update("UPDATE t_menu SET m_status = 'H' WHERE m_link = '/reports/rooms'");
         Long parentId = findReportParentId();
         if (parentId == null) {
             jdbc.update("""
-                    INSERT INTO t_menu (m_icon, m_name, m_link, m_sort_order, "ID_parent_menu")
-                    VALUES ('bi-bar-chart-line', 'รายงาน', NULL, 80, NULL)
+                    INSERT INTO t_menu (m_icon, m_name, m_link, m_sort_order, "ID_parent_menu", m_status)
+                    VALUES ('bi-bar-chart-line', 'รายงาน', NULL, 80, NULL, 'A')
                     """);
             parentId = findReportParentId();
         }
@@ -38,7 +40,6 @@ public class ReportMenuInitializer implements ApplicationRunner {
 
         upsertReportMenu(parentId, "รายงานรายได้", "/reports/revenue", 10);
         upsertReportMenu(parentId, "รายงานใบแจ้งค่าเช่า", "/reports/monthly-bills", 20);
-        upsertReportMenu(parentId, "รายงานสถานะห้องพัก", "/reports/rooms", 30);
         upsertReportMenu(parentId, "รายงานการจอง", "/reports/bookings", 40);
         upsertReportMenu(parentId, "รายงานคืนเงินประกัน", "/reports/deposit-refunds", 50);
     }
@@ -56,13 +57,14 @@ public class ReportMenuInitializer implements ApplicationRunner {
 
     private void upsertReportMenu(Long parentId, String name, String link, int sortOrder) {
         jdbc.update("""
-                INSERT INTO t_menu (m_icon, m_name, m_link, m_sort_order, "ID_parent_menu")
-                VALUES ('bi-file-earmark-bar-graph', ?, ?, ?, ?)
+                INSERT INTO t_menu (m_icon, m_name, m_link, m_sort_order, "ID_parent_menu", m_status)
+                VALUES ('bi-file-earmark-bar-graph', ?, ?, ?, ?, 'A')
                 ON CONFLICT (m_link) DO UPDATE
                 SET m_icon = EXCLUDED.m_icon,
                     m_name = EXCLUDED.m_name,
                     m_sort_order = EXCLUDED.m_sort_order,
-                    "ID_parent_menu" = EXCLUDED."ID_parent_menu"
+                    "ID_parent_menu" = EXCLUDED."ID_parent_menu",
+                    m_status = EXCLUDED.m_status
                 """, name, link, sortOrder, parentId);
     }
 }

@@ -8,9 +8,11 @@
         <header class="mb-3"><a href="#" class="burger-btn d-block d-xl-none"><i class="bi bi-justify fs-3"></i></a></header>
         <div class="page-heading d-flex flex-wrap justify-content-between align-items-center gap-3">
             <div><h3 th:text="${currentMenuName}"></h3></div>
-            <a class="btn btn-light-primary" download th:href="@{/reports/revenue.pdf(startDate=${startDate},endDate=${endDate})}">
-                <i class="bi bi-file-earmark-pdf me-1"></i>Export PDF
-            </a>
+            <div class="d-flex align-items-center gap-2">
+                <button class="btn btn-light-secondary report-pdf-preview" type="button" th:attr="data-pdf-url=@{/reports/revenue.pdf(startDate=${startDate},endDate=${endDate})}">
+                    <i class="bi bi-eye me-1"></i>ดูตัวอย่างรายงาน
+                </button>
+            </div>
         </div>
         <div class="page-content report-print-area">
             <section class="section">
@@ -165,5 +167,6 @@ document.querySelectorAll('.report-filter-form input[type="date"]').forEach(inpu
 });
 </script>
 <div th:replace="~{fragments/nav :: scripts}"></div>
+<script th:src="@{/js/report-preview.js(v=20260725)}"></script>
 </body>
 </html>
