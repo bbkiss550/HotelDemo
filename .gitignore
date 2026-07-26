@@ -1,7 +1,5 @@
 target/
 .maven/
-data/
-
 *.log
 *.err.log
 *.zip
