@@ -1,8 +1,7 @@
 (() => {
     const initialisePreview = () => {
         const previewButton = document.querySelector('.report-pdf-preview');
-        const pdfUrl = previewButton?.dataset.pdfUrl;
-        if (!previewButton || !pdfUrl || previewButton.dataset.previewReady === 'true') return;
+        if (!previewButton || !previewButton.dataset.pdfUrl || previewButton.dataset.previewReady === 'true') return;
         previewButton.dataset.previewReady = 'true';
 
         let objectUrl = null;
@@ -54,6 +53,8 @@
         printButton.addEventListener('click', () => frame.contentWindow?.print());
 
         previewButton.addEventListener('click', async () => {
+            const pdfUrl = previewButton.dataset.pdfUrl;
+            if (!pdfUrl) return;
             const previewUrl = new URL(pdfUrl, window.location.origin);
             previewUrl.searchParams.set('inline', 'true');
             previewButton.disabled = true;

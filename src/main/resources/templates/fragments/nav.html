@@ -1204,7 +1204,13 @@
                 return String(left.value).localeCompare(String(right.value), 'th-TH', { numeric: true });
             };
 
-            document.querySelectorAll('table.table:not(.bill-slip-table)').forEach(table => {
+            const initSortableTables = (root = document) => {
+                const tables = root instanceof Element && root.matches('table.table:not(.bill-slip-table)')
+                    ? [root]
+                    : root.querySelectorAll('table.table:not(.bill-slip-table)');
+                tables.forEach(table => {
+                if (table.dataset.sortReady === 'true') return;
+                table.dataset.sortReady = 'true';
                 const headerRow = table.querySelector('thead tr');
                 const body = table.tBodies[0];
                 if (!headerRow || !body) return;
@@ -1244,6 +1250,11 @@
                     });
                 });
             });
+            };
+
+            window.hotelInitSortableTables = initSortableTables;
+            document.addEventListener('DOMContentLoaded', () => initSortableTables());
+            initSortableTables();
         })();
     </script>
 </div>

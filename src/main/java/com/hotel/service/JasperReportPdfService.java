@@ -77,12 +77,18 @@ public class JasperReportPdfService {
             compiledReport("reports/revenue-report.jrxml");
             compiledReport("reports/monthly-bills-report.jrxml");
             compiledReport("reports/bookings-report.jrxml");
+            compiledReport("reports/deposit-refunds-report.jrxml");
         } catch (JRException ex) {
             throw new IllegalStateException("Cannot compile Jasper report templates", ex);
         }
     }
 
     public byte[] revenuePdf(ReportDataService.DateRange range, ReportDataService.RevenueReport report) throws JRException {
+        return revenuePdf(range, report, "ข้อมูลทั้งหมด ถึงวันที่ " + thaiDate.formatLong(range.end()));
+    }
+
+    public byte[] revenuePdf(ReportDataService.DateRange range, ReportDataService.RevenueReport report,
+                             String reportSubtitle) throws JRException {
         List<Map<String, ?>> rows = report.payments().stream()
                 .<Map<String, ?>>map(payment -> row(
                         "receiptNo", report.receiptNumbers().getOrDefault(payment.getId(), "-"),
@@ -96,7 +102,7 @@ public class JasperReportPdfService {
                 .toList();
         Map<String, Object> parameters = new HashMap<>();
         parameters.put("REPORT_TITLE", "รายงานรายได้");
-        parameters.put("REPORT_SUBTITLE", "วันที่บันทึก " + thaiDate.format(range.start()) + " - " + thaiDate.format(range.end()));
+        parameters.put("REPORT_SUBTITLE", reportSubtitle);
         parameters.put("PRINTED_AT", printedAt());
         parameters.put("TOTAL_AMOUNT", money(rows.stream().map(row -> decimalValue(row.get("amount"))).reduce(BigDecimal.ZERO, BigDecimal::add)));
         JasperPrint print = JasperFillManager.fillReport(
@@ -147,7 +153,7 @@ public class JasperReportPdfService {
                                   ReportDataService.MonthlyBillReport report,
                                   boolean showPeriodSummary) throws JRException {
         return monthlyBillsPdf(range, report, showPeriodSummary,
-                "วันที่บันทึก " + thaiDate.format(range.start()) + " - " + thaiDate.format(range.end()));
+                "ข้อมูลทั้งหมด ถึงวันที่ " + thaiDate.formatLong(range.end()));
     }
 
     public byte[] monthlyBillsPdf(ReportDataService.DateRange range,
@@ -282,9 +288,16 @@ public class JasperReportPdfService {
     }
 
     public byte[] bookingsPdf(ReportDataService.DateRange range, ReportDataService.BookingReport report) throws JRException {
+        return bookingsPdf(range, report, "ข้อมูลทั้งหมด ถึงวันที่ " + thaiDate.formatLong(range.end()));
+    }
+
+    public byte[] bookingsPdf(ReportDataService.DateRange range,
+                              ReportDataService.BookingReport report,
+                              String reportCondition) throws JRException {
         List<Map<String, ?>> rows = report.bookings().stream()
                 .<Map<String, ?>>map(booking -> row(
                         "bookingNo", value(booking.getBookingNumber()),
+                        "bookingDate", date(booking.getBookingDate()),
                         "checkInDate", date(booking.getCheckInDate()),
                         "checkOutDate", date(booking.getCheckOutDate()),
                         "customerName", value(booking.getCustomerName()),
@@ -295,7 +308,7 @@ public class JasperReportPdfService {
                 .toList();
         Map<String, Object> parameters = new HashMap<>();
         parameters.put("REPORT_TITLE", "รายงานการจอง");
-        parameters.put("REPORT_SUBTITLE", "วันที่บันทึก " + thaiDate.format(range.start()) + " - " + thaiDate.format(range.end()));
+        parameters.put("REPORT_CONDITION", reportCondition);
         parameters.put("PRINTED_AT", printedAt());
         parameters.put("TOTAL_AMOUNT", money(rows.stream()
                 .map(row -> decimalValue(row.get("depositAmount")))
@@ -307,33 +320,50 @@ public class JasperReportPdfService {
     }
 
     public byte[] depositRefundsPdf(ReportDataService.DateRange range, ReportDataService.DepositRefundReport report) throws JRException {
+        return depositRefundsPdf(range, report, "ข้อมูลทั้งหมด ถึงวันที่ " + thaiDate.formatLong(range.end()));
+    }
+
+    public byte[] depositRefundsPdf(ReportDataService.DateRange range,
+                                    ReportDataService.DepositRefundReport report,
+                                    String reportSubtitle) throws JRException {
         List<Map<String, ?>> rows = report.depositRefunds().stream()
                 .<Map<String, ?>>map(refund -> row(
                         "refundNo", value(refund.getRefundNo()),
                         "refundDate", date(refund.getRefundDate()),
                         "roomNo", refund.getRoom() == null ? "-" : value(refund.getRoom().getRoomNumber()),
                         "receiverName", refund.getGuest() == null ? "-" : value(refund.getGuest().getFullName()),
+                        "deductionDetails", refund.getItems().isEmpty() ? "-" : refund.getItems().stream()
+                                .sorted(java.util.Comparator.comparing(item -> item.getSortOrder(),
+                                        java.util.Comparator.nullsLast(java.util.Comparator.naturalOrder())))
+                                .map(item -> value(item.getItemName()) + " " + money(item.getItemAmount()))
+                                .collect(java.util.stream.Collectors.joining(", ")),
                         "depositAmount", money(refund.getDepositAmount()),
                         "deductAmount", money(refund.getTotalDeductAmount()),
                         "refundAmount", money(refund.getRefundAmount()),
                         "refundMethod", value(refund.getRefundMethod())
                 ))
                 .toList();
-        return tablePdf(
-                "รายงานคืนเงินประกัน",
-                "วันที่บันทึก " + thaiDate.format(range.start()) + " - " + thaiDate.format(range.end()),
-                List.of(
-                        column("refundNo", "เลขเอกสาร", 110, false),
-                        column("refundDate", "วันที่", 80, false),
-                        column("roomNo", "ห้อง", 55, false),
-                        column("receiverName", "ผู้รับเงิน", 180, false),
-                        column("depositAmount", "ค่าประกัน", 90, true),
-                        column("deductAmount", "หักรวม", 85, true),
-                        column("refundAmount", "คืนสุทธิ", 85, true),
-                        column("refundMethod", "วิธีคืน", 70, false)
-                ),
-                rows
-        );
+        Map<String, Object> parameters = new HashMap<>();
+        parameters.put("REPORT_TITLE", "รายงานคืนเงินประกัน");
+        parameters.put("REPORT_CONDITION", reportSubtitle);
+        parameters.put("PRINTED_AT", printedAt());
+        parameters.put("TOTAL_COUNT", rows.size() + " รายการ");
+        parameters.put("TOTAL_DEPOSIT", money(rows.stream()
+                .map(row -> decimalValue(row.get("depositAmount")))
+                .reduce(BigDecimal.ZERO, BigDecimal::add)));
+        parameters.put("TOTAL_DEDUCT", money(rows.stream()
+                .map(row -> decimalValue(row.get("deductAmount")))
+                .reduce(BigDecimal.ZERO, BigDecimal::add)));
+        parameters.put("TOTAL_EXTRA_CHARGE", money(report.depositRefunds().stream()
+                .map(refund -> refund.getExtraChargeAmount() == null ? BigDecimal.ZERO : refund.getExtraChargeAmount())
+                .reduce(BigDecimal.ZERO, BigDecimal::add)));
+        parameters.put("TOTAL_AMOUNT", money(rows.stream()
+                .map(row -> decimalValue(row.get("refundAmount")))
+                .reduce(BigDecimal.ZERO, BigDecimal::add)));
+        JasperPrint print = JasperFillManager.fillReport(
+                compiledReport("reports/deposit-refunds-report.jrxml"), parameters,
+                new JRMapCollectionDataSource(new ArrayList<>(rows)));
+        return JasperExportManager.exportReportToPdf(print);
     }
 
     private byte[] revenueDashboardPdf(String title, String subtitle, List<ReportColumn> columns,

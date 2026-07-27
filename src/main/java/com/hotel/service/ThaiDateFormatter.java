@@ -25,6 +25,13 @@ public class ThaiDateFormatter {
         return format(dateTime.toLocalDate());
     }
 
+    public String formatLong(LocalDate date) {
+        if (date == null) {
+            return "-";
+        }
+        return date.getDayOfMonth() + " " + THAI_MONTHS[date.getMonthValue() - 1] + " " + (date.getYear() + 543);
+    }
+
     public String monthYear(Integer month, Integer year) {
         if (month == null || year == null || month < 1 || month > 12) {
             return "-";

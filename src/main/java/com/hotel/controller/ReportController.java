@@ -85,6 +85,8 @@ public class ReportController {
         model.addAttribute("filterType", selection.filterType());
         model.addAttribute("billingPeriod", selection.period());
         model.addAttribute("billingYear", selection.year());
+        model.addAttribute("defaultBillingPeriod", YearMonth.now().toString());
+        model.addAttribute("defaultBillingYear", LocalDate.now().getYear());
         model.addAttribute("billingPeriods", billingPeriodOptions());
         model.addAttribute("billingYears", billingYearOptions());
         model.addAttribute("monthlyBills", selection.report().monthlyBills());
@@ -146,8 +148,10 @@ public class ReportController {
                     @RequestParam(required = false) Integer month,
                     @RequestParam(defaultValue = "false") boolean inline,
                     HttpServletResponse response) throws IOException, JRException {
-        var range = selectReportDates(filterType, year, month, startDate, endDate).range();
-        writePdf(response, "revenue-report.pdf", jasperReports.revenuePdf(range, reportData.revenue(range)), inline);
+        var selection = selectReportDates(filterType, year, month, startDate, endDate);
+        var range = selection.range();
+        writePdf(response, "revenue-report.pdf", jasperReports.revenuePdf(
+                range, reportData.revenue(range), reportCondition(selection)), inline);
     }
 
     @GetMapping("/monthly-bills.pdf")
@@ -174,8 +178,10 @@ public class ReportController {
                      @RequestParam(required = false) Integer month,
                      @RequestParam(defaultValue = "false") boolean inline,
                      HttpServletResponse response) throws IOException, JRException {
-        var range = selectReportDates(filterType, year, month, startDate, endDate).range();
-        writePdf(response, "bookings-report.pdf", jasperReports.bookingsPdf(range, reportData.bookings(range)), inline);
+        var selection = selectReportDates(filterType, year, month, startDate, endDate);
+        var range = selection.range();
+        writePdf(response, "bookings-report.pdf", jasperReports.bookingsPdf(
+                range, reportData.bookings(range), reportCondition(selection)), inline);
     }
 
     @GetMapping("/deposit-refunds.pdf")
@@ -186,8 +192,10 @@ public class ReportController {
                            @RequestParam(required = false) Integer month,
                            @RequestParam(defaultValue = "false") boolean inline,
                            HttpServletResponse response) throws IOException, JRException {
-        var range = selectReportDates(filterType, year, month, startDate, endDate).range();
-        writePdf(response, "deposit-refunds-report.pdf", jasperReports.depositRefundsPdf(range, reportData.depositRefunds(range)), inline);
+        var selection = selectReportDates(filterType, year, month, startDate, endDate);
+        var range = selection.range();
+        writePdf(response, "deposit-refunds-report.pdf", jasperReports.depositRefundsPdf(
+                range, reportData.depositRefunds(range), reportCondition(selection)), inline);
     }
 
     @GetMapping("/revenue/preview")
@@ -275,6 +283,8 @@ public class ReportController {
         model.addAttribute("filterType", selection.filterType());
         model.addAttribute("filterYear", selection.year());
         model.addAttribute("filterMonth", selection.month());
+        model.addAttribute("defaultReportYear", LocalDate.now().getYear());
+        model.addAttribute("defaultReportMonth", LocalDate.now().getMonthValue());
         model.addAttribute("reportYears", IntStream.rangeClosed(LocalDate.now().getYear() - 5, LocalDate.now().getYear())
                 .boxed().sorted(java.util.Comparator.reverseOrder()).toList());
         model.addAttribute("reportMonths", IntStream.rangeClosed(1, 12)
@@ -381,13 +391,13 @@ public class ReportController {
     private MonthlyBillSelection selectMonthlyBills(String filterType, String period, Integer year) {
         String selectedFilter = "period".equals(filterType) || "year".equals(filterType) ? filterType : "all";
         if ("period".equals(selectedFilter)) {
-            List<BillingPeriodOption> options = billingPeriodOptions();
             YearMonth selectedPeriod = parseBillingPeriod(period);
-            if (selectedPeriod == null && !options.isEmpty()) {
-                selectedPeriod = parseBillingPeriod(options.get(0).value());
+            if (selectedPeriod == null) {
+                selectedPeriod = YearMonth.now();
             }
             if (selectedPeriod == null) {
-                return new MonthlyBillSelection("all", "", null, reportData.monthlyBills(), reportData.range(null, null), true, "ภาพรวม");
+                return new MonthlyBillSelection("all", "", null, reportData.monthlyBills(), reportData.range(null, null), true,
+                        "ข้อมูลทั้งหมด ถึงวันที่ " + thaiFullDate(LocalDate.now()));
             }
             return new MonthlyBillSelection(
                     "period",
@@ -396,14 +406,13 @@ public class ReportController {
                     reportData.monthlyBills(selectedPeriod.getMonthValue(), selectedPeriod.getYear()),
                     new ReportDataService.DateRange(selectedPeriod.atDay(1), selectedPeriod.atEndOfMonth()),
                     false,
-                    "รอบบิล " + thaiMonth(selectedPeriod.getMonthValue()) + " " + (selectedPeriod.getYear() + 543)
+                    "ข้อมูลภายในเดือน " + thaiMonth(selectedPeriod.getMonthValue()) + " " + (selectedPeriod.getYear() + 543)
             );
         }
         if ("year".equals(selectedFilter)) {
-            List<BillingYearOption> options = billingYearOptions();
             int selectedYear = year != null && year >= 2000 && year <= 2100
                     ? year
-                    : options.isEmpty() ? LocalDate.now().getYear() : options.get(0).value();
+                    : LocalDate.now().getYear();
             return new MonthlyBillSelection(
                     "year",
                     "",
@@ -411,22 +420,25 @@ public class ReportController {
                     reportData.monthlyBillsByYear(selectedYear),
                     new ReportDataService.DateRange(LocalDate.of(selectedYear, 1, 1), LocalDate.of(selectedYear, 12, 31)),
                     true,
-                    "รายปี " + (selectedYear + 543)
+                    "ข้อมูลภายในปี " + (selectedYear + 543)
             );
         }
-        return new MonthlyBillSelection("all", "", null, reportData.monthlyBills(), reportData.range(null, null), true, "ภาพรวม");
+        return new MonthlyBillSelection("all", "", null, reportData.monthlyBills(), reportData.range(null, null), true,
+                "ข้อมูลทั้งหมด ถึงวันที่ " + thaiFullDate(LocalDate.now()));
     }
 
     private List<BillingPeriodOption> billingPeriodOptions() {
-        return monthlyRentBills.findDistinctBillingPeriods().stream()
-                .map(row -> {
-                    int year = ((Number) row[0]).intValue();
-                    int month = ((Number) row[1]).intValue();
-                    return new BillingPeriodOption(
-                            YearMonth.of(year, month).toString(),
-                            thaiMonth(month) + " " + (year + 543)
-                    );
-                })
+        return java.util.stream.Stream.concat(
+                        java.util.stream.Stream.of(YearMonth.now()),
+                        monthlyRentBills.findDistinctBillingPeriods().stream()
+                                .map(row -> YearMonth.of(((Number) row[0]).intValue(), ((Number) row[1]).intValue()))
+                )
+                .distinct()
+                .sorted(java.util.Comparator.reverseOrder())
+                .map(period -> new BillingPeriodOption(
+                        period.toString(),
+                        thaiMonth(period.getMonthValue()) + " " + (period.getYear() + 543)
+                ))
                 .toList();
     }
 
@@ -440,6 +452,20 @@ public class ReportController {
 
     private String thaiMonth(int month) {
         return new String[]{"มกราคม", "กุมภาพันธ์", "มีนาคม", "เมษายน", "พฤษภาคม", "มิถุนายน", "กรกฎาคม", "สิงหาคม", "กันยายน", "ตุลาคม", "พฤศจิกายน", "ธันวาคม"}[month - 1];
+    }
+
+    private String reportCondition(ReportDateSelection selection) {
+        return switch (selection.filterType()) {
+            case "year" -> "ข้อมูลภายในปี " + (selection.year() + 543);
+            case "month" -> "ข้อมูลภายในเดือน " + thaiMonth(selection.month()) + " " + (selection.year() + 543);
+            case "range" -> "ข้อมูลระหว่างวันที่ " + thaiFullDate(selection.range().start())
+                    + " ถึง " + thaiFullDate(selection.range().end());
+            default -> "ข้อมูลทั้งหมด ถึงวันที่ " + thaiFullDate(selection.range().end());
+        };
+    }
+
+    private String thaiFullDate(LocalDate date) {
+        return date.getDayOfMonth() + " " + thaiMonth(date.getMonthValue()) + " " + (date.getYear() + 543);
     }
 
     private record PreviewFile(Path path, String filename, Instant createdAt) {

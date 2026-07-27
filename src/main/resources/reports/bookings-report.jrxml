@@ -6,10 +6,11 @@
 	<style name="base" fontName="Tahoma" fontSize="10"/>
 	<style name="header" mode="Opaque" forecolor="#000000" backcolor="#CCCCCC" hAlign="Center" vAlign="Middle" fontName="Tahoma" fontSize="10" isBold="true"/>
 	<parameter name="REPORT_TITLE" class="java.lang.String"/>
-	<parameter name="REPORT_SUBTITLE" class="java.lang.String"/>
+	<parameter name="REPORT_CONDITION" class="java.lang.String"/>
 	<parameter name="PRINTED_AT" class="java.lang.String"/>
 	<parameter name="TOTAL_AMOUNT" class="java.lang.String"/>
 	<field name="bookingNo" class="java.lang.String"/>
+	<field name="bookingDate" class="java.lang.String"/>
 	<field name="checkInDate" class="java.lang.String"/>
 	<field name="checkOutDate" class="java.lang.String"/>
 	<field name="customerName" class="java.lang.String"/>
@@ -26,11 +27,11 @@
 				<textFieldExpression class="java.lang.String"><![CDATA[$P{REPORT_TITLE}]]></textFieldExpression>
 			</textField>
 			<textField>
-				<reportElement x="0" y="36" width="794" height="24"/>
+				<reportElement x="0" y="36" width="794" height="22"/>
 				<textElement textAlignment="Center" verticalAlignment="Middle">
-					<font fontName="TH SarabunPSK" size="14"/>
+					<font fontName="TH SarabunPSK" size="14" isBold="true"/>
 				</textElement>
-				<textFieldExpression class="java.lang.String"><![CDATA[$P{REPORT_SUBTITLE}]]></textFieldExpression>
+				<textFieldExpression class="java.lang.String"><![CDATA[$P{REPORT_CONDITION}]]></textFieldExpression>
 			</textField>
 			<textField>
 				<reportElement x="430" y="58" width="364" height="17"/>
@@ -44,7 +45,7 @@
 	<columnHeader>
 		<band height="30">
 			<staticText>
-				<reportElement style="header" x="0" y="0" width="120" height="30"/>
+				<reportElement style="header" x="0" y="0" width="100" height="30"/>
 				<box topPadding="5" leftPadding="5" bottomPadding="5" rightPadding="5">
 					<pen lineWidth="1.0"/>
 					<topPen lineWidth="1.0"/>
@@ -58,7 +59,21 @@
 				<text><![CDATA[เลขที่จอง]]></text>
 			</staticText>
 			<staticText>
-				<reportElement style="header" x="120" y="0" width="95" height="30"/>
+				<reportElement style="header" x="100" y="0" width="90" height="30"/>
+				<box topPadding="5" leftPadding="5" bottomPadding="5" rightPadding="5">
+					<pen lineWidth="1.0"/>
+					<topPen lineWidth="1.0"/>
+					<leftPen lineWidth="1.0"/>
+					<bottomPen lineWidth="1.0"/>
+					<rightPen lineWidth="1.0"/>
+				</box>
+				<textElement>
+					<font fontName="TH SarabunPSK" size="12"/>
+				</textElement>
+				<text><![CDATA[วันที่บันทึก]]></text>
+			</staticText>
+			<staticText>
+				<reportElement style="header" x="190" y="0" width="90" height="30"/>
 				<box topPadding="5" leftPadding="5" bottomPadding="5" rightPadding="5">
 					<pen lineWidth="1.0"/>
 					<topPen lineWidth="1.0"/>
@@ -72,7 +87,7 @@
 				<text><![CDATA[วันที่เข้า]]></text>
 			</staticText>
 			<staticText>
-				<reportElement style="header" x="215" y="0" width="95" height="30"/>
+				<reportElement style="header" x="280" y="0" width="90" height="30"/>
 				<box topPadding="5" leftPadding="5" bottomPadding="5" rightPadding="5">
 					<pen lineWidth="1.0"/>
 					<topPen lineWidth="1.0"/>
@@ -86,7 +101,7 @@
 				<text><![CDATA[วันที่ออก]]></text>
 			</staticText>
 			<staticText>
-				<reportElement style="header" x="310" y="0" width="210" height="30"/>
+				<reportElement style="header" x="370" y="0" width="170" height="30"/>
 				<box topPadding="5" leftPadding="5" bottomPadding="5" rightPadding="5">
 					<pen lineWidth="1.0"/>
 					<topPen lineWidth="1.0"/>
@@ -100,7 +115,7 @@
 				<text><![CDATA[ผู้จอง]]></text>
 			</staticText>
 			<staticText>
-				<reportElement style="header" x="520" y="0" width="80" height="30"/>
+				<reportElement style="header" x="540" y="0" width="75" height="30"/>
 				<box topPadding="5" leftPadding="5" bottomPadding="5" rightPadding="5">
 					<pen lineWidth="1.0"/>
 					<topPen lineWidth="1.0"/>
@@ -114,7 +129,7 @@
 				<text><![CDATA[ประเภท]]></text>
 			</staticText>
 			<staticText>
-				<reportElement style="header" x="600" y="0" width="95" height="30"/>
+				<reportElement style="header" x="615" y="0" width="95" height="30"/>
 				<box topPadding="5" leftPadding="5" bottomPadding="5" rightPadding="5">
 					<pen lineWidth="1.0"/>
 					<topPen lineWidth="1.0"/>
@@ -128,7 +143,7 @@
 				<text><![CDATA[มัดจำ]]></text>
 			</staticText>
 			<staticText>
-				<reportElement style="header" x="695" y="0" width="99" height="30"/>
+				<reportElement style="header" x="710" y="0" width="84" height="30"/>
 				<box topPadding="5" leftPadding="5" bottomPadding="5" rightPadding="5">
 					<pen lineWidth="1.0"/>
 					<topPen lineWidth="1.0"/>
@@ -146,7 +161,7 @@
 	<detail>
 		<band height="30">
 			<textField>
-				<reportElement x="0" y="0" width="120" height="30"/>
+				<reportElement x="0" y="0" width="100" height="30"/>
 				<box topPadding="5" leftPadding="5" bottomPadding="5" rightPadding="5">
 					<pen lineWidth="1.0"/>
 					<topPen lineWidth="1.0"/>
@@ -160,7 +175,21 @@
 				<textFieldExpression class="java.lang.String"><![CDATA[$F{bookingNo}]]></textFieldExpression>
 			</textField>
 			<textField>
-				<reportElement x="120" y="0" width="95" height="30"/>
+				<reportElement x="100" y="0" width="90" height="30"/>
+				<box topPadding="5" leftPadding="5" bottomPadding="5" rightPadding="5">
+					<pen lineWidth="1.0"/>
+					<topPen lineWidth="1.0"/>
+					<leftPen lineWidth="1.0"/>
+					<bottomPen lineWidth="1.0"/>
+					<rightPen lineWidth="1.0"/>
+				</box>
+				<textElement verticalAlignment="Middle">
+					<font fontName="TH SarabunPSK" size="12"/>
+				</textElement>
+				<textFieldExpression class="java.lang.String"><![CDATA[$F{bookingDate}]]></textFieldExpression>
+			</textField>
+			<textField>
+				<reportElement x="190" y="0" width="90" height="30"/>
 				<box topPadding="5" leftPadding="5" bottomPadding="5" rightPadding="5">
 					<pen lineWidth="1.0"/>
 					<topPen lineWidth="1.0"/>
@@ -174,7 +203,7 @@
 				<textFieldExpression class="java.lang.String"><![CDATA[$F{checkInDate}]]></textFieldExpression>
 			</textField>
 			<textField>
-				<reportElement x="215" y="0" width="95" height="30"/>
+				<reportElement x="280" y="0" width="90" height="30"/>
 				<box topPadding="5" leftPadding="5" bottomPadding="5" rightPadding="5">
 					<pen lineWidth="1.0"/>
 					<topPen lineWidth="1.0"/>
@@ -188,7 +217,7 @@
 				<textFieldExpression class="java.lang.String"><![CDATA[$F{checkOutDate}]]></textFieldExpression>
 			</textField>
 			<textField>
-				<reportElement x="310" y="0" width="210" height="30"/>
+				<reportElement x="370" y="0" width="170" height="30"/>
 				<box topPadding="5" leftPadding="5" bottomPadding="5" rightPadding="5">
 					<pen lineWidth="1.0"/>
 					<topPen lineWidth="1.0"/>
@@ -202,7 +231,7 @@
 				<textFieldExpression class="java.lang.String"><![CDATA[$F{customerName}]]></textFieldExpression>
 			</textField>
 			<textField>
-				<reportElement x="520" y="0" width="80" height="30"/>
+				<reportElement x="540" y="0" width="75" height="30"/>
 				<box topPadding="5" leftPadding="5" bottomPadding="5" rightPadding="5">
 					<pen lineWidth="1.0"/>
 					<topPen lineWidth="1.0"/>
@@ -216,7 +245,7 @@
 				<textFieldExpression class="java.lang.String"><![CDATA[$F{stayType}]]></textFieldExpression>
 			</textField>
 			<textField>
-				<reportElement x="600" y="0" width="95" height="30"/>
+				<reportElement x="615" y="0" width="95" height="30"/>
 				<box topPadding="5" leftPadding="5" bottomPadding="5" rightPadding="5">
 					<pen lineWidth="1.0"/>
 					<topPen lineWidth="1.0"/>
@@ -230,7 +259,7 @@
 				<textFieldExpression class="java.lang.String"><![CDATA[$F{depositAmount}]]></textFieldExpression>
 			</textField>
 			<textField>
-				<reportElement x="695" y="0" width="99" height="30"/>
+				<reportElement x="710" y="0" width="84" height="30"/>
 				<box topPadding="5" leftPadding="5" bottomPadding="5" rightPadding="5">
 					<pen lineWidth="1.0"/>
 					<topPen lineWidth="1.0"/>
@@ -266,14 +295,14 @@
 	<summary>
 		<band height="30">
 			<textField>
-				<reportElement x="0" y="0" width="695" height="30"/>
+				<reportElement x="0" y="0" width="615" height="30"/>
 				<textElement textAlignment="Right" verticalAlignment="Middle">
 					<font fontName="TH SarabunPSK" size="14" isBold="true"/>
 				</textElement>
 				<textFieldExpression class="java.lang.String"><![CDATA["รวมมัดจำ"]]></textFieldExpression>
 			</textField>
 			<textField>
-				<reportElement x="695" y="0" width="99" height="30"/>
+				<reportElement x="615" y="0" width="95" height="30"/>
 				<textElement textAlignment="Right" verticalAlignment="Middle">
 					<font fontName="TH SarabunPSK" size="14" isBold="true"/>
 				</textElement>

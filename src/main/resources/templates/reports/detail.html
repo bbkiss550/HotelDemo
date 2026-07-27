@@ -33,13 +33,13 @@
                             <div class="col-md-4 monthly-filter-period" th:classappend="${filterType != 'period' ? ' d-none' : ''}">
                                 <label class="form-label">รอบบิล</label>
                                 <select class="form-select" name="period">
-                                    <option th:each="item : ${billingPeriods}" th:value="${item.value}" th:text="${item.label}" th:selected="${billingPeriod == item.value}"></option>
+                                    <option th:each="item : ${billingPeriods}" th:value="${item.value}" th:text="${item.label}" th:selected="${billingPeriod == item.value or (billingPeriod == '' and defaultBillingPeriod == item.value)}"></option>
                                 </select>
                             </div>
                             <div class="col-md-4 monthly-filter-year" th:classappend="${filterType != 'year' ? ' d-none' : ''}">
                                 <label class="form-label">ปี</label>
                                 <select class="form-select" name="year">
-                                    <option th:each="item : ${billingYears}" th:value="${item.value}" th:text="${item.label}" th:selected="${billingYear == item.value}"></option>
+                                    <option th:each="item : ${billingYears}" th:value="${item.value}" th:text="${item.label}" th:selected="${billingYear == item.value or (billingYear == null and defaultBillingYear == item.value)}"></option>
                                 </select>
                             </div>
                         </form>
@@ -60,13 +60,13 @@
                             <div class="col-md-3 report-filter-year" th:classappend="${filterType != 'year' and filterType != 'month' ? ' d-none' : ''}">
                                 <label class="form-label">ปี</label>
                                 <select class="form-select" name="year">
-                                    <option th:each="item : ${reportYears}" th:value="${item}" th:text="${item + 543}" th:selected="${filterYear == item}"></option>
+                                    <option th:each="item : ${reportYears}" th:value="${item}" th:text="${item + 543}" th:selected="${filterYear != null ? filterYear == item : defaultReportYear == item}"></option>
                                 </select>
                             </div>
                             <div class="col-md-3 report-filter-month" th:classappend="${filterType != 'month' ? ' d-none' : ''}">
                                 <label class="form-label">เดือน</label>
                                 <select class="form-select" name="month">
-                                    <option th:each="item : ${reportMonths}" th:value="${item.value}" th:text="${item.label}" th:selected="${filterMonth == T(java.lang.Integer).valueOf(item.value)}"></option>
+                                    <option th:each="item : ${reportMonths}" th:value="${item.value}" th:text="${item.label}" th:selected="${filterMonth != null ? filterMonth == T(java.lang.Integer).valueOf(item.value) : defaultReportMonth == T(java.lang.Integer).valueOf(item.value)}"></option>
                                 </select>
                             </div>
                             <div class="col-md-3 report-filter-range" th:classappend="${filterType != 'range' ? ' d-none' : ''}">
@@ -89,6 +89,7 @@
                     </div>
                 </div>
 
+                <div id="report-results" aria-live="polite">
                 <div th:if="${reportType == 'revenue'}">
                     <div class="row g-3">
                         <div class="col-xl-6 col-md-6">
@@ -227,10 +228,11 @@
                         <div class="card-header"><h5 class="mb-0">รายการจอง</h5></div>
                         <div class="card-body">
                             <div class="table-responsive"><table class="table mb-0 hotel-sortable-table hotel-paginated-table">
-                                <thead><tr><th>เลขที่จอง</th><th>วันที่เข้า</th><th>วันที่ออก</th><th>ผู้จอง</th><th>ประเภท</th><th class="text-end">มัดจำ</th><th>สถานะ</th></tr></thead>
+                                <thead><tr><th>เลขที่จอง</th><th>วันที่บันทึก</th><th>วันที่เข้า</th><th>วันที่ออก</th><th>ผู้จอง</th><th>ประเภท</th><th class="text-end">มัดจำ</th><th>สถานะ</th></tr></thead>
                                 <tbody>
                                 <tr th:each="b : ${bookings}">
                                     <td class="fw-bold" th:text="${b.bookingNumber != null ? b.bookingNumber : '-'}"></td>
+                                    <td th:text="${@thaiDate.format(b.bookingDate)}"></td>
                                     <td th:text="${@thaiDate.format(b.checkInDate)}"></td>
                                     <td th:text="${@thaiDate.format(b.checkOutDate)}"></td>
                                     <td th:text="${b.customerName}"></td>
@@ -238,7 +240,7 @@
                                     <td class="text-end" th:text="${#numbers.formatDecimal(b.depositAmount, 1, 'COMMA', 2, 'POINT')}"></td>
                                     <td th:text="${b.status.label}"></td>
                                 </tr>
-                                <tr th:if="${bookings.isEmpty()}"><td colspan="7" class="text-center text-muted">ไม่มีข้อมูล</td></tr>
+                                <tr th:if="${bookings.isEmpty()}"><td colspan="8" class="text-center text-muted">ไม่มีข้อมูล</td></tr>
                                 </tbody>
                             </table></div>
                         </div>
@@ -246,14 +248,6 @@
                 </div>
 
                 <div th:if="${reportType == 'deposit-refunds'}">
-                    <div class="row g-3">
-                        <div class="col-xl-4 col-md-6">
-                            <div class="card"><div class="card-body">
-                                <h6 class="text-muted">ยอดคืนสุทธิ</h6>
-                                <h3 th:text="${#numbers.formatDecimal(refundAmount, 1, 'COMMA', 2, 'POINT')}">0.00</h3>
-                            </div></div>
-                        </div>
-                    </div>
                     <div class="card">
                         <div class="card-header"><h5 class="mb-0">รายการคืนเงินประกัน</h5></div>
                         <div class="card-body">
@@ -276,12 +270,14 @@
                         </div>
                     </div>
                 </div>
+                </div>
             </section>
         </div>
     </div>
 </div>
 <div th:replace="~{fragments/nav :: scripts}"></div>
 <script th:src="@{/js/report-preview.js(v=20260725)}"></script>
+<script th:src="@{/js/report-filter-async.js(v=20260727)}"></script>
 <script>
 (function () {
     const thaiMonths = ['มกราคม', 'กุมภาพันธ์', 'มีนาคม', 'เมษายน', 'พฤษภาคม', 'มิถุนายน', 'กรกฎาคม', 'สิงหาคม', 'กันยายน', 'ตุลาคม', 'พฤศจิกายน', 'ธันวาคม'];
