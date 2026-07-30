@@ -1,11 +1,12 @@
 package com.hotel.service;
 
+import com.hotel.model.LookupCodes;
+
 import com.hotel.model.MonthlyRentBill;
 import com.hotel.model.Payment;
 import com.hotel.model.PaymentDetail;
 import com.hotel.model.PaymentItem;
 import com.hotel.model.RecieptType;
-import com.hotel.model.StayType;
 import com.hotel.repository.PaymentDetailRepository;
 import com.hotel.repository.PaymentItemRepository;
 import java.math.BigDecimal;
@@ -47,8 +48,8 @@ public class PaymentDetailSnapshotService {
         if (payment.getMonthlyRentBill() != null) return monthlyLines(payment);
         if (isPenalty(payment)) return penaltyLines(payment);
         if (payment.getBooking() != null) return List.of(line("มัดจำจองห้อง", "Booking deposit", 1, payment.getAmount()));
-        if (payment.getGuest() != null && payment.getGuest().getStayType() == StayType.MONTHLY) return monthlyOpeningLines(payment);
-        if (payment.getGuest() != null && payment.getGuest().getStayType() == StayType.DAILY) return dailyLines(payment);
+        if (payment.getGuest() != null && LookupCodes.MONTHLY.equals(payment.getGuest().getStayType())) return monthlyOpeningLines(payment);
+        if (payment.getGuest() != null && LookupCodes.DAILY.equals(payment.getGuest().getStayType())) return dailyLines(payment);
         String name = payment.getReciept() != null && payment.getReciept().getType() != null
                 ? payment.getReciept().getType().getName() : "ค่าบริการของลูกค้ารายวัน";
         return List.of(line(name, "Service charge", 1, payment.getAmount()));

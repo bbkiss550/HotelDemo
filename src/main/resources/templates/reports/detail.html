@@ -157,7 +157,7 @@
                                     <td th:text="${payment.reciept != null and payment.reciept.type != null ? payment.reciept.type.name : '-'}"></td>
                                     <td th:text="${payment.paymentMethod}"></td>
                                     <td class="text-end fw-bold" th:text="${#numbers.formatDecimal(payment.totalAmount, 1, 'COMMA', 2, 'POINT')}"></td>
-                                    <td th:text="${payment.status.label}"></td>
+                                    <td th:text="${payment.statusLabel}"></td>
                                 </tr>
                                 <tr th:if="${payments.isEmpty()}"><td colspan="8" class="text-center text-muted">ไม่มีข้อมูล</td></tr>
                                 </tbody>
@@ -192,7 +192,7 @@
                                     <td class="text-end" th:text="${#numbers.formatDecimal(bill.subtotalAmount, 1, 'COMMA', 2, 'POINT')}"></td>
                                     <td class="text-end" th:text="${#numbers.formatDecimal(bill.advanceAppliedAmount, 1, 'COMMA', 2, 'POINT')}"></td>
                                     <td class="text-end fw-bold" th:text="${#numbers.formatDecimal(bill.totalAmount, 1, 'COMMA', 2, 'POINT')}"></td>
-                                    <td th:text="${bill.billStatus != null ? bill.billStatus.name : bill.status.label}"></td>
+                                    <td th:text="${bill.billStatus != null ? bill.billStatus.name : bill.status}"></td>
                                 </tr>
                                 <tr th:if="${monthlyBills.isEmpty()}"><td colspan="13" class="text-center text-muted">ไม่มีข้อมูล</td></tr>
                                 </tbody>
@@ -236,9 +236,9 @@
                                     <td th:text="${@thaiDate.format(b.checkInDate)}"></td>
                                     <td th:text="${@thaiDate.format(b.checkOutDate)}"></td>
                                     <td th:text="${b.customerName}"></td>
-                                    <td th:text="${b.stayType.label}"></td>
+                                    <td th:text="${b.stayTypeLabel}"></td>
                                     <td class="text-end" th:text="${#numbers.formatDecimal(b.depositAmount, 1, 'COMMA', 2, 'POINT')}"></td>
-                                    <td th:text="${b.status.label}"></td>
+                                    <td th:text="${b.statusLabel}"></td>
                                 </tr>
                                 <tr th:if="${bookings.isEmpty()}"><td colspan="8" class="text-center text-muted">ไม่มีข้อมูล</td></tr>
                                 </tbody>

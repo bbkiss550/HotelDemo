@@ -1,7 +1,8 @@
 package com.hotel.controller;
 
+import com.hotel.model.LookupCodes;
+
 import com.hotel.model.Payment;
-import com.hotel.model.StayType;
 import com.hotel.repository.BookingRepository;
 import com.hotel.repository.PaymentRepository;
 import com.hotel.repository.PaymentDetailRepository;
@@ -96,7 +97,7 @@ public class ReceiptController {
     }
 
     private List<ReceiptLine> legacyReceiptItems(Payment payment) {
-        if (payment == null || payment.getGuest() == null || payment.getGuest().getStayType() != StayType.DAILY) {
+        if (payment == null || payment.getGuest() == null || !LookupCodes.DAILY.equals(payment.getGuest().getStayType())) {
             return List.of(new ReceiptLine(payment != null && payment.getReciept() != null && payment.getReciept().getType() != null ? payment.getReciept().getType().getName() : "-", BigDecimal.ONE, payment == null ? BigDecimal.ZERO : payment.getAmount(), payment == null ? BigDecimal.ZERO : payment.getAmount()));
         }
         var guest = payment.getGuest();

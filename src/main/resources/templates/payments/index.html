@@ -1,4 +1,4 @@
-﻿<!doctype html>
+<!doctype html>
 <html lang="th">
 <head th:replace="~{fragments/head :: head('ชำระเงิน')}"></head>
 <body>
@@ -212,7 +212,7 @@
                                     <td class="text-end" th:text="${#numbers.formatDecimal(p.amount, 1, 'COMMA', 2, 'POINT')}"></td>
                                     <td class="text-end" th:text="${#numbers.formatDecimal(p.fineAmount, 1, 'COMMA', 2, 'POINT')}"></td>
                                     <td class="text-end fw-bold" th:text="${#numbers.formatDecimal(p.totalAmount, 1, 'COMMA', 2, 'POINT')}"></td>
-                                    <td><span class="badge bg-light-success" th:text="${p.status.label}"></span></td>
+                                    <td><span class="badge bg-light-success" th:text="${p.statusLabel}"></span></td>
                                 </tr>
                                 <tr th:if="${payments.isEmpty()}">
                                     <td colspan="12" class="text-center text-muted py-4">ยังไม่มีรายการชำระเงิน</td>

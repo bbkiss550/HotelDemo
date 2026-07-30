@@ -1,7 +1,8 @@
 package com.hotel.controller;
 
-import com.hotel.model.MonthlyRentBill;
 import com.hotel.model.MonthlyRentBillStatus;
+
+import com.hotel.model.MonthlyRentBill;
 import com.hotel.repository.BillStatusRepository;
 import com.hotel.repository.MonthlyRentBillRepository;
 import java.time.LocalDate;
@@ -71,7 +72,7 @@ public class MonthlyRentBillListController {
         }
         try {
             return "OVERDUE".equals(status)
-                    ? effectiveStatus(bill) == MonthlyRentBillStatus.OVERDUE
+                    ? MonthlyRentBillStatus.OVERDUE.equals(effectiveStatus(bill))
                     : Long.valueOf(status).equals(bill.getStatusId());
         } catch (NumberFormatException ex) {
             return true;
@@ -89,9 +90,9 @@ public class MonthlyRentBillListController {
                 || (value != null && value.toLowerCase(Locale.ROOT).contains(term.toLowerCase(Locale.ROOT)));
     }
 
-    private MonthlyRentBillStatus effectiveStatus(MonthlyRentBill bill) {
-        if (bill.getStatus() != MonthlyRentBillStatus.PAID
-                && bill.getStatus() != MonthlyRentBillStatus.CANCELLED
+    private String effectiveStatus(MonthlyRentBill bill) {
+        if (!MonthlyRentBillStatus.PAID.equals(bill.getStatus())
+                && !MonthlyRentBillStatus.CANCELLED.equals(bill.getStatus())
                 && bill.getDueDate() != null
                 && bill.getDueDate().isBefore(LocalDate.now())) {
             return MonthlyRentBillStatus.OVERDUE;
@@ -128,26 +129,27 @@ public class MonthlyRentBillListController {
             return bill;
         }
 
-        public MonthlyRentBillStatus getEffectiveStatus() {
+        public String getEffectiveStatus() {
             return effectiveStatus(bill);
         }
 
         public String getStatusLabel() {
-            MonthlyRentBillStatus status = getEffectiveStatus();
-            if (status == MonthlyRentBillStatus.OVERDUE) {
-                return status.getLabel();
+            String status = getEffectiveStatus();
+            if (MonthlyRentBillStatus.OVERDUE.equals(status)) {
+                return MonthlyRentBillStatus.label(status);
             }
-            return bill.getBillStatus() == null ? status.getLabel() : bill.getBillStatus().getName();
+            return bill.getBillStatus() == null ? MonthlyRentBillStatus.label(status) : bill.getBillStatus().getName();
         }
 
         public String getStatusClass() {
             return switch (getEffectiveStatus()) {
-                case DRAFT -> "bg-light-secondary";
-                case PENDING -> "bg-light-warning";
-                case PARTIAL_PAID -> "bg-light-primary";
-                case PAID -> "bg-light-success";
-                case OVERDUE -> "bg-light-danger";
-                case CANCELLED -> "bg-light-dark";
+                case "DRAFT" -> "bg-light-secondary";
+                case "PENDING" -> "bg-light-warning";
+                case "PARTIAL_PAID" -> "bg-light-primary";
+                case "PAID" -> "bg-light-success";
+                case "OVERDUE" -> "bg-light-danger";
+                case "CANCELLED" -> "bg-light-dark";
+                default -> "bg-light-secondary";
             };
         }
     }

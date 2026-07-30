@@ -31,7 +31,7 @@
                                         <option th:each="type : ${roomTypes}" th:value="${type.id}" th:text="${type.name}" th:selected="${room.roomType != null and type.id == room.roomType.id}"></option>
                                     </select>
                                 </div>
-                                <div class="col-12"><label class="form-label">สถานะ</label><select class="form-select" th:field="*{status}"><option th:each="s : ${statuses}" th:value="${s}" th:text="${s.label}"></option></select></div>
+                                <div class="col-12"><label class="form-label">สถานะ</label><select class="form-select" th:field="*{status}"><option th:each="s : ${statuses}" th:value="${s}" th:text="${s}"></option></select></div>
                             </div>
                             <div class="d-flex gap-2 mt-4">
                                 <button class="btn btn-primary" type="submit"><i class="bi bi-save me-1"></i>บันทึก</button>

@@ -22,7 +22,7 @@ public class RoomTransferSchemaInitializer implements ApplicationRunner {
                     "ID_from_room" BIGINT NOT NULL REFERENCES t_room("ID_room"),
                     "ID_to_room" BIGINT NOT NULL REFERENCES t_room("ID_room"),
                     transfer_date DATE NOT NULL DEFAULT CURRENT_DATE,
-                    stay_type VARCHAR(50),
+                    id_stay_type BIGINT NOT NULL DEFAULT 1,
                     old_price NUMERIC(12,2) NOT NULL DEFAULT 0,
                     new_price NUMERIC(12,2) NOT NULL DEFAULT 0,
                     remark VARCHAR(1000),

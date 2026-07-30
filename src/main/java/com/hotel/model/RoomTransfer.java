@@ -28,9 +28,11 @@ public class RoomTransfer {
     @Column(name = "transfer_date")
     private LocalDate transferDate = LocalDate.now();
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "stay_type")
-    private StayType stayType;
+    @Column(name = "id_stay_type", nullable = false)
+    private Long stayTypeId = 1L;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "id_stay_type", insertable = false, updatable = false)
+    private StayTypeMaster stayTypeMaster;
 
     @Column(name = "old_price")
     private BigDecimal oldPrice = BigDecimal.ZERO;
@@ -54,8 +56,12 @@ public class RoomTransfer {
     public void setToRoom(Room toRoom) { this.toRoom = toRoom; }
     public LocalDate getTransferDate() { return transferDate; }
     public void setTransferDate(LocalDate transferDate) { this.transferDate = transferDate; }
-    public StayType getStayType() { return stayType; }
-    public void setStayType(StayType stayType) { this.stayType = stayType; }
+    public String getStayType() { return stayTypeMaster != null ? stayTypeMaster.getCode() : (stayTypeId != null && stayTypeId == 2L ? "MONTHLY" : "DAILY"); }
+    public void setStayType(String stayType) { this.stayTypeId = "MONTHLY".equals(stayType) ? 2L : 1L; }
+    public Long getStayTypeId() { return stayTypeId; }
+    public void setStayTypeId(Long id) { this.stayTypeId = id; }
+    public StayTypeMaster getStayTypeMaster() { return stayTypeMaster; }
+    public void setStayTypeMaster(StayTypeMaster value) { this.stayTypeMaster = value; }
     public BigDecimal getOldPrice() { return oldPrice; }
     public void setOldPrice(BigDecimal oldPrice) { this.oldPrice = oldPrice; }
     public BigDecimal getNewPrice() { return newPrice; }

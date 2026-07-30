@@ -22,7 +22,7 @@ public class DailyCheckoutPenaltySchemaInitializer implements ApplicationRunner 
                     start_time TIME NOT NULL,
                     end_day_offset INTEGER,
                     end_time TIME,
-                    charge_type VARCHAR(40) NOT NULL,
+                    id_penalty_charge_type BIGINT NOT NULL DEFAULT 2,
                     charge_value NUMERIC(12,2) NOT NULL DEFAULT 0,
                     enabled BOOLEAN NOT NULL DEFAULT TRUE,
                     sort_order INTEGER NOT NULL DEFAULT 0

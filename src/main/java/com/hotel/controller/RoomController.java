@@ -1,7 +1,8 @@
 package com.hotel.controller;
 
+import com.hotel.model.LookupCodes;
+
 import com.hotel.model.Room;
-import com.hotel.model.RoomStatus;
 import com.hotel.repository.FloorRepository;
 import com.hotel.repository.GuestRepository;
 import com.hotel.repository.RoomRepository;
@@ -47,13 +48,13 @@ public class RoomController {
                 .collect(Collectors.toMap(
                         com.hotel.model.Room::getId,
                         room -> guests.findTopByRoomAndActiveTrueOrderByCheckInDateDescIdDesc(room)
-                                .map(guest -> guest.getStayType().name())
+                                .map(guest -> guest.getStayType())
                                 .orElse("")
                 ));
 
         model.addAttribute("rooms", roomList);
         model.addAttribute("roomStayTypes", roomStayTypes);
-        model.addAttribute("statuses", RoomStatus.values());
+        model.addAttribute("statuses", LookupCodes.roomStatusCodes());
         return "rooms/index";
     }
 
@@ -62,7 +63,7 @@ public class RoomController {
         model.addAttribute("room", new Room());
         model.addAttribute("floors", floors.findAllByOrderBySortOrderAscNumberAscNameAsc());
         model.addAttribute("roomTypes", roomTypes.findAllByOrderByNameAsc());
-        model.addAttribute("statuses", RoomStatus.values());
+        model.addAttribute("statuses", LookupCodes.roomStatusCodes());
         return "rooms/form";
     }
 
@@ -71,7 +72,7 @@ public class RoomController {
         model.addAttribute("room", rooms.findById(id).orElseThrow());
         model.addAttribute("floors", floors.findAllByOrderBySortOrderAscNumberAscNameAsc());
         model.addAttribute("roomTypes", roomTypes.findAllByOrderByNameAsc());
-        model.addAttribute("statuses", RoomStatus.values());
+        model.addAttribute("statuses", LookupCodes.roomStatusCodes());
         return "rooms/form";
     }
 
@@ -90,10 +91,10 @@ public class RoomController {
         savedRoom.setNightlyPrice(roomType.getNightlyPrice());
         savedRoom.setMonthlyPrice(roomType.getMonthlyPrice());
         if (savedRoom.getStatus() == null) {
-            savedRoom.setStatus(RoomStatus.AVAILABLE);
+            savedRoom.setStatus(LookupCodes.AVAILABLE);
         }
-        if (savedRoom.getStatus() == RoomStatus.AVAILABLE || savedRoom.getStatus() == RoomStatus.MAINTENANCE) {
-            savedRoom.setStatus(maintenanceMode ? RoomStatus.MAINTENANCE : RoomStatus.AVAILABLE);
+        if (LookupCodes.AVAILABLE.equals(savedRoom.getStatus()) || LookupCodes.MAINTENANCE.equals(savedRoom.getStatus())) {
+            savedRoom.setStatus(maintenanceMode ? LookupCodes.MAINTENANCE : LookupCodes.AVAILABLE);
         }
         rooms.save(savedRoom);
         redirect.addFlashAttribute("message", (isNew ? "บันทึกห้อง " : "แก้ไขห้อง ") + savedRoom.getRoomNumber() + " เรียบร้อย");

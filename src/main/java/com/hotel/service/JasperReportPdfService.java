@@ -174,7 +174,7 @@ public class JasperReportPdfService {
                         "subtotalAmount", money(bill.getSubtotalAmount()),
                         "advanceAppliedAmount", money(bill.getAdvanceAppliedAmount()),
                         "totalAmount", money(bill.getTotalAmount()),
-                        "status", bill.getBillStatus() != null ? value(bill.getBillStatus().getName()) : bill.getStatus().getLabel()
+                        "status", bill.getBillStatus() != null ? value(bill.getBillStatus().getName()) : bill.getStatus()
                 ))
                 .toList();
         Map<String, Object> parameters = new HashMap<>();
@@ -301,9 +301,9 @@ public class JasperReportPdfService {
                         "checkInDate", date(booking.getCheckInDate()),
                         "checkOutDate", date(booking.getCheckOutDate()),
                         "customerName", value(booking.getCustomerName()),
-                        "stayType", booking.getStayType() == null ? "-" : booking.getStayType().getLabel(),
+                        "stayType", booking.getStayType() == null ? "-" : booking.getStayType(),
                         "depositAmount", money(booking.getDepositAmount()),
-                        "status", booking.getStatus() == null ? "-" : booking.getStatus().getLabel()
+                        "status", booking.getStatus() == null ? "-" : booking.getStatus()
                 ))
                 .toList();
         Map<String, Object> parameters = new HashMap<>();

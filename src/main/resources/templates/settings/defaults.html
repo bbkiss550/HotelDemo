@@ -128,7 +128,7 @@
                                                 <td><input class="form-control" name="ruleEndTime" type="time" step="1" th:value="${rule.endTime != null ? #temporals.format(rule.endTime, 'HH:mm:ss') : ''}"></td>
                                                 <td>
                                                     <select class="form-select" name="ruleChargeType">
-                                                        <option th:each="type : ${dailyCheckoutPenaltyChargeTypes}" th:value="${type.name()}" th:text="${type.label}" th:selected="${type == rule.chargeType}"></option>
+                                                        <option th:each="type : ${dailyCheckoutPenaltyChargeTypes}" th:value="${type}" th:text="${type}" th:selected="${type == rule.chargeType}"></option>
                                                     </select>
                                                 </td>
                                                 <td><input class="form-control" name="ruleChargeValue" type="number" min="0" step="0.01" th:value="${rule.chargeValue}" required></td>
@@ -166,7 +166,7 @@
         <td><input class="form-control" name="ruleEndTime" type="time" step="1"></td>
         <td>
             <select class="form-select" name="ruleChargeType">
-                <option th:each="type : ${dailyCheckoutPenaltyChargeTypes}" th:value="${type.name()}" th:text="${type.label}"></option>
+                <option th:each="type : ${dailyCheckoutPenaltyChargeTypes}" th:value="${type}" th:text="${type}"></option>
             </select>
         </td>
         <td><input class="form-control" name="ruleChargeValue" type="number" min="0" step="0.01" value="0" required></td>

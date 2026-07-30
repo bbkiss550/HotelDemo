@@ -1,12 +1,13 @@
 package com.hotel.service;
 
+import com.hotel.model.MonthlyRentBillStatus;
+
+import com.hotel.model.LookupCodes;
+
 import com.hotel.model.AdvanceLedger;
-import com.hotel.model.AdvanceLedgerType;
 import com.hotel.model.Guest;
 import com.hotel.model.MonthlyRentBill;
-import com.hotel.model.MonthlyRentBillStatus;
 import com.hotel.model.Payment;
-import com.hotel.model.StayType;
 import com.hotel.repository.AdvanceLedgerRepository;
 import com.hotel.repository.GuestRepository;
 import java.math.BigDecimal;
@@ -36,14 +37,14 @@ public class AdvanceBalanceService {
             throw new IllegalArgumentException("จำนวนเงินต้องมากกว่า 0");
         }
         guest = guests.findById(guest.getId()).orElseThrow();
-        if (!Boolean.TRUE.equals(guest.getActive()) || guest.getStayType() != StayType.MONTHLY) {
+        if (!Boolean.TRUE.equals(guest.getActive()) || !LookupCodes.MONTHLY.equals(guest.getStayType())) {
             throw new IllegalArgumentException("ต้องเลือกผู้เช่ารายเดือนที่ active");
         }
         BigDecimal before = money(guest.getAdvanceBalance());
         BigDecimal after = before.add(amount);
         guest.setAdvanceBalance(after);
         guests.save(guest);
-        saveLedger(guest, payment.getRoom(), null, payment, AdvanceLedgerType.ADD_ADVANCE, amount, before, after, payment.getRemark());
+        saveLedger(guest, payment.getRoom(), null, payment, LookupCodes.ADD_ADVANCE, amount, before, after, payment.getRemark());
     }
 
     @Transactional
@@ -57,14 +58,14 @@ public class AdvanceBalanceService {
         BigDecimal after = before.add(amount);
         guest.setAdvanceBalance(after);
         guests.save(guest);
-        saveLedger(guest, guest.getRoom(), null, null, AdvanceLedgerType.ADD_ADVANCE, amount, before, after,
+        saveLedger(guest, guest.getRoom(), null, null, LookupCodes.ADD_ADVANCE, amount, before, after,
                 "รับค่าเช่าล่วงหน้าวันเข้าพัก " + amount.toPlainString());
     }
 
     @Transactional
     public void applyAdvanceToIssuedBill(MonthlyRentBill bill) {
         bill.recalculate();
-        if (bill.getId() != null && ledgers.existsByBillAndType(bill, AdvanceLedgerType.APPLY_ADVANCE)) {
+        if (bill.getId() != null && ledgers.existsByBillAndType(bill, LookupCodes.APPLY_ADVANCE)) {
             return;
         }
         Guest guest = guests.findById(bill.getGuest().getId()).orElseThrow();
@@ -77,7 +78,7 @@ public class AdvanceBalanceService {
         if (applied.compareTo(BigDecimal.ZERO) > 0) {
             guest.setAdvanceBalance(after);
             guests.save(guest);
-            saveLedger(guest, bill.getRoom(), bill, null, AdvanceLedgerType.APPLY_ADVANCE, applied.negate(), before, after,
+            saveLedger(guest, bill.getRoom(), bill, null, LookupCodes.APPLY_ADVANCE, applied.negate(), before, after,
                     "หักเครดิตล่วงหน้าบิล " + bill.getBillingMonth() + "/" + (bill.getBillingYear() + 543));
         }
         if (bill.getRemainingAmount().compareTo(BigDecimal.ZERO) == 0) {
@@ -100,14 +101,14 @@ public class AdvanceBalanceService {
         BigDecimal after = before.add(applied);
         guest.setAdvanceBalance(after);
         guests.save(guest);
-        saveLedger(guest, bill.getRoom(), bill, null, AdvanceLedgerType.ADJUST_ADVANCE, applied, before, after,
+        saveLedger(guest, bill.getRoom(), bill, null, LookupCodes.ADJUST_ADVANCE, applied, before, after,
                 "คืนเครดิตจากการยกเลิกบิล " + bill.getBillingMonth() + "/" + (bill.getBillingYear() + 543));
         bill.setAdvanceAppliedAmount(BigDecimal.ZERO);
         bill.recalculate();
     }
 
     private void saveLedger(Guest guest, com.hotel.model.Room room, MonthlyRentBill bill, Payment payment,
-                            AdvanceLedgerType type, BigDecimal amount, BigDecimal before, BigDecimal after, String note) {
+                            String type, BigDecimal amount, BigDecimal before, BigDecimal after, String note) {
         AdvanceLedger ledger = new AdvanceLedger();
         ledger.setGuest(guest);
         ledger.setRoom(room != null ? room : guest.getRoom());

@@ -217,8 +217,12 @@ public class MonthlyRentBill {
         this.billStatus = billStatus;
         this.statusId = billStatus == null ? null : billStatus.getId();
     }
-    public MonthlyRentBillStatus getStatus() { return MonthlyRentBillStatus.fromId(statusId); }
-    public void setStatus(MonthlyRentBillStatus status) { this.statusId = MonthlyRentBillStatus.idOf(status); }
+    public String getStatus() {
+        return statusId == null ? null : switch (statusId.intValue()) { case 1 -> "PENDING"; case 2 -> "PARTIAL_PAID"; case 3 -> "PAID"; case 4 -> "CANCELLED"; default -> null; };
+    }
+    public void setStatus(String status) {
+        this.statusId = switch (status == null ? "PENDING" : status) { case "PARTIAL_PAID" -> 2L; case "PAID" -> 3L; case "CANCELLED" -> 4L; default -> 1L; };
+    }
     public String getNote() { return note; }
     public void setNote(String note) { this.note = note; }
     public LocalDateTime getCreatedAt() { return createdAt; }

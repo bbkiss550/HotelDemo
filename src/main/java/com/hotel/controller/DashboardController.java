@@ -1,8 +1,6 @@
 package com.hotel.controller;
 
-import com.hotel.model.BookingStatus;
-import com.hotel.model.PaymentStatus;
-import com.hotel.model.RoomStatus;
+import com.hotel.model.LookupCodes;
 import com.hotel.repository.BookingRepository;
 import com.hotel.repository.PaymentRepository;
 import com.hotel.repository.RoomRepository;
@@ -27,14 +25,14 @@ public class DashboardController {
     String dashboard(Model model) {
         LocalDate today = LocalDate.now();
         model.addAttribute("totalRooms", rooms.count());
-        model.addAttribute("availableRooms", rooms.countByStatus(RoomStatus.AVAILABLE));
-        model.addAttribute("dailyRooms", rooms.countByStatus(RoomStatus.DAILY_OCCUPIED));
-        model.addAttribute("monthlyRooms", rooms.countByStatus(RoomStatus.MONTHLY_OCCUPIED));
-        model.addAttribute("reservedRooms", rooms.countByStatus(RoomStatus.RESERVED));
-        model.addAttribute("unpaidRooms", payments.countByStatus(PaymentStatus.UNPAID));
+        model.addAttribute("availableRooms", rooms.countByStatus(LookupCodes.AVAILABLE));
+        model.addAttribute("dailyRooms", rooms.countByStatus(LookupCodes.DAILY_OCCUPIED));
+        model.addAttribute("monthlyRooms", rooms.countByStatus(LookupCodes.MONTHLY_OCCUPIED));
+        model.addAttribute("reservedRooms", rooms.countByStatus(LookupCodes.RESERVED));
+        model.addAttribute("unpaidRooms", payments.countByStatusId(2L));
         model.addAttribute("todayRevenue", payments.sumPaidBetween(today, today));
         model.addAttribute("monthRevenue", payments.sumPaidBetween(today.withDayOfMonth(1), today));
-        model.addAttribute("activeBookings", bookings.countByStatus(BookingStatus.CONFIRMED));
+        model.addAttribute("activeBookings", bookings.countByStatus(LookupCodes.PENDING));
         return "dashboard";
     }
 }

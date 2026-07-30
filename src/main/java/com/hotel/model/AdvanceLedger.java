@@ -28,9 +28,11 @@ public class AdvanceLedger {
     @JoinColumn(name = "id_payment", referencedColumnName = "`ID_payment`")
     private Payment payment;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "ledger_type", nullable = false)
-    private AdvanceLedgerType type;
+    @Column(name = "id_advance_ledger_type", nullable = false)
+    private Long typeId = 1L;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "id_advance_ledger_type", insertable = false, updatable = false)
+    private AdvanceLedgerTypeMaster typeMaster;
 
     @Column(name = "amount", nullable = false)
     private BigDecimal amount = BigDecimal.ZERO;
@@ -67,8 +69,12 @@ public class AdvanceLedger {
     public void setBill(MonthlyRentBill bill) { this.bill = bill; }
     public Payment getPayment() { return payment; }
     public void setPayment(Payment payment) { this.payment = payment; }
-    public AdvanceLedgerType getType() { return type; }
-    public void setType(AdvanceLedgerType type) { this.type = type; }
+    public String getType() { return typeMaster != null ? typeMaster.getCode() : (typeId != null && typeId == 2L ? "APPLY_ADVANCE" : typeId != null && typeId == 3L ? "REFUND_ADVANCE" : typeId != null && typeId == 4L ? "ADJUST_ADVANCE" : "ADD_ADVANCE"); }
+    public void setType(String type) { this.typeId = switch (type == null ? "ADD_ADVANCE" : type) { case "APPLY_ADVANCE" -> 2L; case "REFUND_ADVANCE" -> 3L; case "ADJUST_ADVANCE" -> 4L; default -> 1L; }; }
+    public Long getTypeId() { return typeId; }
+    public void setTypeId(Long id) { this.typeId = id; }
+    public AdvanceLedgerTypeMaster getTypeMaster() { return typeMaster; }
+    public void setTypeMaster(AdvanceLedgerTypeMaster value) { this.typeMaster = value; }
     public BigDecimal getAmount() { return amount; }
     public void setAmount(BigDecimal amount) { this.amount = amount; }
     public BigDecimal getBalanceBefore() { return balanceBefore; }

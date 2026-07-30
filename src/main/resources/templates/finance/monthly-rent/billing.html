@@ -86,9 +86,9 @@
                 <div class="room-grid monthly-billing-grid" th:if="${!items.isEmpty()}">
                     <button class="room-tile monthly-bill-tile"
                             th:each="item : ${items}"
-                            th:attr="data-bs-target=${item.bill != null and item.bill.status.name() == 'PAID' ? null : '#monthlyRentBillModal' + item.room.id},
-                                     data-bs-toggle=${item.bill != null and item.bill.status.name() == 'PAID' ? null : 'modal'},
-                                     data-paid-bill-alert=${item.bill != null and item.bill.status.name() == 'PAID' ? 'true' : null}"
+                            th:attr="data-bs-target=${item.bill != null and item.bill.status == 'PAID' ? null : '#monthlyRentBillModal' + item.room.id},
+                                     data-bs-toggle=${item.bill != null and item.bill.status == 'PAID' ? null : 'modal'},
+                                     data-paid-bill-alert=${item.bill != null and item.bill.status == 'PAID' ? 'true' : null}"
                             type="button"
                             th:classappend="${item.statusClass}">
                         <span class="room-number" th:text="${item.room.roomNumber}"></span>
@@ -212,13 +212,13 @@
                         </div>
                         <div class="modal-footer justify-content-between">
                             <div class="d-flex gap-2">
-                                <a th:if="${item.bill != null and item.bill.status.name() != 'PAID'}" class="btn btn-light-primary" th:href="@{/payments/new(guestId=${item.guest.id})}">
+                                <a th:if="${item.bill != null and item.bill.status != 'PAID'}" class="btn btn-light-primary" th:href="@{/payments/new(guestId=${item.guest.id})}">
                                     <i class="bi bi-cash-coin me-1"></i>รับชำระ
                                 </a>
                             </div>
                             <div class="d-flex gap-2">
                                 <button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">ปิด</button>
-                                <button th:if="${item.bill != null and item.bill.status.name() != 'CANCELLED' and item.bill.status.name() != 'PAID'}"
+                                <button th:if="${item.bill != null and item.bill.status != 'CANCELLED' and item.bill.status != 'PAID'}"
                                         class="btn btn-light-danger"
                                         type="submit"
                                         name="action"
@@ -226,8 +226,8 @@
                                         data-swal-confirm="ยืนยันการยกเลิกบิลนี้?">
                                     <i class="bi bi-x-circle me-1"></i>ยกเลิกบิล
                                 </button>
-                                <button th:if="${item.bill == null or item.bill.status.name() != 'PAID'}" class="btn btn-light-primary" type="submit" name="action" value="draft"><i class="bi bi-save me-1"></i>บันทึกแบบร่าง</button>
-                                <button th:if="${item.bill == null or item.bill.status.name() != 'PAID'}" class="btn btn-primary" type="submit" name="action" value="issue"><i class="bi bi-receipt me-1"></i>ออกบิล</button>
+                                <button th:if="${item.bill == null or item.bill.status != 'PAID'}" class="btn btn-light-primary" type="submit" name="action" value="draft"><i class="bi bi-save me-1"></i>บันทึกแบบร่าง</button>
+                                <button th:if="${item.bill == null or item.bill.status != 'PAID'}" class="btn btn-primary" type="submit" name="action" value="issue"><i class="bi bi-receipt me-1"></i>ออกบิล</button>
                             </div>
                         </div>
                     </form>
@@ -355,7 +355,7 @@
                     <div class="modal-body monthly-bill-preview-wrap monthly-bill-bulk-preview">
                         <div class="monthly-bill-slip"
                              th:each="item : ${items}"
-                             th:if="${item.bill != null and item.bill.status.name() != 'DRAFT' and item.bill.status.name() != 'CANCELLED'}">
+                             th:if="${item.bill != null and item.bill.status != 'DRAFT' and item.bill.status != 'CANCELLED'}">
                             <div class="bill-slip-header">
                                 <div>
                                     <h4 th:text="${systemName}">BlueCatHotelDemo</h4>

@@ -1,16 +1,13 @@
 package com.hotel.controller;
 
 import com.hotel.model.Guest;
+import com.hotel.model.LookupCodes;
 import com.hotel.model.Booking;
-import com.hotel.model.BookingStatus;
 import com.hotel.model.DepositRefund;
 import com.hotel.model.DepositRefundItem;
 import com.hotel.model.Payment;
-import com.hotel.model.PaymentStatus;
 import com.hotel.model.Room;
-import com.hotel.model.RoomStatus;
 import com.hotel.model.RoomTransfer;
-import com.hotel.model.StayType;
 import com.hotel.repository.BookingRepository;
 import com.hotel.repository.AdvanceLedgerRepository;
 import com.hotel.repository.DepositRefundRepository;
@@ -95,15 +92,15 @@ public class GuestController {
                     .ifPresent(guest -> {
                         activeGuests.put(room.getId(), guest);
                         activeGuestPayments.put(guest.getId(), payments.findByGuestIdOrderByPaymentDateDescIdDesc(guest.getId()));
-                        if (guest.getStayType() == StayType.DAILY) {
+                        if (LookupCodes.DAILY.equals(guest.getStayType())) {
                             LocalDate checkIn = guest.getCheckInDate() == null ? LocalDate.now() : guest.getCheckInDate();
                             LocalDate checkOut = guest.getCheckOutDate() == null ? checkIn.plusDays(1) : guest.getCheckOutDate();
                             activeGuestStayDays.put(guest.getId(), Math.max(1, ChronoUnit.DAYS.between(checkIn, checkOut)));
                         }
                         activeGuestCheckoutPenaltyQuotes.put(guest.getId(), checkoutPenalties.quote(guest));
                     });
-            if (room.getStatus() == RoomStatus.RESERVED) {
-                bookings.findTopByRoomAndStatusOrderByCheckInDateDescIdDesc(room, BookingStatus.CONFIRMED)
+            if (LookupCodes.RESERVED.equals(room.getStatus())) {
+                bookings.findTopByRoomAndStatusOrderByCheckInDateDescIdDesc(room, LookupCodes.PENDING)
                         .ifPresent(booking -> reservedBookings.put(room.getId(), booking));
             }
         }
@@ -117,10 +114,10 @@ public class GuestController {
         model.addAttribute("activeGuestStayDays", activeGuestStayDays);
         model.addAttribute("activeGuestCheckoutPenaltyQuotes", activeGuestCheckoutPenaltyQuotes);
         model.addAttribute("reservedBookings", reservedBookings);
-        model.addAttribute("unassignedBookings", bookings.findByRoomIsNullAndStatusOrderByCheckInDateAscIdDesc(BookingStatus.CONFIRMED));
-        model.addAttribute("availableRooms", rooms.findByStatusOrderByRoomNumber(RoomStatus.AVAILABLE));
+        model.addAttribute("unassignedBookings", bookings.findByRoomIsNullAndStatusOrderByCheckInDateAscIdDesc(LookupCodes.PENDING));
+        model.addAttribute("availableRooms", rooms.findByStatusOrderByRoomNumber(LookupCodes.AVAILABLE));
         model.addAttribute("roomTypes", roomTypes.findAllByOrderByNameAsc());
-        model.addAttribute("stayTypes", StayType.values());
+        model.addAttribute("stayTypes", LookupCodes.stayTypeCodes());
         model.addAttribute("defaultDepositAmount", settings.defaultDeposit());
         model.addAttribute("monthlyDepositAmount", settings.monthlyDeposit());
         model.addAttribute("today", LocalDate.now());
@@ -136,7 +133,7 @@ public class GuestController {
                 @RequestParam(required = false) Long floorId,
                 RedirectAttributes redirect) {
         var room = rooms.findById(roomId).orElseThrow();
-        if (room.getStatus() != RoomStatus.AVAILABLE && room.getStatus() != RoomStatus.RESERVED && bookingId != null) {
+        if (!LookupCodes.AVAILABLE.equals(room.getStatus()) && !LookupCodes.RESERVED.equals(room.getStatus()) && bookingId != null) {
             redirect.addFlashAttribute("error", "ห้องที่เลือกไม่ว่าง");
             redirect.addFlashAttribute("flashType", "warning");
             return floorId == null ? "redirect:/guests" : "redirect:/guests?floorId=" + floorId;
@@ -151,7 +148,7 @@ public class GuestController {
         }
         if (bookingId != null) {
             var booking = bookings.findById(bookingId).orElseThrow();
-            if (booking.getStayType() != guest.getStayType()) {
+            if (!java.util.Objects.equals(booking.getStayType(), guest.getStayType())) {
                 redirect.addFlashAttribute("error", "รูปแบบการพักต้องตรงกับการจอง");
                 redirect.addFlashAttribute("flashType", "warning");
                 return floorId == null ? "redirect:/guests" : "redirect:/guests?floorId=" + floorId;
@@ -172,16 +169,16 @@ public class GuestController {
         }
         guests.save(guest);
         Payment openingPayment = createOpeningPayment(guest);
-        if (guest.getStayType() == StayType.MONTHLY) {
+        if (LookupCodes.MONTHLY.equals(guest.getStayType())) {
             advanceBalanceService.addOpeningAdvance(guest, monthlyAdvanceAmount(guest));
         }
         if (bookingId != null) {
             var booking = bookings.findById(bookingId).orElseThrow();
             booking.setRoom(room);
-            booking.setStatus(BookingStatus.CHECKED_IN);
+            booking.setStatus(LookupCodes.CHECKED_IN);
             bookings.save(booking);
         }
-        room.setStatus(guest.getStayType() == StayType.MONTHLY ? RoomStatus.MONTHLY_OCCUPIED : RoomStatus.DAILY_OCCUPIED);
+        room.setStatus(LookupCodes.MONTHLY.equals(guest.getStayType()) ? LookupCodes.MONTHLY_OCCUPIED : LookupCodes.DAILY_OCCUPIED);
         rooms.save(room);
         audit.record("CHECK_IN", "Room " + room.getRoomNumber() + " guest " + guest.getFullName());
         redirect.addFlashAttribute("message", "บันทึกเข้าพักห้อง " + room.getRoomNumber() + " เรียบร้อย");
@@ -222,7 +219,7 @@ public class GuestController {
             penaltyPayment.setFineAmount(BigDecimal.ZERO);
             penaltyPayment.setPaymentDate(LocalDate.now());
             penaltyPayment.setPaymentMethod(refundMethod == null || refundMethod.isBlank() ? "เงินสด" : refundMethod);
-            penaltyPayment.setStatus(PaymentStatus.PAID);
+            penaltyPayment.setStatus(LookupCodes.PAID);
             penaltyPayment.setDepositRefund(refund);
             penaltyPayment.setRemark(null);
             penaltyPayment = payments.save(penaltyPayment);
@@ -233,7 +230,7 @@ public class GuestController {
         }
         guests.save(guest);
         var room = guest.getRoom();
-        room.setStatus(RoomStatus.AVAILABLE);
+        room.setStatus(LookupCodes.AVAILABLE);
         rooms.save(room);
         audit.record("CHECK_OUT", "Room " + room.getRoomNumber() + " guest " + guest.getFullName());
         redirect.addFlashAttribute("message", "เช็กเอาต์ห้อง " + room.getRoomNumber() + " เรียบร้อย");
@@ -266,7 +263,7 @@ public class GuestController {
             redirect.addFlashAttribute("flashType", "warning");
             return floorId == null ? "redirect:/guests" : "redirect:/guests?floorId=" + floorId;
         }
-        if (toRoom.getStatus() != RoomStatus.AVAILABLE) {
+        if (!LookupCodes.AVAILABLE.equals(toRoom.getStatus())) {
             redirect.addFlashAttribute("error", "ย้ายได้เฉพาะไปยังห้องว่างเท่านั้น");
             redirect.addFlashAttribute("flashType", "warning");
             return floorId == null ? "redirect:/guests" : "redirect:/guests?floorId=" + floorId;
@@ -282,8 +279,8 @@ public class GuestController {
         transfer.setNewPrice(roomPriceForStay(toRoom, guest.getStayType()));
         transfer.setRemark(remark);
 
-        fromRoom.setStatus(RoomStatus.AVAILABLE);
-        toRoom.setStatus(guest.getStayType() == StayType.MONTHLY ? RoomStatus.MONTHLY_OCCUPIED : RoomStatus.DAILY_OCCUPIED);
+        fromRoom.setStatus(LookupCodes.AVAILABLE);
+        toRoom.setStatus(LookupCodes.MONTHLY.equals(guest.getStayType()) ? LookupCodes.MONTHLY_OCCUPIED : LookupCodes.DAILY_OCCUPIED);
         guest.setRoom(toRoom);
         guest.setPrice(roomPriceForStay(toRoom, guest.getStayType()));
 
@@ -311,7 +308,7 @@ public class GuestController {
     private void calculateGuestAmounts(Guest guest, BigDecimal bookingDeposit) {
         bookingDeposit = bookingDeposit == null ? BigDecimal.ZERO : bookingDeposit;
         BigDecimal initialPayment;
-        if (guest.getStayType() == StayType.DAILY) {
+        if (LookupCodes.DAILY.equals(guest.getStayType())) {
             guest.setAdvanceMonths(null);
             BigDecimal price = guest.getPrice() == null ? BigDecimal.ZERO : guest.getPrice();
             BigDecimal deposit = guest.getDeposit() == null ? BigDecimal.ZERO : guest.getDeposit();
@@ -338,12 +335,12 @@ public class GuestController {
         return price.multiply(BigDecimal.valueOf(months));
     }
 
-    private BigDecimal roomPriceForStay(Room room, StayType stayType) {
+    private BigDecimal roomPriceForStay(Room room, String stayType) {
         if (room == null) {
             return BigDecimal.ZERO;
         }
         BigDecimal price;
-        if (stayType == StayType.MONTHLY) {
+        if (LookupCodes.MONTHLY.equals(stayType)) {
             price = room.getRoomType() != null ? room.getRoomType().getMonthlyPrice() : room.getMonthlyPrice();
         } else {
             price = room.getRoomType() != null ? room.getRoomType().getNightlyPrice() : room.getNightlyPrice();
@@ -477,10 +474,10 @@ public class GuestController {
         payment.setFineAmount(BigDecimal.ZERO);
         payment.setPaymentDate(guest.getCheckInDate() == null ? LocalDate.now() : guest.getCheckInDate());
         payment.setPaymentMethod("เงินสด");
-        payment.setStatus(PaymentStatus.PAID);
+        payment.setStatus(LookupCodes.PAID);
         payment.setRemark(null);
         payment = payments.save(payment);
-        if (guest.getStayType() == StayType.MONTHLY) {
+        if (LookupCodes.MONTHLY.equals(guest.getStayType())) {
             recieptRecordService.recordOpeningMonthly(payment, amount);
         } else {
             recieptRecordService.recordDailyService(payment, amount);

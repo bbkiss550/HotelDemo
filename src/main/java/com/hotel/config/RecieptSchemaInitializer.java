@@ -185,15 +185,15 @@ public class RecieptSchemaInitializer implements ApplicationRunner {
                         CASE
                             WHEN p.p_remark LIKE 'ชำระบิลค่าเช่ารายเดือน%' THEN 3
                             WHEN p.p_remark LIKE '%#%' THEN 3
-                            WHEN p.p_remark = 'ค่าแรกเข้า' AND g.g_stay_type = 'MONTHLY' THEN 1
-                            WHEN p.p_remark = 'ค่าแรกเข้า' AND (g.g_stay_type = 'DAILY' OR g.g_stay_type IS NULL) THEN 2
-                            WHEN g.g_stay_type = 'MONTHLY' THEN 1
+                            WHEN p.p_remark = 'ค่าแรกเข้า' AND g.id_stay_type = 2 THEN 1
+                            WHEN p.p_remark = 'ค่าแรกเข้า' AND (g.id_stay_type = 1 OR g.id_stay_type IS NULL) THEN 2
+                            WHEN g.id_stay_type = 2 THEN 1
                             ELSE 2
                         END,
                         COALESCE(p.p_amount, 0) + COALESCE(p.p_fine_amount, 0)
                     FROM t_payment p
                     LEFT JOIN t_guest g ON g."ID_guest" = p."ID_guest"
-                    WHERE p.p_status = 'PAID'
+                    WHERE p.id_payment_status = 1
                       AND COALESCE(p.p_amount, 0) + COALESCE(p.p_fine_amount, 0) > 0
                       AND NOT EXISTS (SELECT 1 FROM t_reciept)
                     """);
@@ -207,15 +207,15 @@ public class RecieptSchemaInitializer implements ApplicationRunner {
                         CASE
                             WHEN p.p_remark LIKE 'ชำระบิลค่าเช่ารายเดือน%' THEN 3
                             WHEN p.p_remark LIKE '%#%' THEN 3
-                            WHEN p.p_remark = 'ค่าแรกเข้า' AND g.g_stay_type = 'MONTHLY' THEN 1
-                            WHEN p.p_remark = 'ค่าแรกเข้า' AND (g.g_stay_type = 'DAILY' OR g.g_stay_type IS NULL) THEN 2
-                            WHEN g.g_stay_type = 'MONTHLY' THEN 1
+                            WHEN p.p_remark = 'ค่าแรกเข้า' AND g.id_stay_type = 2 THEN 1
+                            WHEN p.p_remark = 'ค่าแรกเข้า' AND (g.id_stay_type = 1 OR g.id_stay_type IS NULL) THEN 2
+                            WHEN g.id_stay_type = 2 THEN 1
                             ELSE 2
                         END,
                         COALESCE(p.p_amount, 0) + COALESCE(p.p_fine_amount, 0)
                     FROM t_payment p
                     LEFT JOIN t_guest g ON g."ID_guest" = p."ID_guest"
-                    WHERE p.p_status = 'PAID'
+                    WHERE p.id_payment_status = 1
                       AND COALESCE(p.p_amount, 0) + COALESCE(p.p_fine_amount, 0) > 0
                       AND NOT EXISTS (SELECT 1 FROM t_reciept)
                     """);
@@ -243,7 +243,7 @@ public class RecieptSchemaInitializer implements ApplicationRunner {
                     SELECT r2."ID_reciept", p."ID_payment"
                     FROM t_reciept r2
                     JOIN t_payment p
-                      ON p.p_status = 'PAID'
+                      ON p.id_payment_status = 1
                      AND COALESCE(p.p_amount, 0) + COALESCE(p.p_fine_amount, 0) = r2.rec_amount
                      AND COALESCE(p.p_payment_date, CURRENT_DATE) = r2.rec_date
                      AND (r2."ID_payment" IS NULL OR p."ID_payment" = r2."ID_payment")

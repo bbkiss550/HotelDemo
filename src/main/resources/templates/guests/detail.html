@@ -16,7 +16,7 @@
                     <dl class="row mb-0">
                         <dt class="col-5">เบอร์โทร</dt><dd class="col-7" th:text="${guest.phone}"></dd>
                         <dt class="col-5">เลขบัตร</dt><dd class="col-7" th:text="${guest.idCard}"></dd>
-                        <dt class="col-5">ประเภท</dt><dd class="col-7" th:text="${guest.stayType.label}"></dd>
+                        <dt class="col-5">ประเภท</dt><dd class="col-7" th:text="${guest.stayType}"></dd>
                         <dt class="col-5">วันเข้า</dt><dd class="col-7" th:text="${@thaiDate.format(guest.checkInDate)}"></dd>
                         <dt class="col-5">วันออก</dt><dd class="col-7" th:text="${@thaiDate.format(guest.checkOutDate)}"></dd>
                         <dt class="col-5">ยอดแรกเข้า</dt><dd class="col-7" th:text="${#numbers.formatDecimal(guest.initialPayment, 1, 'COMMA', 2, 'POINT')}"></dd>
@@ -26,7 +26,7 @@
                 </div></div></div>
                 <div class="col-lg-7"><div class="card"><div class="card-body">
                     <h5>ประวัติชำระเงิน</h5>
-                    <div class="table-responsive"><table class="table mb-0"><thead><tr><th>วันที่</th><th>ประเภท</th><th>ยอด</th><th>สถานะ</th></tr></thead><tbody><tr th:each="p : ${payments}"><td th:text="${@thaiDate.format(p.paymentDate)}"></td><td th:text="${p.reciept != null and p.reciept.type != null ? p.reciept.type.name : '-'}"></td><td th:text="${#numbers.formatDecimal(p.amount, 1, 'COMMA', 2, 'POINT')}"></td><td th:text="${p.status.label}"></td></tr></tbody></table></div>
+                    <div class="table-responsive"><table class="table mb-0"><thead><tr><th>วันที่</th><th>ประเภท</th><th>ยอด</th><th>สถานะ</th></tr></thead><tbody><tr th:each="p : ${payments}"><td th:text="${@thaiDate.format(p.paymentDate)}"></td><td th:text="${p.reciept != null and p.reciept.type != null ? p.reciept.type.name : '-'}"></td><td th:text="${#numbers.formatDecimal(p.amount, 1, 'COMMA', 2, 'POINT')}"></td><td th:text="${p.statusLabel}"></td></tr></tbody></table></div>
                 </div></div></div>
                 <div class="col-12"><div class="card"><div class="card-body">
                     <h5>ประวัติเครดิตล่วงหน้า</h5>
@@ -36,7 +36,7 @@
                             <tbody>
                             <tr th:each="ledger : ${advanceLedgers}">
                                 <td th:text="${@thaiDate.format(ledger.createdAt)}"></td>
-                                <td th:text="${ledger.type.label}"></td>
+                                <td th:text="${ledger.type}"></td>
                                 <td th:text="${ledger.note != null ? ledger.note : '-'}"></td>
                                 <td th:text="${#numbers.formatDecimal(ledger.amount, 1, 'COMMA', 2, 'POINT')}"></td>
                                 <td th:text="${#numbers.formatDecimal(ledger.balanceAfter, 1, 'COMMA', 2, 'POINT')}"></td>

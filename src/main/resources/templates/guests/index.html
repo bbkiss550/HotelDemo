@@ -30,10 +30,10 @@
                             th:attr="data-bs-target=${'#guestRoomModal' + room.id}"
                             data-bs-toggle="modal"
                             type="button"
-                            th:classappend="(${room.status.name() == 'AVAILABLE'} ? ' status-available' : (${room.status.name() == 'MONTHLY_OCCUPIED'} ? ' status-monthly' : (${room.status.name() == 'DAILY_OCCUPIED'} ? ' status-daily' : (${room.status.name() == 'RESERVED'} ? ' status-reserved' : ' status-maintenance')))) + (${guest != null and guest.stayType.name() == 'DAILY' and guest.checkOutDate != null and guest.checkOutDate.isBefore(today)} ? ' room-overdue' : '')">
+                            th:classappend="(${room.status == 'AVAILABLE'} ? ' status-available' : (${room.status == 'MONTHLY_OCCUPIED'} ? ' status-monthly' : (${room.status == 'DAILY_OCCUPIED'} ? ' status-daily' : (${room.status == 'RESERVED'} ? ' status-reserved' : ' status-maintenance')))) + (${guest != null and guest.stayType == 'DAILY' and guest.checkOutDate != null and guest.checkOutDate.isBefore(today)} ? ' room-overdue' : '')">
                         <span class="room-number" th:text="${room.roomNumber}"></span>
                         <span class="room-type" th:text="${room.roomType != null ? room.roomType.name : room.legacyRoomType}"></span>
-                        <span class="room-status" th:text="${room.status.label}"></span>
+                        <span class="room-status" th:text="${room.statusLabel}"></span>
                     </button>
                 </div>
 
@@ -85,7 +85,7 @@
                                 <label class="form-label">รูปแบบการพัก</label>
                                 <select class="form-select" name="stayType">
                                     <option value="">ทั้งหมด</option>
-                                    <option th:each="st : ${stayTypes}" th:value="${st.name()}" th:text="${st.label}"></option>
+                                    <option th:each="st : ${stayTypes}" th:value="${st}" th:text="${st}"></option>
                                 </select>
                             </div>
                             <div class="col-md-1 d-flex">
@@ -118,7 +118,7 @@
                                              data-check-in-date=${b.checkInDate},
                                              data-check-out-date=${b.checkOutDate},
                                              data-room-type-id=${b.roomType != null ? b.roomType.id : ''},
-                                             data-stay-type=${b.stayType.name()},
+                                             data-stay-type=${b.stayType},
                                              data-deposit-amount=${b.depositAmount != null ? b.depositAmount : 0},
                                              data-note=${b.note},
                                              data-daily-price=${b.roomType != null ? b.roomType.nightlyPrice : 0},
@@ -129,7 +129,7 @@
                                     <td><span class="badge bg-light-primary" th:text="${b.roomType != null ? b.roomType.name : '-'}"></span></td>
                                     <td th:text="${b.customerName}"></td>
                                     <td th:text="${b.phone != null ? b.phone : '-'}"></td>
-                                    <td th:text="${b.stayType.label}"></td>
+                                    <td th:text="${b.stayType}"></td>
                                     <td class="text-end" th:text="${#numbers.formatDecimal(b.depositAmount != null ? b.depositAmount : 0, 1, 'COMMA', 2, 'POINT')}"></td>
                                     <td class="text-end unassigned-booking-action-col">
                                         <button class="btn btn-sm btn-primary choose-unassigned-booking" type="button" th:value="${b.id}">
@@ -154,7 +154,7 @@
         <div class="modal fade" th:each="room : ${rooms}" th:id="${'guestRoomModal' + room.id}" tabindex="-1">
             <div class="modal-dialog modal-lg">
                 <div class="modal-content">
-                    <div th:if="${room.status.name() == 'AVAILABLE' or room.status.name() == 'RESERVED'}" th:with="booking=${reservedBookings[room.id]}">
+                    <div th:if="${room.status == 'AVAILABLE' or room.status == 'RESERVED'}" th:with="booking=${reservedBookings[room.id]}">
                         <form class="guest-stay-form" method="post" th:action="@{/guests}" th:attr="data-room-type-id=${room.roomType != null ? room.roomType.id : ''}">
                             <input type="hidden" name="roomId" th:value="${room.id}">
                             <input type="hidden" name="bookingId" th:value="${booking != null ? booking.id : null}">
@@ -197,11 +197,11 @@
                                     <label class="form-label d-block">รูปแบบการพัก</label>
                                     <div class="stay-type-choices">
                                         <label class="stay-type-choice">
-                                            <input class="stay-type-radio" type="radio" name="stayType" value="DAILY" th:checked="${booking == null or booking.stayType.name() == 'DAILY'}" th:disabled="${booking != null and booking.stayType.name() != 'DAILY'}" th:attr="data-daily-price=${room.roomType != null ? room.roomType.nightlyPrice : room.nightlyPrice},data-monthly-price=${room.roomType != null ? room.roomType.monthlyPrice : room.monthlyPrice}">
+                                            <input class="stay-type-radio" type="radio" name="stayType" value="DAILY" th:checked="${booking == null or booking.stayType == 'DAILY'}" th:disabled="${booking != null and booking.stayType != 'DAILY'}" th:attr="data-daily-price=${room.roomType != null ? room.roomType.nightlyPrice : room.nightlyPrice},data-monthly-price=${room.roomType != null ? room.roomType.monthlyPrice : room.monthlyPrice}">
                                             <span class="stay-type-card"><i class="bi bi-sun"></i><span>รายวัน</span></span>
                                         </label>
                                         <label class="stay-type-choice">
-                                            <input class="stay-type-radio" type="radio" name="stayType" value="MONTHLY" th:checked="${booking != null and booking.stayType.name() == 'MONTHLY'}" th:disabled="${booking != null and booking.stayType.name() != 'MONTHLY'}" th:attr="data-daily-price=${room.roomType != null ? room.roomType.nightlyPrice : room.nightlyPrice},data-monthly-price=${room.roomType != null ? room.roomType.monthlyPrice : room.monthlyPrice}">
+                                            <input class="stay-type-radio" type="radio" name="stayType" value="MONTHLY" th:checked="${booking != null and booking.stayType == 'MONTHLY'}" th:disabled="${booking != null and booking.stayType != 'MONTHLY'}" th:attr="data-daily-price=${room.roomType != null ? room.roomType.nightlyPrice : room.nightlyPrice},data-monthly-price=${room.roomType != null ? room.roomType.monthlyPrice : room.monthlyPrice}">
                                             <span class="stay-type-card"><i class="bi bi-calendar3"></i><span>รายเดือน</span></span>
                                         </label>
                                     </div>
@@ -240,17 +240,17 @@
                             <div class="modal-footer"><button type="button" class="btn btn-light-secondary" data-bs-dismiss="modal">ยกเลิก</button><button class="btn btn-primary" type="submit">บันทึกเข้าพัก</button></div>
                         </form>
                     </div>
-                    <div th:unless="${room.status.name() == 'AVAILABLE' or room.status.name() == 'RESERVED'}" th:with="guest=${activeGuests[room.id]}, guestPayments=${guest != null ? activeGuestPayments[guest.id] : null}">
+                    <div th:unless="${room.status == 'AVAILABLE' or room.status == 'RESERVED'}" th:with="guest=${activeGuests[room.id]}, guestPayments=${guest != null ? activeGuestPayments[guest.id] : null}">
                         <div class="modal-header"><h5 class="modal-title">ห้อง <span class="modal-room-number" th:text="${room.roomNumber}"></span></h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
                         <div class="modal-body" th:if="${guest != null}">
                             <div class="row g-3 mb-4">
                                 <div class="col-md-6"><strong>ผู้เข้าพัก</strong><div th:text="${guest.fullName}"></div></div>
                                 <div class="col-md-6"><strong>เบอร์โทร</strong><div th:text="${guest.phone != null ? guest.phone : '-'}"></div></div>
-                                <div class="col-md-4"><strong>ประเภทการพัก</strong><div th:text="${guest.stayType.label}"></div></div>
+                                <div class="col-md-4"><strong>ประเภทการพัก</strong><div th:text="${guest.stayType}"></div></div>
                                 <div class="col-md-4"><strong>วันที่เข้าพัก</strong><div th:text="${@thaiDate.format(guest.checkInDate)}"></div></div>
-                                <div class="col-md-4" th:if="${guest.stayType.name() == 'DAILY'}"><strong>วันที่ออก</strong><div th:text="${guest.checkOutDate != null ? @thaiDate.format(guest.checkOutDate) : '-'}"></div></div>
-                                <div class="col-md-4" th:if="${guest.stayType.name() == 'DAILY'}"><strong>จำนวนวัน</strong><div th:text="${activeGuestStayDays[guest.id] != null ? activeGuestStayDays[guest.id] + ' วัน' : '-'}"></div></div>
-                                <div class="col-md-4" th:if="${guest.stayType.name() == 'DAILY'}"><strong>ราคาต่อวัน</strong><div th:text="${#numbers.formatDecimal(guest.price != null ? guest.price : 0, 1, 'COMMA', 2, 'POINT')}"></div></div>
+                                <div class="col-md-4" th:if="${guest.stayType == 'DAILY'}"><strong>วันที่ออก</strong><div th:text="${guest.checkOutDate != null ? @thaiDate.format(guest.checkOutDate) : '-'}"></div></div>
+                                <div class="col-md-4" th:if="${guest.stayType == 'DAILY'}"><strong>จำนวนวัน</strong><div th:text="${activeGuestStayDays[guest.id] != null ? activeGuestStayDays[guest.id] + ' วัน' : '-'}"></div></div>
+                                <div class="col-md-4" th:if="${guest.stayType == 'DAILY'}"><strong>ราคาต่อวัน</strong><div th:text="${#numbers.formatDecimal(guest.price != null ? guest.price : 0, 1, 'COMMA', 2, 'POINT')}"></div></div>
                                 <div class="col-md-4"><strong>ค่าประกัน</strong><div th:text="${#numbers.formatDecimal(guest.deposit != null ? guest.deposit : 0, 1, 'COMMA', 2, 'POINT')}"></div></div>
                                 <div class="col-md-4"><strong>ยอดแรกเข้า</strong><div th:text="${#numbers.formatDecimal(guest.initialPayment, 1, 'COMMA', 2, 'POINT')}"></div></div>
                                 <div class="col-md-4"><strong>จ่ายแล้ว</strong><div th:text="${#numbers.formatDecimal(guest.totalPaid, 1, 'COMMA', 2, 'POINT')}"></div></div>
@@ -305,7 +305,7 @@
         </div>
 
         <div class="modal fade" th:each="room : ${rooms}"
-             th:if="${room.status.name() != 'AVAILABLE' and room.status.name() != 'RESERVED'}"
+             th:if="${room.status != 'AVAILABLE' and room.status != 'RESERVED'}"
              th:with="guest=${activeGuests[room.id]}"
              th:id="${'transferRoomModal' + room.id}" tabindex="-1">
             <div class="modal-dialog">
@@ -318,7 +318,7 @@
                         <input type="hidden" name="floorId" th:value="${room.floor != null ? room.floor.id : null}">
                         <div class="alert booking-stay-info-panel mb-3">
                             <strong th:text="${guest.fullName}"></strong>
-                            <div>จากห้อง <span class="fw-bold" th:text="${room.roomNumber}"></span> | <span th:text="${guest.stayType.label}"></span></div>
+                            <div>จากห้อง <span class="fw-bold" th:text="${room.roomNumber}"></span> | <span th:text="${guest.stayType}"></span></div>
                         </div>
                         <div class="row g-3">
                             <div class="col-12">
@@ -354,7 +354,7 @@
         </div>
 
         <div class="modal fade" th:each="room : ${rooms}"
-             th:if="${room.status.name() != 'AVAILABLE' and room.status.name() != 'RESERVED'}"
+             th:if="${room.status != 'AVAILABLE' and room.status != 'RESERVED'}"
              th:with="guest=${activeGuests[room.id]}"
              th:id="${'checkoutRefundModal' + room.id}" tabindex="-1">
             <div class="modal-dialog modal-lg">
@@ -401,7 +401,7 @@
                                 </div>
                             </div>
                             <div class="border rounded-3 p-3 mb-3 checkout-penalty-control"
-                                 th:if="${guest.stayType.name() == 'DAILY'}"
+                                 th:if="${guest.stayType == 'DAILY'}"
                                  th:with="penaltyQuote=${activeGuestCheckoutPenaltyQuotes[guest.id]}"
                                  th:attr="data-rule-amount=${penaltyQuote.amount}">
                                 <div class="form-check mb-3">

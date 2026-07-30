@@ -107,7 +107,7 @@
                         <div class="col-lg-4 col-md-6"><strong>ประเภทใบเสร็จ</strong><div><span class="badge receipt-type-badge"
                             th:classappend="${receiptTypeName == 'ค่าแรกเข้ารายเดือน'} ? ' receipt-type-opening-monthly' : (${receiptTypeName == 'ค่าบริการของลูกค้ารายวัน'} ? ' receipt-type-daily-service' : (${receiptTypeName == 'ค่าเช่ารายเดือน'} ? ' receipt-type-monthly-rent' : ' receipt-type-unknown'))"
                             th:text="${receiptTypeName != null ? receiptTypeName : '-'}"></span></div></div>
-                        <div class="col-lg-4 col-md-6"><strong>สถานะ</strong><div><span class="badge bg-light-success" th:text="${p.status.label}"></span></div></div>
+                        <div class="col-lg-4 col-md-6"><strong>สถานะ</strong><div><span class="badge bg-light-success" th:text="${p.statusLabel}"></span></div></div>
                         <input type="hidden" name="amount" th:value="${p.amount}">
                         <div class="col-lg-4 col-md-6">
                             <label class="form-label">ยอดตามใบแจ้ง</label>

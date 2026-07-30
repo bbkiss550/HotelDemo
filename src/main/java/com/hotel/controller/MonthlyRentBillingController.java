@@ -1,11 +1,12 @@
 package com.hotel.controller;
 
+import com.hotel.model.MonthlyRentBillStatus;
+
+import com.hotel.model.LookupCodes;
+
 import com.hotel.model.Guest;
 import com.hotel.model.MonthlyRentBill;
-import com.hotel.model.MonthlyRentBillStatus;
 import com.hotel.model.Room;
-import com.hotel.model.RoomStatus;
-import com.hotel.model.StayType;
 import com.hotel.repository.BillStatusRepository;
 import com.hotel.repository.FloorRepository;
 import com.hotel.repository.GuestRepository;
@@ -36,7 +37,7 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 @Controller
 @RequestMapping("/finance/monthly-rent/billing")
 public class MonthlyRentBillingController {
-    private static final List<MonthlyRentBillStatus> ISSUED_STATUSES = List.of(
+    private static final List<String> ISSUED_STATUSES = List.of(
             MonthlyRentBillStatus.PENDING,
             MonthlyRentBillStatus.PARTIAL_PAID,
             MonthlyRentBillStatus.PAID,
@@ -119,14 +120,14 @@ public class MonthlyRentBillingController {
         model.addAttribute("guestName", guestName);
         model.addAttribute("items", filteredItems);
         model.addAttribute("statuses", billStatuses.findAllByOrderByIdAsc());
-        model.addAttribute("availableCount", allItems.stream().filter(item -> item.getBill() == null || item.getBill().getStatus() == MonthlyRentBillStatus.DRAFT).count());
+        model.addAttribute("availableCount", allItems.stream().filter(item -> item.getBill() == null || MonthlyRentBillStatus.DRAFT.equals(item.getBill().getStatus())).count());
         model.addAttribute("printableBillCount", filteredItems.stream().filter(item -> isPrintableBill(item.getBill())).count());
         model.addAttribute("today", LocalDate.now());
         model.addAttribute("defaultDueDate", LocalDate.now().plusDays(5));
     }
 
     private boolean isPrintableBill(MonthlyRentBill bill) {
-        return bill != null && bill.getStatus() != MonthlyRentBillStatus.DRAFT && bill.getStatus() != MonthlyRentBillStatus.CANCELLED;
+        return bill != null && !MonthlyRentBillStatus.DRAFT.equals(bill.getStatus()) && !MonthlyRentBillStatus.CANCELLED.equals(bill.getStatus());
     }
 
     private boolean isPreviewItem(BillingRoomItem item, Model model) {
@@ -163,12 +164,12 @@ public class MonthlyRentBillingController {
         }
 
         MonthlyRentBill bill = resolveBill(room, period, billId);
-        if (bill.getId() != null && bill.getStatus() == MonthlyRentBillStatus.PAID) {
+        if (bill.getId() != null && MonthlyRentBillStatus.PAID.equals(bill.getStatus())) {
             redirect.addFlashAttribute("error", "บิลที่ชำระแล้วไม่สามารถแก้ไขได้");
             redirect.addFlashAttribute("flashType", "warning");
             return redirectToBilling(params, period);
         }
-        if (bill.getId() != null && billId == null && bill.getStatus() != MonthlyRentBillStatus.DRAFT) {
+        if (bill.getId() != null && billId == null && !MonthlyRentBillStatus.DRAFT.equals(bill.getStatus())) {
             redirect.addFlashAttribute("error", "ห้องนี้มีบิลในรอบที่เลือกแล้ว");
             redirect.addFlashAttribute("flashType", "warning");
             return redirectToBilling(params, period);
@@ -180,7 +181,7 @@ public class MonthlyRentBillingController {
                 redirect.addFlashAttribute("flashType", "warning");
                 return redirectToBilling(params, period);
             }
-            if (bill.getStatus() == MonthlyRentBillStatus.CANCELLED) {
+            if (MonthlyRentBillStatus.CANCELLED.equals(bill.getStatus())) {
                 redirect.addFlashAttribute("error", "บิลนี้ถูกยกเลิกแล้ว");
                 redirect.addFlashAttribute("flashType", "warning");
                 return redirectToBilling(params, period);
@@ -240,14 +241,14 @@ public class MonthlyRentBillingController {
         return room != null
                 && guest != null
                 && Boolean.TRUE.equals(guest.getActive())
-                && guest.getStayType() == StayType.MONTHLY
-                && (room.getStatus() == RoomStatus.MONTHLY_OCCUPIED || room.getStatus() == RoomStatus.OCCUPIED);
+                && LookupCodes.MONTHLY.equals(guest.getStayType())
+                && (LookupCodes.MONTHLY_OCCUPIED.equals(room.getStatus()) || LookupCodes.OCCUPIED.equals(room.getStatus()));
     }
 
     private boolean matchesStatus(BillingRoomItem item, String status) {
         if (status == null || status.isBlank() || "ALL".equals(status)) return true;
         if ("UNBILLED".equals(status)) return item.getBill() == null;
-        if ("OVERDUE".equals(status)) return item.getEffectiveStatus() == MonthlyRentBillStatus.OVERDUE;
+        if ("OVERDUE".equals(status)) return MonthlyRentBillStatus.OVERDUE.equals(item.getEffectiveStatus());
         Long statusId = parseLong(status);
         return statusId == null || (item.getBill() != null && statusId.equals(item.getBill().getStatusId()));
     }
@@ -453,31 +454,32 @@ public class MonthlyRentBillingController {
         public BigDecimal getDefaultWaterRate() { return settings.waterRate(); }
         public BigDecimal getDefaultElectricRate() { return settings.electricRate(); }
 
-        public MonthlyRentBillStatus getEffectiveStatus() {
+        public String getEffectiveStatus() {
             if (bill == null) return null;
-            if (ISSUED_STATUSES.contains(bill.getStatus()) && bill.getDueDate() != null && bill.getDueDate().isBefore(LocalDate.now()) && bill.getStatus() != MonthlyRentBillStatus.PAID) {
+            if (ISSUED_STATUSES.contains(bill.getStatus()) && bill.getDueDate() != null && bill.getDueDate().isBefore(LocalDate.now()) && !MonthlyRentBillStatus.PAID.equals(bill.getStatus())) {
                 return MonthlyRentBillStatus.OVERDUE;
             }
             return bill.getStatus();
         }
 
         public String getStatusLabel() {
-            MonthlyRentBillStatus status = getEffectiveStatus();
-            if (status == null || status == MonthlyRentBillStatus.DRAFT) return "ยังไม่ออกบิล";
-            if (status == MonthlyRentBillStatus.OVERDUE) return status.getLabel();
-            return bill.getBillStatus() == null ? status.getLabel() : bill.getBillStatus().getName();
+            String status = getEffectiveStatus();
+            if (status == null || MonthlyRentBillStatus.DRAFT.equals(status)) return "ยังไม่ออกบิล";
+            if (MonthlyRentBillStatus.OVERDUE.equals(status)) return MonthlyRentBillStatus.label(status);
+            return bill.getBillStatus() == null ? MonthlyRentBillStatus.label(status) : bill.getBillStatus().getName();
         }
 
         public String getStatusClass() {
-            MonthlyRentBillStatus status = getEffectiveStatus();
+            String status = getEffectiveStatus();
             if (status == null) return "bill-unbilled";
             return switch (status) {
-                case DRAFT -> "bill-draft";
-                case PENDING -> "bill-pending";
-                case PARTIAL_PAID -> "bill-partial";
-                case PAID -> "bill-paid";
-                case OVERDUE -> "bill-overdue";
-                case CANCELLED -> "bill-cancelled";
+                case "DRAFT" -> "bill-draft";
+                case "PENDING" -> "bill-pending";
+                case "PARTIAL_PAID" -> "bill-partial";
+                case "PAID" -> "bill-paid";
+                case "OVERDUE" -> "bill-overdue";
+                case "CANCELLED" -> "bill-cancelled";
+                default -> "bill-draft";
             };
         }
     }

@@ -42,7 +42,7 @@
                     <label class="form-label">รูปแบบการพัก</label>
                     <select class="form-select" name="stayType">
                         <option value="">ทั้งหมด</option>
-                        <option th:each="st : ${stayTypes}" th:value="${st.name()}" th:text="${st.label}" th:selected="${searchStayType != null and searchStayType == st}"></option>
+                        <option th:each="st : ${stayTypes}" th:value="${st}" th:text="${st == 'MONTHLY' ? 'รายเดือน' : 'รายวัน'}" th:selected="${searchStayType != null and searchStayType == st}"></option>
                     </select>
                 </div>
                 <div class="col-md-1 d-flex">
@@ -55,18 +55,18 @@
                 <tr th:each="b : ${bookings}">
                     <td class="table-actions">
                         <div class="d-flex gap-2">
-                            <button th:if="${b.status.name() == 'CONFIRMED'}" class="btn btn-sm btn-warning" type="button" data-bs-toggle="modal" th:data-bs-target="|#bookingEditModal${b.id}|" title="แก้ไข">
+                            <button th:if="${b.status == 'PENDING'}" class="btn btn-sm btn-warning" type="button" data-bs-toggle="modal" th:data-bs-target="|#bookingEditModal${b.id}|" title="แก้ไข">
                                 <i class="bi bi-pencil-square me-1"></i>แก้ไข
                             </button>
-                            <button th:unless="${b.status.name() == 'CONFIRMED'}" class="btn btn-sm btn-secondary" type="button" title="แก้ไขไม่ได้" disabled>
+                            <button th:unless="${b.status == 'PENDING'}" class="btn btn-sm btn-secondary" type="button" title="แก้ไขไม่ได้" disabled>
                                 <i class="bi bi-pencil-square me-1"></i>แก้ไข
                             </button>
-                            <form th:if="${b.status.name() == 'CONFIRMED'}" method="post" th:action="@{/bookings/{id}/cancel(id=${b.id})}">
+                            <form th:if="${b.status == 'PENDING'}" method="post" th:action="@{/bookings/{id}/cancel(id=${b.id})}">
                                 <button class="btn btn-sm btn-danger" type="submit" title="ยกเลิก">
                                     <i class="bi bi-x-lg me-1"></i>ยกเลิก
                                 </button>
                             </form>
-                            <button th:unless="${b.status.name() == 'CONFIRMED'}" class="btn btn-sm btn-secondary" type="button" title="ยกเลิกไม่ได้" disabled>
+                            <button th:unless="${b.status == 'PENDING'}" class="btn btn-sm btn-secondary" type="button" title="ยกเลิกไม่ได้" disabled>
                                 <i class="bi bi-x-lg me-1"></i>ยกเลิก
                             </button>
                         </div>
@@ -75,11 +75,11 @@
                     <td th:text="${@thaiDate.format(b.checkInDate)}"></td><td th:text="${b.checkOutDate != null ? @thaiDate.format(b.checkOutDate) : '-'}"></td>
                     <td><span class="badge bg-light-primary" th:text="${b.roomType != null ? b.roomType.name : (b.room != null and b.room.roomType != null ? b.room.roomType.name : '-')}"></span></td>
                     <td th:text="${b.room != null ? b.room.roomNumber : '-'}"></td>
-                    <td th:text="${b.customerName}"></td><td th:text="${b.phone}"></td><td th:text="${b.stayType.label}"></td>
+                    <td th:text="${b.customerName}"></td><td th:text="${b.phone}"></td><td th:text="${b.stayTypeLabel}"></td>
                     <td th:text="${#numbers.formatDecimal(b.depositAmount != null ? b.depositAmount : 0, 1, 'COMMA', 2, 'POINT')}"></td>
                     <td><span class="badge booking-status"
-                              th:classappend="${'booking-status-' + #strings.toLowerCase(b.status.name())}"
-                              th:text="${b.status.label}"></span></td>
+                              th:classappend="${'booking-status-' + #strings.toLowerCase(b.status)}"
+                              th:text="${b.statusLabel}"></span></td>
                 </tr>
                 </tbody>
             </table></div>
@@ -118,7 +118,7 @@
                         <label class="form-label">ห้องที่ต้องการจอง</label>
                         <select class="form-select room-field" name="roomId">
                             <option value="">ไม่ต้องการเลือกห้อง</option>
-                            <option th:each="room : ${rooms}" th:value="${room.id}" th:text="${room.roomNumber}" th:attr="data-room-type-id=${room.roomType != null ? room.roomType.id : ''},data-status=${room.status.name()}"></option>
+                            <option th:each="room : ${rooms}" th:value="${room.id}" th:text="${room.roomNumber}" th:attr="data-room-type-id=${room.roomType != null ? room.roomType.id : ''},data-status=${room.status}"></option>
                         </select>
                     </div>
                     <input type="hidden" th:field="*{status}">
@@ -194,7 +194,7 @@
                         <label class="form-label">ห้องที่ต้องการจอง</label>
                         <select class="form-select room-field" name="roomId">
                             <option value="">ไม่ต้องการเลือกห้อง</option>
-                            <option th:each="room : ${rooms}" th:value="${room.id}" th:text="${room.roomNumber}" th:selected="${b.room != null and b.room.id == room.id}" th:attr="data-room-type-id=${room.roomType != null ? room.roomType.id : ''},data-status=${room.status.name()}"></option>
+                            <option th:each="room : ${rooms}" th:value="${room.id}" th:text="${room.roomNumber}" th:selected="${b.room != null and b.room.id == room.id}" th:attr="data-room-type-id=${room.roomType != null ? room.roomType.id : ''},data-status=${room.status}"></option>
                         </select>
                     </div>
                     <input type="hidden" name="status" th:value="${b.status}">
@@ -202,11 +202,11 @@
                         <label class="form-label d-block">รูปแบบการพัก</label>
                         <div class="stay-type-choices">
                             <label class="stay-type-choice">
-                                <input class="stay-type-radio" type="radio" name="stayType" value="DAILY" th:checked="${b.stayType.name() == 'DAILY'}">
+                                <input class="stay-type-radio" type="radio" name="stayType" value="DAILY" th:checked="${b.stayType == 'DAILY'}">
                                 <span class="stay-type-card"><i class="bi bi-sun"></i><span>รายวัน</span></span>
                             </label>
                             <label class="stay-type-choice">
-                                <input class="stay-type-radio" type="radio" name="stayType" value="MONTHLY" th:checked="${b.stayType.name() == 'MONTHLY'}">
+                                <input class="stay-type-radio" type="radio" name="stayType" value="MONTHLY" th:checked="${b.stayType == 'MONTHLY'}">
                                 <span class="stay-type-card"><i class="bi bi-calendar3"></i><span>รายเดือน</span></span>
                             </label>
                         </div>

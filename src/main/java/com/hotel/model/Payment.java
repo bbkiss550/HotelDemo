@@ -52,9 +52,12 @@ public class Payment {
     @Column(name = "p_remark", length = 1000)
     private String remark;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "p_status")
-    private PaymentStatus status = PaymentStatus.UNPAID;
+    @Column(name = "id_payment_status", nullable = false)
+    private Long statusId = 2L;
+
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "id_payment_status", insertable = false, updatable = false)
+    private PaymentStatusMaster statusMaster;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt = LocalDateTime.now();
@@ -93,8 +96,31 @@ public class Payment {
     public void setDepositRefund(DepositRefund depositRefund) { this.depositRefund = depositRefund; }
     public String getRemark() { return remark; }
     public void setRemark(String remark) { this.remark = remark; }
-    public PaymentStatus getStatus() { return status; }
-    public void setStatus(PaymentStatus status) { this.status = status; }
+    public String getStatus() {
+        Long id = statusId == null ? 2L : statusId;
+        if (id == 1L) return "PAID";
+        if (id == 3L) return "PARTIAL";
+        if (id == 4L) return "VOID";
+        return "UNPAID";
+    }
+    public String getStatusLabel() {
+        if (statusMaster != null && statusMaster.getName() != null) return statusMaster.getName();
+        return switch (getStatus()) {
+            case "PAID" -> "ชำระแล้ว";
+            case "PARTIAL" -> "ชำระบางส่วน";
+            case "VOID" -> "ยกเลิก";
+            default -> "ค้างชำระ";
+        };
+    }
+    public void setStatus(String status) {
+        this.statusId = switch (status == null ? "UNPAID" : status) {
+            case "PAID" -> 1L; case "PARTIAL" -> 3L; case "VOID" -> 4L; default -> 2L;
+        };
+    }
+    public Long getStatusId() { return statusId; }
+    public void setStatusId(Long statusId) { this.statusId = statusId; }
+    public PaymentStatusMaster getStatusMaster() { return statusMaster; }
+    public void setStatusMaster(PaymentStatusMaster statusMaster) { this.statusMaster = statusMaster; }
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }
 }

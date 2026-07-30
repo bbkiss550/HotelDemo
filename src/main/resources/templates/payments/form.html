@@ -28,7 +28,7 @@
                             </div>
                             <div class="col-md-4"><label class="form-label">ยอดชำระ</label><input class="form-control" type="number" step="0.01" th:field="*{amount}"></div>
                             <div class="col-md-4"><label class="form-label">วันที่ชำระ</label><input class="form-control" type="date" th:field="*{paymentDate}"></div>
-                            <div class="col-md-4"><label class="form-label">สถานะ</label><select class="form-select" th:field="*{status}"><option th:each="s : ${statuses}" th:value="${s}" th:text="${s.label}"></option></select></div>
+                            <div class="col-md-4"><label class="form-label">สถานะ</label><select class="form-select" th:field="*{status}"><option th:each="s : ${statuses}" th:value="${s}" th:text="${s == 'PAID' ? 'ชำระแล้ว' : (s == 'PARTIAL' ? 'ชำระบางส่วน' : (s == 'VOID' ? 'ยกเลิก' : 'ค้างชำระ'))}"></option></select></div>
                             <div class="col-md-6">
                                 <label class="form-label">ประเภทใบเสร็จ</label>
                                 <select class="form-select" name="recieptTypeId">

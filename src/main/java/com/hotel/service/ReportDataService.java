@@ -1,8 +1,8 @@
 package com.hotel.service;
 
+import com.hotel.model.LookupCodes;
+
 import com.hotel.model.Payment;
-import com.hotel.model.PaymentStatus;
-import com.hotel.model.RoomStatus;
 import com.hotel.repository.BookingRepository;
 import com.hotel.repository.DepositRefundRepository;
 import com.hotel.repository.MonthlyRentBillRepository;
@@ -51,11 +51,11 @@ public class ReportDataService {
     public RevenueReport revenue(DateRange range) {
         List<Payment> paymentList = payments.findByCreatedAtBetweenOrderByReceiptNoAsc(range.startDateTime(), range.endExclusiveDateTime());
         BigDecimal totalRevenue = paymentList.stream()
-                .filter(payment -> payment.getStatus() == PaymentStatus.PAID)
+                .filter(payment -> LookupCodes.PAID.equals(payment.getStatus()))
                 .map(Payment::getTotalAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal fineRevenue = paymentList.stream()
-                .filter(payment -> payment.getStatus() == PaymentStatus.PAID)
+                .filter(payment -> LookupCodes.PAID.equals(payment.getStatus()))
                 .map(Payment::getFineAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         return new RevenueReport(
@@ -104,8 +104,8 @@ public class ReportDataService {
     public RoomReport rooms() {
         return new RoomReport(
                 rooms.count(),
-                rooms.countByStatus(RoomStatus.AVAILABLE),
-                rooms.countByStatus(RoomStatus.DAILY_OCCUPIED) + rooms.countByStatus(RoomStatus.MONTHLY_OCCUPIED),
+                rooms.countByStatus(LookupCodes.AVAILABLE),
+                rooms.countByStatus(LookupCodes.DAILY_OCCUPIED) + rooms.countByStatus(LookupCodes.MONTHLY_OCCUPIED),
                 roomStatusCounts()
         );
     }
@@ -124,7 +124,7 @@ public class ReportDataService {
 
     private Map<String, BigDecimal> revenueByType(List<Payment> paymentList) {
         return paymentList.stream()
-                .filter(payment -> payment.getStatus() == PaymentStatus.PAID)
+                .filter(payment -> LookupCodes.PAID.equals(payment.getStatus()))
                 .collect(Collectors.groupingBy(
                         payment -> payment.getReciept() != null && payment.getReciept().getType() != null ? payment.getReciept().getType().getName() : "ไม่ระบุ",
                         LinkedHashMap::new,
@@ -134,7 +134,7 @@ public class ReportDataService {
 
     private Map<String, BigDecimal> revenueByMethod(List<Payment> paymentList) {
         return paymentList.stream()
-                .filter(payment -> payment.getStatus() == PaymentStatus.PAID)
+                .filter(payment -> LookupCodes.PAID.equals(payment.getStatus()))
                 .collect(Collectors.groupingBy(
                         payment -> payment.getPaymentMethod() == null || payment.getPaymentMethod().isBlank() ? "ไม่ระบุ" : payment.getPaymentMethod(),
                         LinkedHashMap::new,
@@ -144,8 +144,8 @@ public class ReportDataService {
 
     private Map<String, Long> roomStatusCounts() {
         Map<String, Long> values = new LinkedHashMap<>();
-        for (RoomStatus status : RoomStatus.values()) {
-            values.put(status.getLabel(), rooms.countByStatus(status));
+        for (String status : LookupCodes.roomStatusCodes()) {
+            values.put(status, rooms.countByStatus(status));
         }
         return values;
     }

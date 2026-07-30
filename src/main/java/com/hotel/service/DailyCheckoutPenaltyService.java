@@ -1,9 +1,9 @@
 package com.hotel.service;
 
-import com.hotel.model.DailyCheckoutPenaltyChargeType;
+import com.hotel.model.LookupCodes;
+
 import com.hotel.model.DailyCheckoutPenaltyRule;
 import com.hotel.model.Guest;
-import com.hotel.model.StayType;
 import com.hotel.repository.DailyCheckoutPenaltyRuleRepository;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -34,7 +34,7 @@ public class DailyCheckoutPenaltyService {
     }
 
     public PenaltyQuote quote(Guest guest) {
-        if (guest == null || guest.getStayType() != StayType.DAILY || guest.getCheckOutDate() == null) {
+        if (guest == null || !LookupCodes.DAILY.equals(guest.getStayType()) || guest.getCheckOutDate() == null) {
             return PenaltyQuote.none();
         }
         LocalDateTime actualCheckout = LocalDateTime.now();
@@ -111,15 +111,16 @@ public class DailyCheckoutPenaltyService {
     private BigDecimal amountFor(DailyCheckoutPenaltyRule rule, Guest guest, LocalDateTime startsAt, LocalDateTime actualCheckout) {
         BigDecimal value = money(rule.getChargeValue());
         BigDecimal dailyRate = money(guest.getPrice());
-        DailyCheckoutPenaltyChargeType type = rule.getChargeType() == null
-                ? DailyCheckoutPenaltyChargeType.FREE
+        String type = rule.getChargeType() == null
+                ? LookupCodes.FREE
                 : rule.getChargeType();
         return switch (type) {
-            case FREE -> BigDecimal.ZERO;
-            case FIXED -> value;
-            case PERCENT_DAILY_RATE -> dailyRate.multiply(value).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
-            case ADD_NIGHTS -> dailyRate.multiply(value);
-            case PER_HOUR -> value.multiply(BigDecimal.valueOf(hoursFrom(startsAt, actualCheckout)));
+            case LookupCodes.FREE -> BigDecimal.ZERO;
+            case LookupCodes.FIXED -> value;
+            case LookupCodes.PERCENT_DAILY_RATE -> dailyRate.multiply(value).divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+            case LookupCodes.ADD_NIGHTS -> dailyRate.multiply(value);
+            case LookupCodes.PER_HOUR -> value.multiply(BigDecimal.valueOf(hoursFrom(startsAt, actualCheckout)));
+            default -> value;
         };
     }
 
@@ -152,15 +153,11 @@ public class DailyCheckoutPenaltyService {
 
     private String describe(DailyCheckoutPenaltyRule rule) {
         String range = rule.getStartTime() + (rule.getEndTime() == null ? "+" : " - " + rule.getEndTime());
-        return rule.getChargeType().getLabel() + " (" + range + ")";
+        return (rule.getChargeTypeMaster() != null ? rule.getChargeTypeMaster().getName() : rule.getChargeType()) + " (" + range + ")";
     }
 
-    private DailyCheckoutPenaltyChargeType parseChargeType(String value) {
-        try {
-            return DailyCheckoutPenaltyChargeType.valueOf(value);
-        } catch (IllegalArgumentException | NullPointerException ex) {
-            return DailyCheckoutPenaltyChargeType.FIXED;
-        }
+    private String parseChargeType(String value) {
+        return LookupCodes.penaltyChargeTypeCodes().contains(value) ? value : LookupCodes.FIXED;
     }
 
     private LocalTime parseTime(String value) {

@@ -1,11 +1,8 @@
 package com.hotel.controller;
 
 import com.hotel.model.Booking;
-import com.hotel.model.BookingStatus;
 import com.hotel.model.Payment;
-import com.hotel.model.PaymentStatus;
-import com.hotel.model.RoomStatus;
-import com.hotel.model.StayType;
+import com.hotel.model.LookupCodes;
 import com.hotel.repository.BookingRepository;
 import com.hotel.repository.PaymentRepository;
 import com.hotel.repository.RoomTypeRepository;
@@ -52,7 +49,7 @@ public class BookingController {
                  @RequestParam(required = false) String phone,
                  @RequestParam(required = false) LocalDate checkInDate,
                  @RequestParam(required = false) Long roomTypeId,
-                 @RequestParam(required = false) StayType stayType) {
+                 @RequestParam(required = false) String stayType) {
         addBookingPageData(model, customerName, phone, checkInDate, roomTypeId, stayType);
         return "bookings/index";
     }
@@ -63,12 +60,12 @@ public class BookingController {
                    @RequestParam(required = false) String phone,
                    @RequestParam(required = false) LocalDate checkInDate,
                    @RequestParam(required = false) Long roomTypeId,
-                   @RequestParam(required = false) StayType stayType) {
+                   @RequestParam(required = false) String stayType) {
         addBookingPageData(model, customerName, phone, checkInDate, roomTypeId, stayType);
         return "bookings/index :: bookingWorkspace";
     }
 
-    private void addBookingPageData(Model model, String customerName, String phone, LocalDate checkInDate, Long roomTypeId, StayType stayType) {
+    private void addBookingPageData(Model model, String customerName, String phone, LocalDate checkInDate, Long roomTypeId, String stayType) {
         var roomTypeList = roomTypes.findAllByOrderByNameAsc();
         var availableRoomCounts = new HashMap<Long, Long>();
         var today = LocalDate.now();
@@ -86,7 +83,7 @@ public class BookingController {
                 roomTypeId != null,
                 roomTypeId != null ? roomTypeId : 0L,
                 stayType != null,
-                stayType != null ? stayType : StayType.DAILY
+                stayType != null ? stayType : LookupCodes.DAILY
         ));
         model.addAttribute("roomTypes", roomTypeList);
         model.addAttribute("rooms", rooms.findAllByOrderByRoomNumber());
@@ -96,8 +93,8 @@ public class BookingController {
         model.addAttribute("searchCheckInDate", checkInDate);
         model.addAttribute("searchRoomTypeId", roomTypeId);
         model.addAttribute("searchStayType", stayType);
-        model.addAttribute("statuses", BookingStatus.values());
-        model.addAttribute("stayTypes", StayType.values());
+        model.addAttribute("statuses", java.util.List.of("PENDING", "CHECKED_IN", "CANCELLED"));
+        model.addAttribute("stayTypes", java.util.List.of("DAILY", "MONTHLY"));
         var booking = new Booking();
         booking.setDepositAmount(settings.defaultDeposit());
         booking.setNationality("ไทย");
@@ -120,7 +117,7 @@ public class BookingController {
         Booking savedBooking = isNew ? new Booking() : bookings.findById(booking.getId()).orElseThrow();
         var checkInDate = booking.getCheckInDate();
         var checkOutDate = booking.getCheckOutDate();
-        var isMonthly = booking.getStayType() == StayType.MONTHLY;
+        var isMonthly = LookupCodes.MONTHLY.equals(booking.getStayType());
         if (isMonthly) {
             checkOutDate = null;
         } else if (checkInDate != null && (checkOutDate == null || checkInDate.isAfter(checkOutDate))) {
@@ -135,8 +132,8 @@ public class BookingController {
         }
         var previousRoom = savedBooking.getRoom();
         var roomChanged = previousRoom != null && (selectedRoom == null || !previousRoom.getId().equals(selectedRoom.getId()));
-        if (!isNew && roomChanged && previousRoom.getStatus() == RoomStatus.RESERVED) {
-            previousRoom.setStatus(RoomStatus.AVAILABLE);
+        if (!isNew && roomChanged && LookupCodes.RESERVED.equals(previousRoom.getStatus())) {
+            previousRoom.setStatus(LookupCodes.AVAILABLE);
             rooms.save(previousRoom);
         }
 
@@ -159,8 +156,8 @@ public class BookingController {
             savedBooking.setBookingNumber(nextBookingNumber(savedBooking.getBookingDate()));
         }
         bookings.save(savedBooking);
-        if (selectedRoom != null && selectedRoom.getStatus() == RoomStatus.AVAILABLE) {
-            selectedRoom.setStatus(RoomStatus.RESERVED);
+        if (selectedRoom != null && LookupCodes.AVAILABLE.equals(selectedRoom.getStatus())) {
+            selectedRoom.setStatus(LookupCodes.RESERVED);
             rooms.save(selectedRoom);
         }
         createOrUpdateBookingDepositReceipt(savedBooking);
@@ -194,11 +191,11 @@ public class BookingController {
                   @RequestHeader(value = "X-Requested-With", required = false) String requestedWith,
                   RedirectAttributes redirect) {
         var booking = bookings.findById(id).orElseThrow();
-        booking.setStatus(BookingStatus.CANCELLED);
+        booking.setStatus(LookupCodes.CANCELLED);
         bookings.save(booking);
         var room = booking.getRoom();
-        if (room != null && room.getStatus() == RoomStatus.RESERVED) {
-            room.setStatus(RoomStatus.AVAILABLE);
+        if (room != null && LookupCodes.RESERVED.equals(room.getStatus())) {
+            room.setStatus(LookupCodes.AVAILABLE);
             rooms.save(room);
         }
         var bookingTarget = booking.getRoomType() != null ? booking.getRoomType().getName() : room != null ? room.getRoomNumber() : "";
@@ -254,7 +251,7 @@ public class BookingController {
         payment.setFineAmount(BigDecimal.ZERO);
         payment.setPaymentDate(booking.getBookingDate() == null ? LocalDate.now() : booking.getBookingDate());
         payment.setPaymentMethod("เงินสด");
-        payment.setStatus(PaymentStatus.PAID);
+        payment.setStatus(LookupCodes.PAID);
         payment.setRemark(null);
         payment = payments.save(payment);
         recieptRecordService.recordBookingDeposit(payment);
@@ -265,13 +262,13 @@ public class BookingController {
     }
 
     private long countAvailableRooms(com.hotel.model.RoomType roomType, LocalDate checkInDate, LocalDate checkOutDate, Long excludeId) {
-        long availableByRoomStatus = rooms.countByRoomTypeAndStatusIn(roomType, List.of(RoomStatus.AVAILABLE, RoomStatus.RESERVED));
+        long availableByRoomStatus = rooms.countByRoomTypeAndStatusIn(roomType, List.of(LookupCodes.AVAILABLE, LookupCodes.RESERVED));
         if (checkInDate == null || checkOutDate == null) {
             return availableByRoomStatus;
         }
         long overlappingBookings = bookings.countOverlappingRoomTypeBookings(
                 roomType,
-                List.of(BookingStatus.CONFIRMED, BookingStatus.CHECKED_IN),
+                List.of(LookupCodes.PENDING, LookupCodes.CHECKED_IN),
                 checkInDate,
                 checkOutDate,
                 excludeId
@@ -280,12 +277,12 @@ public class BookingController {
     }
 
     private long countAvailableSelectedRoom(com.hotel.model.Room room, LocalDate checkInDate, LocalDate checkOutDate, Long excludeId) {
-        if (room.getStatus() != RoomStatus.AVAILABLE && room.getStatus() != RoomStatus.RESERVED) {
+        if (!LookupCodes.AVAILABLE.equals(room.getStatus()) && !LookupCodes.RESERVED.equals(room.getStatus())) {
             return 0;
         }
         long overlappingBookings = bookings.countOverlappingRoomBookings(
                 room,
-                List.of(BookingStatus.CONFIRMED, BookingStatus.CHECKED_IN),
+                List.of(LookupCodes.PENDING, LookupCodes.CHECKED_IN),
                 checkInDate,
                 checkOutDate,
                 excludeId

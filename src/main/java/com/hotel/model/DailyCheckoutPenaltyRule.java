@@ -1,13 +1,6 @@
 package com.hotel.model;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import java.math.BigDecimal;
 import java.time.LocalTime;
 
@@ -31,9 +24,11 @@ public class DailyCheckoutPenaltyRule {
     @Column(name = "end_time")
     private LocalTime endTime;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "charge_type", nullable = false, length = 40)
-    private DailyCheckoutPenaltyChargeType chargeType = DailyCheckoutPenaltyChargeType.FIXED;
+    @Column(name = "id_penalty_charge_type", nullable = false)
+    private Long chargeTypeId = 2L;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "id_penalty_charge_type", insertable = false, updatable = false)
+    private PenaltyChargeTypeMaster chargeTypeMaster;
 
     @Column(name = "charge_value", nullable = false)
     private BigDecimal chargeValue = BigDecimal.ZERO;
@@ -54,8 +49,12 @@ public class DailyCheckoutPenaltyRule {
     public void setEndDayOffset(Integer endDayOffset) { this.endDayOffset = endDayOffset; }
     public LocalTime getEndTime() { return endTime; }
     public void setEndTime(LocalTime endTime) { this.endTime = endTime; }
-    public DailyCheckoutPenaltyChargeType getChargeType() { return chargeType; }
-    public void setChargeType(DailyCheckoutPenaltyChargeType chargeType) { this.chargeType = chargeType; }
+    public String getChargeType() { return chargeTypeMaster != null ? chargeTypeMaster.getCode() : (chargeTypeId != null && chargeTypeId == 1L ? "FREE" : chargeTypeId != null && chargeTypeId == 3L ? "PER_HOUR" : chargeTypeId != null && chargeTypeId == 4L ? "PERCENT_DAILY_RATE" : chargeTypeId != null && chargeTypeId == 5L ? "ADD_NIGHTS" : "FIXED"); }
+    public void setChargeType(String chargeType) { this.chargeTypeId = switch (chargeType == null ? "FIXED" : chargeType) { case "FREE" -> 1L; case "PER_HOUR" -> 3L; case "PERCENT_DAILY_RATE" -> 4L; case "ADD_NIGHTS" -> 5L; default -> 2L; }; }
+    public Long getChargeTypeId() { return chargeTypeId; }
+    public void setChargeTypeId(Long id) { this.chargeTypeId = id; }
+    public PenaltyChargeTypeMaster getChargeTypeMaster() { return chargeTypeMaster; }
+    public void setChargeTypeMaster(PenaltyChargeTypeMaster value) { this.chargeTypeMaster = value; }
     public BigDecimal getChargeValue() { return chargeValue; }
     public void setChargeValue(BigDecimal chargeValue) { this.chargeValue = chargeValue; }
     public Boolean getEnabled() { return enabled; }

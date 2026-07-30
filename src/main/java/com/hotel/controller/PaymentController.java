@@ -1,11 +1,12 @@
 package com.hotel.controller;
 
-import com.hotel.model.Payment;
-import com.hotel.model.PaymentStatus;
-import com.hotel.model.MonthlyRentBill;
 import com.hotel.model.MonthlyRentBillStatus;
+
+import com.hotel.model.LookupCodes;
+
+import com.hotel.model.Payment;
+import com.hotel.model.MonthlyRentBill;
 import com.hotel.model.RecieptType;
-import com.hotel.model.StayType;
 import com.hotel.repository.BillStatusRepository;
 import com.hotel.repository.BookingRepository;
 import com.hotel.repository.DepositRefundRepository;
@@ -103,8 +104,8 @@ public class PaymentController {
                 .filter(entry -> entry.getValue() != null && !entry.getValue().isBlank())
                 .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (left, right) -> left));
         List<MonthlyRentBill> payableBills = monthlyBills.findByStatusIdInOrderByDueDateAscIdAsc(List.of(
-                        MonthlyRentBillStatus.PENDING.getId(),
-                        MonthlyRentBillStatus.PARTIAL_PAID.getId()))
+                        MonthlyRentBillStatus.getId(MonthlyRentBillStatus.PENDING),
+                        MonthlyRentBillStatus.getId(MonthlyRentBillStatus.PARTIAL_PAID)))
                 .stream()
                 .filter(bill -> selectedMonth == null || selectedMonth.equals(bill.getBillingMonth()))
                 .filter(bill -> selectedYear == null || selectedYear.equals(bill.getBillingYear()))
@@ -122,7 +123,7 @@ public class PaymentController {
         model.addAttribute("paymentReceiptTypeNames", paymentReceiptTypeNames(paymentList));
         model.addAttribute("rooms", rooms.findAllByOrderByRoomNumber());
         model.addAttribute("guests", guests.findByActiveTrueOrderByCheckInDateDescIdDesc());
-        model.addAttribute("paymentStatuses", PaymentStatus.values());
+        model.addAttribute("paymentStatuses", LookupCodes.paymentStatusCodes());
         model.addAttribute("recieptTypes", recieptTypes.findAll());
         model.addAttribute("billingMonth", selectedMonth);
         model.addAttribute("billingYear", selectedYear);
@@ -188,7 +189,7 @@ public class PaymentController {
         BigDecimal penaltyAmount = calculateFineAmount(bill.getDueDate(), effectivePaymentDate);
         BigDecimal remainingAmount = money(bill.getRemainingAmount());
 
-        if (bill.getStatus() == MonthlyRentBillStatus.CANCELLED || bill.getStatus() == MonthlyRentBillStatus.PAID) {
+        if (MonthlyRentBillStatus.CANCELLED.equals(bill.getStatus()) || MonthlyRentBillStatus.PAID.equals(bill.getStatus())) {
             redirect.addFlashAttribute("error", "บิลนี้ไม่อยู่ในสถานะที่รับชำระได้");
             redirect.addFlashAttribute("flashType", "warning");
             return "redirect:/payments";
@@ -210,7 +211,7 @@ public class PaymentController {
         payment.setFineAmount(penaltyAmount);
         payment.setPaymentDate(effectivePaymentDate);
         payment.setPaymentMethod(paymentMethod == null || paymentMethod.isBlank() ? "เงินสด" : paymentMethod);
-        payment.setStatus(PaymentStatus.PAID);
+        payment.setStatus(LookupCodes.PAID);
         payment.setMonthlyRentBill(bill);
         payment.setRemark(remark == null || remark.isBlank() ? null : remark.trim());
         payment = payments.save(payment);
@@ -245,7 +246,7 @@ public class PaymentController {
                 payment.setGuest(guest);
                 payment.setRoom(guest.getRoom());
                 payment.setAmount(guest.getInitialPayment());
-                payment.setStatus(PaymentStatus.PAID);
+                payment.setStatus(LookupCodes.PAID);
             });
         }
         formData(model, payment);
@@ -279,7 +280,7 @@ public class PaymentController {
                 ? "เงินสด"
                 : paymentForm.getPaymentMethod());
         payment.setRemark(paymentForm.getRemark());
-        payment.setStatus(paymentForm.getStatus() == null ? PaymentStatus.PAID : paymentForm.getStatus());
+        payment.setStatus(paymentForm.getStatus() == null ? LookupCodes.PAID : paymentForm.getStatus());
 
         if (payment.getPaymentDate() == null) {
             payment.setPaymentDate(LocalDate.now());
@@ -288,7 +289,7 @@ public class PaymentController {
             payment.getReciept().setAmount(payment.getTotalAmount());
         }
         payment = payments.save(payment);
-        if (isNew && payment.getGuest() != null && payment.getStatus() == PaymentStatus.PAID) {
+        if (isNew && payment.getGuest() != null && LookupCodes.PAID.equals(payment.getStatus())) {
             var guest = payment.getGuest();
             BigDecimal totalPaid = guest.getTotalPaid() == null ? BigDecimal.ZERO : guest.getTotalPaid();
             guest.setTotalPaid(totalPaid.add(payment.getTotalAmount()));
@@ -307,7 +308,7 @@ public class PaymentController {
         model.addAttribute("payment", payment);
         model.addAttribute("rooms", rooms.findAllByOrderByRoomNumber());
         model.addAttribute("guests", guests.findByActiveTrueOrderByCheckInDateDescIdDesc());
-        model.addAttribute("statuses", PaymentStatus.values());
+        model.addAttribute("statuses", LookupCodes.paymentStatusCodes());
         model.addAttribute("recieptTypes", recieptTypes.findAll());
     }
 
@@ -444,7 +445,7 @@ public class PaymentController {
         if (isPenaltyReceipt(payment)) {
             return checkoutPenaltyReceiptItems(payment);
         }
-        if (payment == null || payment.getGuest() == null || payment.getGuest().getStayType() != StayType.DAILY) {
+        if (payment == null || payment.getGuest() == null || !LookupCodes.DAILY.equals(payment.getGuest().getStayType())) {
             return List.of(new ReceiptLine(paymentReceiptTypeName(payment), BigDecimal.ONE, payment == null ? BigDecimal.ZERO : payment.getAmount(), payment == null ? BigDecimal.ZERO : payment.getAmount()));
         }
         var guest = payment.getGuest();

@@ -1,8 +1,9 @@
 package com.hotel.controller;
 
+import com.hotel.model.LookupCodes;
+
 import com.hotel.service.AppSettingService;
 import com.hotel.service.DailyCheckoutPenaltyService;
-import com.hotel.model.DailyCheckoutPenaltyChargeType;
 import java.math.BigDecimal;
 import java.time.LocalTime;
 import java.util.List;
@@ -33,7 +34,7 @@ public class DefaultSettingController {
         model.addAttribute("fineIntervalDaysValue", settings.fineIntervalDays());
         model.addAttribute("dailyCheckoutTime", settings.dailyCheckoutTime());
         model.addAttribute("dailyCheckoutPenaltyRules", checkoutPenalties.rules());
-        model.addAttribute("dailyCheckoutPenaltyChargeTypes", DailyCheckoutPenaltyChargeType.values());
+        model.addAttribute("dailyCheckoutPenaltyChargeTypes", LookupCodes.penaltyChargeTypeCodes());
         return "settings/defaults";
     }
 

@@ -35,7 +35,6 @@
                     <div class="col-xl-3 col-md-6"><div class="card"><div class="card-body"><h6 class="text-muted">รายได้รวม</h6><h3 th:text="${#numbers.formatDecimal(totalRevenue, 1, 'COMMA', 2, 'POINT')}">0.00</h3></div></div></div>
                     <div class="col-xl-3 col-md-6"><div class="card"><div class="card-body"><h6 class="text-muted">ค่าปรับ</h6><h3 th:text="${#numbers.formatDecimal(fineRevenue, 1, 'COMMA', 2, 'POINT')}">0.00</h3></div></div></div>
                     <div class="col-xl-3 col-md-6"><div class="card"><div class="card-body"><h6 class="text-muted">ยอดค้างทั้งหมด</h6><h3 th:text="${#numbers.formatDecimal(outstandingAmount, 1, 'COMMA', 2, 'POINT')}">0.00</h3></div></div></div>
-                    <div class="col-xl-3 col-md-6"><div class="card"><div class="card-body"><h6 class="text-muted">คืนเงินประกัน</h6><h3 th:text="${#numbers.formatDecimal(refundAmount, 1, 'COMMA', 2, 'POINT')}">0.00</h3></div></div></div>
                 </div>
 
                 <div class="row g-3">
@@ -105,7 +104,7 @@
                                         <td th:text="${bill.guest != null ? bill.guest.fullName : '-'}"></td>
                                         <td class="text-end" th:text="${#numbers.formatDecimal(bill.totalAmount, 1, 'COMMA', 2, 'POINT')}"></td>
                                         <td class="text-end fw-bold" th:text="${#numbers.formatDecimal(bill.remainingAmount, 1, 'COMMA', 2, 'POINT')}"></td>
-                                        <td th:text="${bill.billStatus != null ? bill.billStatus.name : bill.status.label}"></td>
+                                        <td th:text="${bill.billStatus != null ? bill.billStatus.name : bill.status}"></td>
                                     </tr>
                                     <tr th:if="${monthlyBills.isEmpty()}"><td colspan="6" class="text-center text-muted">ไม่มีข้อมูล</td></tr>
                                     </tbody>
@@ -127,8 +126,8 @@
                                         <td class="fw-bold" th:text="${b.bookingNumber != null ? b.bookingNumber : '-'}"></td>
                                         <td th:text="${@thaiDate.format(b.checkInDate)}"></td>
                                         <td th:text="${b.customerName}"></td>
-                                        <td th:text="${b.stayType.label}"></td>
-                                        <td th:text="${b.status.label}"></td>
+                                        <td th:text="${b.stayTypeLabel}"></td>
+                                        <td th:text="${b.statusLabel}"></td>
                                     </tr>
                                     <tr th:if="${bookings.isEmpty()}"><td colspan="5" class="text-center text-muted">ไม่มีข้อมูล</td></tr>
                                     </tbody>

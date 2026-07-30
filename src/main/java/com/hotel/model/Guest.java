@@ -37,9 +37,11 @@ public class Guest {
     @Column(name = "g_check_out_date")
     private LocalDate checkOutDate;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "g_stay_type")
-    private StayType stayType = StayType.DAILY;
+    @Column(name = "id_stay_type", nullable = false)
+    private Long stayTypeId = 1L;
+    @ManyToOne(fetch = FetchType.EAGER)
+    @JoinColumn(name = "id_stay_type", insertable = false, updatable = false)
+    private StayTypeMaster stayTypeMaster;
 
     @Column(name = "g_price")
     private BigDecimal price = BigDecimal.ZERO;
@@ -89,8 +91,13 @@ public class Guest {
     public void setCheckInDate(LocalDate checkInDate) { this.checkInDate = checkInDate; }
     public LocalDate getCheckOutDate() { return checkOutDate; }
     public void setCheckOutDate(LocalDate checkOutDate) { this.checkOutDate = checkOutDate; }
-    public StayType getStayType() { return stayType; }
-    public void setStayType(StayType stayType) { this.stayType = stayType; }
+    public String getStayType() { return stayTypeMaster != null ? stayTypeMaster.getCode() : (stayTypeId != null && stayTypeId == 2L ? "MONTHLY" : "DAILY"); }
+    public String getStayTypeLabel() { return stayTypeMaster != null && stayTypeMaster.getName() != null ? stayTypeMaster.getName() : ("MONTHLY".equals(getStayType()) ? "รายเดือน" : "รายวัน"); }
+    public void setStayType(String stayType) { this.stayTypeId = "MONTHLY".equals(stayType) ? 2L : 1L; }
+    public Long getStayTypeId() { return stayTypeId; }
+    public void setStayTypeId(Long id) { this.stayTypeId = id; }
+    public StayTypeMaster getStayTypeMaster() { return stayTypeMaster; }
+    public void setStayTypeMaster(StayTypeMaster value) { this.stayTypeMaster = value; }
     public BigDecimal getPrice() { return price; }
     public void setPrice(BigDecimal price) { this.price = price; }
     public Integer getAdvanceMonths() { return advanceMonths; }
