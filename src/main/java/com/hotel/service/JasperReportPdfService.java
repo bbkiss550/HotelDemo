@@ -26,7 +26,6 @@ import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
-import jakarta.annotation.PostConstruct;
 import net.sf.jasperreports.engine.JRException;
 import net.sf.jasperreports.engine.JRLineBox;
 import net.sf.jasperreports.engine.JasperCompileManager;
@@ -69,18 +68,6 @@ public class JasperReportPdfService {
 
     public JasperReportPdfService(ThaiDateFormatter thaiDate) {
         this.thaiDate = thaiDate;
-    }
-
-    @PostConstruct
-    void compileTemplates() {
-        try {
-            compiledReport("reports/revenue-report.jrxml");
-            compiledReport("reports/monthly-bills-report.jrxml");
-            compiledReport("reports/bookings-report.jrxml");
-            compiledReport("reports/deposit-refunds-report.jrxml");
-        } catch (JRException ex) {
-            throw new IllegalStateException("Cannot compile Jasper report templates", ex);
-        }
     }
 
     public byte[] revenuePdf(ReportDataService.DateRange range, ReportDataService.RevenueReport report) throws JRException {
