@@ -16,6 +16,10 @@ RUN apt-get update \
 WORKDIR /app
 COPY --from=build /workspace/target/hotel-system-0.0.1-SNAPSHOT.jar /app/app.jar
 
+# The restored production database already has its schema and master data.
+# Set HOTEL_SCHEMA_INIT_ENABLED=true only for an intentional schema migration.
+ENV HOTEL_SCHEMA_INIT_ENABLED=false
+
 EXPOSE 10000
 
 ENTRYPOINT ["java", "-jar", "/app/app.jar"]
