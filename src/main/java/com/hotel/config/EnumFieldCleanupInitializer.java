@@ -2,6 +2,7 @@ package com.hotel.config;
 
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -10,6 +11,7 @@ import org.springframework.stereotype.Component;
 /** Migrates old enum-like text columns once, then removes them permanently. */
 @Component
 @Order(Ordered.LOWEST_PRECEDENCE)
+@ConditionalOnProperty(name = "hotel.schema-init.enabled", havingValue = "true", matchIfMissing = true)
 public class EnumFieldCleanupInitializer implements ApplicationRunner {
     private final JdbcTemplate jdbc;
 
